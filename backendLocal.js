@@ -32,7 +32,6 @@ BackendLocal.prototype._setTasklists = function(lists) {
 }
 BackendLocal.prototype._getList = function(id) {
 	var data = window.localStorage.getItem(this.STORAGE_PREFIX+"list_"+id);
-	log(data);
 	return (data) ? JSON.parse(data) : [];
 }
 BackendLocal.prototype._setList = function(id, list) {
@@ -113,10 +112,8 @@ Tasks
 BackendLocal.prototype.list = function(tasklistId) {
 	var list = this._getList(tasklistId);
 	var items = [];
-	log(list);
 	for (let i=0; i<list.length; i++) {
 		let item = this._getItem(list[i]);
-		log(item);
 		item.position = i;
 		items.push(item);
 	}

@@ -77,8 +77,6 @@
         tasklistInit();
         editorInit();
         var backendName = window.localStorage.getItem("tasksIg_ui_backend");
-        log("stored backend name: "+backendName);
-        //if ((backendName == 'BackendGTasks') || (backendName == 'backendLocal'))
         if (!backendName || !initBackend(backendName))
         	updateSigninStatus(false);
       }
@@ -99,9 +97,7 @@
         	handleError("Backend not found: "+backendName);
         	return false;
         }
-        log(constructor);
         backend = new constructor();
-        log(backend);
         if (!backend) {
         	handleError("Cannot create backend "+backendName);
         	return false;
@@ -111,7 +107,6 @@
         	if (!backend.isSignedIn())
         		return backend.signin();
         }).then(() => {
-          log("storing backend name");
           window.localStorage.setItem("tasksIg_ui_backend", backendName);
         }).catch(handleError);
         return true;
@@ -125,7 +120,6 @@
 
       // Called when the signed in status changes, whether after a button click or automatically
       function updateSigninStatus(isSignedIn) {
-        log("UpdateSignIn");
         if (isSignedIn) {
           startPage.classList.add("hidden");
           listPage.classList.remove("hidden");
@@ -506,9 +500,9 @@
       newLevel: New nesting level to be applied to this task (and to shift its children accordingly)
       */
       function taskEntryMove(entry, insertAfter, newLevel) {
-        log("taskEntryMoveChildren");
-        log(entry);
-        log(insertAfter);
+        //log("taskEntryMoveChildren");
+        //log(entry);
+        //log(insertAfter);
         //Get the node's children before it's moved
         var allChildren = taskEntryGetChildren(entry);
         //Move the node itself
@@ -525,10 +519,10 @@
         return taskEntryInsertChildren(entry, allChildren, levelShift);
       }
       function taskEntryMoveChildren(entry_from, insertAfter, levelShift) {
-        log("taskEntryMoveChildren");
-        log(entry_from);
-        log(insertAfter);
-        log(levelShift);
+        //log("taskEntryMoveChildren");
+        //log(entry_from);
+        //log(insertAfter);
+        //log(levelShift);
         return taskEntryInsertChildren(
           taskEntryGetChildren(entry_from),
           insertAfter,
@@ -704,7 +698,7 @@
       Entry keyboard handling
       */
       function taskEntryKeyDown(entry, event) {
-        log(event);
+        //log(event);
         
         if (event.ctrlKey) {
           if (event.key=="ArrowUp") {
@@ -784,7 +778,7 @@
 
       //Called when the user types in the task title
       function taskEntryTitleInput(entry) {
-        log("taskEntryTitleInput: "+entry);
+        //log("taskEntryTitleInput: "+entry);
         taskEntryTitleChanged(entry);
       }
       function taskEntryTitlePaste(entry, event) {
@@ -807,7 +801,7 @@
       }
       //Called when the user moves out of the task title
       function taskEntryTitleFocusOut(entry) {
-        log("taskEntryTitleFocusOut: "+entry);
+        //log("taskEntryTitleFocusOut: "+entry);
         taskEntryTitleCommitNow(entry);
       }
       
@@ -825,7 +819,7 @@
       }
       
       function taskEntryTitleTriggerClear() {
-        log("taskEntryTitleTriggerClear");
+        //log("taskEntryTitleTriggerClear");
         if (taskEntryTitleCommitTimer) {
           clearTimeout(taskEntryTitleCommitTimer);
           taskEntryTitleCommitTimer = null;
@@ -890,7 +884,7 @@
       
       //Starts the drag
       function taskEntryDragStart() {
-        log("startDrag")
+        //log("startDrag")
         taskEntryDragStartTimerAbort();
         
         //Cancel any text selection that might be going on due to not capturing that initial mouse click
@@ -943,7 +937,7 @@
           return;
         }
         
-        log("endDrag");
+        //log("endDrag");
         dragging = false;
         if (!dragNode) return;
         
@@ -1038,20 +1032,20 @@
 
       //Drag anywhere and hold
       function taskEntryDragMouseDown(event) {
-        log("taskEntryDragMouseDown");
+        //log("taskEntryDragMouseDown");
         taskEntryDragConfigure(this, event)
         dragStartTimer = setTimeout(taskEntryDragStart, 500);
       }
       //Drag on a grip
       function taskEntryDragMouseDownGrip(event) {
-        log("taskEntryDragMouseDownGrip");
+        //log("taskEntryDragMouseDownGrip");
         taskEntryDragConfigure(elementGetOwnerTaskEntry(event.target), event);
         taskEntryDragStart(); //immediately
         event.stopPropagation(); //handled here, don't start the timer
         event.preventDefault();
       }
       function taskEntryDragMouseUp(event) {
-        log("taskEntryDragMouseUp");
+        //log("taskEntryDragMouseUp");
         taskEntryDragStartTimerAbort();
         taskEntryDragEnd();
       }
@@ -1106,7 +1100,7 @@
         Add it to the end.
       */
       function taskEntryTab(entry) {
-        log("taskEntryTab");
+        //log("taskEntryTab");
         taskEntryTitleCommitNow(entry); //commit any pending changes
         
         //Find immediate previous sibling on the same task level
@@ -1133,7 +1127,7 @@
         Make following siblings into children of this entry.
       */
       function taskEntryShiftTab(entry) {
-        log("taskEntryShiftTab");
+        //log("taskEntryShiftTab");
         taskEntryTitleCommitNow(entry); //commit any pending changes
         
         if (taskEntryGetLevel(entry) <= 0) {
@@ -1234,7 +1228,7 @@
       Merge another entry with all of its contents and children into the given one
       */
       function taskMerge(entry_to, entry_what) {
-        log("taskMerge");
+        //log("taskMerge");
         if (!entry_to || !entry_what) return;
         
         var mergePos = taskEntryGetTitle(entry_to).length;
@@ -1246,7 +1240,7 @@
         //they're going to see old unmerged Notes.
         
         backend.getAll([entryToId, entryWhatId]).then(results => {
-          log("have entry data");
+          //log("have entry data");
           task_to = results[entryToId];
           task_what = results[entryWhatId];
           
@@ -1286,11 +1280,11 @@
           //TODO: We could do both updates batched
           return backend.patch(patch_to)
             .then(response => {
-              log("patched entry to");
+              //log("patched entry to");
               //Move children first!
               return backend.moveChildren(entryWhatId, entryToId, newPrevChildId);
             }).then(response => {
-              log("moved children")
+              //log("moved children")
               return backend.delete(entryWhatId);
             });
         }).catch(handleError);
@@ -1298,14 +1292,14 @@
       
       //Merges the next entry into this one
       function taskMergeForward(entry) {
-        log("taskMergeForward");
+        //log("taskMergeForward");
         var entry_after = taskEntryGetNext(entry); //at any level
         if (!entry_after) return;
         return taskMerge(entry, entry_after);
       }
       
       function taskMergeBackward(entry) {
-        log("taskMergeBackward");
+        //log("taskMergeBackward");
         var entry_before = taskEntryGetPrev(entry); //at any level
         if (!entry_before) return;
         return taskMerge(entry_before, entry);
@@ -1382,7 +1376,7 @@
           prevTaskId = taskEntryGetId(prevEntry);
         } else
           prevEntry = taskEntryFind(prevTaskId);
-        log(prevEntry);
+        //log(prevEntry);
         return backend.insertToCurrentList(newTask, prevTaskId).then(result => {
           //Insert new task entry
           var level = backend.getLevel(result);
@@ -1433,7 +1427,7 @@
           
           //Move all children of the original task to the new task
           prom = prom.then(response => {
-            log("running backend.moveChildren")
+            //log("running backend.moveChildren")
             return backend.moveChildren(prevTaskId, newTaskId, null); //TODO: Maybe without "return"? Or do we need to wait for update "position" order? Or do we not care?
           });
 
@@ -1445,8 +1439,8 @@
       Makes the first child their new parent.
       */
       function taskLiberateChildren(taskId) {
-        log("taskLiberateChildren:");
-        log(taskId);
+        //log("taskLiberateChildren:");
+        //log(taskId);
         
         var entry = taskEntryFind(taskId);
         
@@ -1456,10 +1450,10 @@
 
         var entryParent = taskEntryGetParent(entry);
 
-        log("taskLiberateChildren: Making this one new parent:");
-        log(children[0]);
+        //log("taskLiberateChildren: Making this one new parent:");
+        //log(children[0]);
         
-        log("taskLiberateChildren: Updating UI");
+        //log("taskLiberateChildren: Updating UI");
         //This entry is the only one that's visually changing nesting level
         taskEntryAdjustLevel(children[0], -1, false); //non-recursive
         
@@ -1469,7 +1463,7 @@
         //Move the rest under it
         for (let i=1; i<children.length; i++)
           prom = prom.then(response => {
-            log("Adjusting subchild "+i)
+            //log("Adjusting subchild "+i)
             let prevTaskId = (i>1) ? taskEntryGetId(children[i-1]) : null;
             return backend.move(taskEntryGetId(children[i]), taskEntryGetId(children[0]), prevTaskId);
           });

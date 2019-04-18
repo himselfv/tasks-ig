@@ -159,7 +159,7 @@ BackendGTasks.prototype.getAll = function(taskIds) {
 
 //Returns a task-update request
 BackendGTasks.prototype.update = function (task) {
-	log(task);
+	//log(task);
 	//"request body" is passed as "resource" param
 	return gapi.client.tasks.tasks.update({
 		'tasklist': this.selectedTaskList,
@@ -175,8 +175,8 @@ BackendGTasks.prototype.update = function (task) {
 //Inserts it under a given parent (in the task object).
 //Returns a task resource.
 BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
-	log("backend.insert: tasklist="+tasklistId+", parent="+task.parent+", prev="+previousId);
-	log(task);
+	//log("backend.insert: tasklist="+tasklistId+", parent="+task.parent+", prev="+previousId);
+	//log(task);
 	return gapi.client.tasks.tasks.insert({
 		'tasklist': tasklistId,
 		'parent': task.parent,
@@ -199,7 +199,7 @@ BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId) {
 		}));
 	});
 	return batch.then(response => {
-		log("backend.deleteAll() success");
+		//log("backend.deleteAll() success");
 		return response;
 	});
 }
@@ -219,8 +219,8 @@ BackendGTasks.prototype.move = function (taskId, parentId, previousId) {
 	};
 	if (parentId) req.parent = parentId;
 	if (previousId) req.previous = previousId;
-	log("backend.move");
-	log(req);
+	//log("backend.move");
+	//log(req);
 	return gapi.client.tasks.tasks.move(req).then(response => {
 		taskCache.patch({ //update this tasks's cached data
 			'id': taskId,
@@ -234,7 +234,7 @@ BackendGTasks.prototype.move = function (taskId, parentId, previousId) {
 // Moves all given tasks under a new parent in the same task list,
 // inserting them in the given order after a given task (null = at the top).
 BackendGTasks.prototype.moveAll = function (taskIds, newParentId, newPrevId) {
-	log("backend.moveAll: "+taskIds.length+" items to="+newParentId+" after="+newPrevId);
+	//log("backend.moveAll: "+taskIds.length+" items to="+newParentId+" after="+newPrevId);
 
 	var batch = gapi.client.newBatch();
 	//Iterate in reverse so that we can insert each child after the same known one
@@ -248,7 +248,7 @@ BackendGTasks.prototype.moveAll = function (taskIds, newParentId, newPrevId) {
 		batch.add(gapi.client.tasks.tasks.move(req));
 	})
 	batch = batch.then(response => {
-		log("backend.moveAll: results here, patching cache");
+		//log("backend.moveAll: results here, patching cache");
 		Object.keys(response.result).forEach(oldId => {
 			let thisResponse = response.result[oldId];
 			this.responseCheck(thisResponse);
@@ -330,7 +330,7 @@ BackendGTasks.prototype.batchCopyChildren = function (pairs, newTasklistId) {
 
 //Copies a task with children to a given position in a different task list
 BackendGTasks.prototype.copyToList = function (oldTask, newTasklistId, newParentId, newPrevId) {
-	log("backend.copyToList: oldTask="+oldTask.id+", newTasklistId="+newTasklistId);
+	//log("backend.copyToList: oldTask="+oldTask.id+", newTasklistId="+newTasklistId);
 	var newTask = taskResClone(oldTask);
 	newTask.parent = newParentId;
 	var prom = this.insert(newTask, newPrevId, newTasklistId)
@@ -351,12 +351,12 @@ BackendGTasks.prototype.moveToList = function (oldTask, newTasklistId, newParent
 	if (oldTask && !(oldTask.id)) oldTask = taskCache.get(oldTask);
 	var oldTasklistId = this.selectedTaskList;
 
-	log("backend.moveToList: oldTask="+oldTask+", newTasklist="+newTasklistId);
+	//log("backend.moveToList: oldTask="+oldTask+", newTasklist="+newTasklistId);
 
 	//There's no such function in Tasks API so we have to copy the task subtree + delete the original one
 	return this.copyToList(oldTask, newTasklistId, newParentId, newPrevId)
 		.then(response => {
-			log("copied!");
+			//log("copied!");
 			return this.delete(oldTask, oldTasklistId);
 		});
 }

@@ -113,21 +113,21 @@ Implementations must notify onSigningChange subscribers.
 */
 //Connect to the backend
 Backend.prototype.connect = function() {
-	log("Backend.connect");
+	//log("Backend.connect");
 	//Automatically consider us signed in
 	this.signin();
 	return Promise.resolve();
 }
 //Sign in to the backend with the configured params
 Backend.prototype.signin = function() {
-	log("Backend.signin");
+	//log("Backend.signin");
 	this._signedIn = true;
 	this.notifySignInStatus(true);
 	return Promise.resolve();
 }
 //Sign out from the backend
 Backend.prototype.signout = function() {
-	log("Backend.signout");
+	//log("Backend.signout");
 	this._signedIn = false;
 	this.notifySignInStatus(false);
 	return Promise.resolve();
@@ -137,7 +137,6 @@ Backend.prototype.isSignedIn = function() {
 }
 //Notifies the subscribers about the signin change
 Backend.prototype.notifySignInStatus = function(status) {
-	log("Notifying subscribers: SignIn status="+status);
 	this.onSignInStatus.forEach(handler => handler(status));
 }
 
@@ -188,7 +187,7 @@ Backend.prototype.getAll = function(taskIds) {
 //Returns a task-update or task-patch request
 Backend.prototype.patch = function (task, allChildrenIds) {
 	//Default: query + update
-	log(task);
+	//log(task);
 	return this.get(task.id).then(result => {
 		resourcePatch(result, task);
 		return this.update(result);
@@ -256,7 +255,7 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId) {
 	var childIds = [];
 	children.forEach(child => childIds.push(child));
 	
-	log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
+	//log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
 	return this.moveAll(childIds, newParentId, newPrevId);
 }
 
@@ -288,7 +287,6 @@ Backend.prototype.selectTaskList = function (tasklistId) {
 }
 //Returns the nesting level of a task resource, according to local cache
 Backend.prototype.getLevel = function (task) {
-	log("getLevel: "+JSON.stringify(task));
 	var level = 0;
 	while (task.parent) {
 		level++;
@@ -298,11 +296,9 @@ Backend.prototype.getLevel = function (task) {
 }
 //Returns an array of all children tasks of a given task, sorted by their sort order
 Backend.prototype.getChildren = function (parentId) {
-	log("getChildren: "+parentId);
 	if (parentId && parentId.id) parentId = parentId.id; //sometimes we're given the task object instead of id
 	var list = [];
 	Object.keys(taskCache.items).forEach(key => {
-		log("cached: "+key);
 		var task = taskCache.items[key];
 		if (!parentId && (task.parent))
 			return;
