@@ -27,5 +27,18 @@ Once Google shuts down Tasks which they will eventually do because they shut dow
 2. If you want to use the browser extension part you might have to sign it somewhere if your browser requires that.
 
 
+### How to run this
+
+1. You need a domain.
+
+2. Upload the contents (excluding docs and extension) under some URL on your server.
+
+3. Register new ``application`` in Google API Developer Console and create ``API Key`` and ``OpenID Client`` for it. Add your domain as a trusted domain for the ``application``, and your full URL as an allowed origin for that ``OpenID Client``. You may restrict ``API Key`` too but it's not required and first try without it.
+
+4. Rename ``config-example.js`` to ``config.js`` and insert your API key and Client ID there.
+
+5. Access the URL and press "Authorize with Google". (The local storage version should work from step 2).
+
+
 ### Attribution
 This project uses free icons from various sources. Please see res/readme.txt for attributions.
