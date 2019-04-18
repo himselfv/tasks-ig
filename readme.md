@@ -6,6 +6,9 @@ Google Tasks is a service by Google partially integrated in Calendar. It had a s
 
 This project reimplements everything in that frontend from scratch. It uses Google Tasks API to access Tasks but can support different backends.
 
+![Screenshot](docs/screen-features.png)
+
+
 ### Features
 * Pure JS, runs in the browser -- though still needs to be hosted somewhere to access Google APIs, see below.
 * Self-hosted
