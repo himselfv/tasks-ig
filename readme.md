@@ -17,15 +17,10 @@ This project reimplements everything in that frontend from scratch. It uses Goog
 
 Once Google shuts down Tasks which they will eventually do because they shut down everything, I might write a CalDAV Tasks backend.
 
-### Caveats
-
-1. You'll need to host this extension somewhere and create API keys from Google. Or find someone who hosts it and use their instance (if you trust them).
-  It would be nice to simply run this from extension in the browser, but Google APIs need an origin hostname.
-
-2. If you want to use the browser extension part you might have to sign it somewhere if your browser requires that.
-
 
 ### How to run this
+
+Plan A:
 
 1. You need a domain.
 
@@ -36,6 +31,15 @@ Once Google shuts down Tasks which they will eventually do because they shut dow
 4. Rename ``config-example.js`` to ``config.js`` and insert your API key and Client ID there.
 
 5. Access the URL and press "Authorize with Google". (The local storage version should work from step 2).
+
+It would be nice to simply run this from the browser extension or local files, but Google APIs need an origin hostname.
+
+Plan B: Find someone who hosts it and use their instance (if you trust them).
+
+
+### How to install the browser extension
+
+See [extension/readme.md](extension/readme.md). Adjust the URL in the manifest. You might have to sign it somewhere if your browser requires that.
 
 
 ### Attribution
