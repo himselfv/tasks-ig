@@ -193,6 +193,15 @@ function downloadAsJson(obj, title) {
 	return downloadToFile(JSON.stringify(obj), 'application/json', title+'.json');
 }
 
+function copyToClipboard(text){
+    var dummy = document.createElement("input");
+    document.body.appendChild(dummy);
+    dummy.value = text;
+    dummy.select();
+    document.execCommand("copy");
+    document.body.removeChild(dummy);
+}
+
 
 /*
 Dropdown menus

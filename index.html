@@ -34,6 +34,7 @@
       <div id="taskmenu" class="dropdown">
          <a class="dropbtn button" onclick="dropdownClick(event);" title="Task actions"></a>
          <div class="dropdown-content">
+           <a onclick="taskEntryCopyJSON();">Copy JSON</a>
            <a onclick="taskEntryExportToFile();">Export to file...</a>
            <a onclick="taskEntryEditFocusedClicked();">Edit</a>
            <a onclick="taskEntryDeleteRecursiveFocusedClicked();">Delete w/children</a>
@@ -701,6 +702,14 @@
           return;
       	backend.get(taskEntryGetId(focusedEntry)).then(result => {
       		downloadAsJson(result, taskEntryGetTitle(focusedEntry));
+      	});
+      }
+      function taskEntryCopyJSON(event) {
+        var focusedEntry = taskEntryGetFocused();
+        if (!focusedEntry)
+          return;
+      	backend.get(taskEntryGetId(focusedEntry)).then(result => {
+      		copyToClipboard(JSON.stringify(result));
       	});
       }
       function taskEntryExportAllToFile() {
