@@ -353,9 +353,16 @@ Editor
   display: flex;
   flex-direction: row;
   align-items: baseline; /* Or flex stretches everything to 100% flex height */
+  margin: 10px 0;
 }
 #editorTaskTitle {
   flex-grow: 5; /* This one should stetch */
+}
+#editorTaskListP {
+  margin: 2px 0;
+}
+#editorTaskDateP {
+  margin: 5px 0;
 }
 #editorTaskNotes {
   box-sizing: border-box;
