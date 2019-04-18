@@ -170,6 +170,29 @@ function relativeBoundingRect(element, base) {
 	return rect;
 }
 
+function downloadToFile(data, type, filename) {
+	//https://stackoverflow.com/a/30832210/360447
+	var file = new Blob([data], {type: type});
+	if (window.navigator.msSaveOrOpenBlob) { // IE10+
+		window.navigator.msSaveOrOpenBlob(file, filename);
+		return;
+	}
+    // Others
+	var a = document.createElement("a"),
+	url = URL.createObjectURL(file);
+	a.href = url;
+	a.download = filename;
+	document.body.appendChild(a);
+	a.click();
+	setTimeout(function() {
+		document.body.removeChild(a);
+		window.URL.revokeObjectURL(url);
+	}, 0);
+}
+function downloadAsJson(obj, title) {
+	return downloadToFile(JSON.stringify(obj), 'application/json', title+'.json');
+}
+
 
 /*
 Dropdown menus

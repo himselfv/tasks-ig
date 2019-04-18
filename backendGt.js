@@ -144,7 +144,10 @@ BackendGTasks.prototype.get = function (taskId) {
 //Returns a promise for a taskId -> task map.
 BackendGTasks.prototype.getAll = function(taskIds) {
 	var batch = gapi.client.newBatch();
-	taskIds.forEach(taskId => batch.add(this.get(taskId)));
+	taskIds.forEach(taskId => batch.add(gapi.client.tasks.tasks.get({
+		'tasklist': this.selectedTaskList,
+		'task': taskId,
+	})));
 	return batch.then(response => {
 		//Unpack the response
 	    let results = {};

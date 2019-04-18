@@ -34,10 +34,12 @@
       <div id="taskmenu" class="dropdown">
          <a class="dropbtn button" onclick="dropdownClick(event);" title="Task actions"></a>
          <div class="dropdown-content">
-           <a id="listEditBtn" onclick="taskEntryEditFocusedClicked();">Edit</a>
-           <a id="listDeleteRecursiveBtn" onclick="taskEntryDeleteRecursiveFocusedClicked();">Delete w/children</a>
+           <a onclick="taskEntryExportToFile();">Export to file...</a>
+           <a onclick="taskEntryEditFocusedClicked();">Edit</a>
+           <a onclick="taskEntryDeleteRecursiveFocusedClicked();">Delete w/children</a>
            <span class="menu-separator"></span>
-           <a id="listRefreshBtn" onclick="taskListReloadSelected();">Refresh</a>
+           <a onclick="taskEntryExportAllToFile();">Export all to file...</a>
+           <a onclick="taskListReloadSelected();">Refresh</a>
          </div>
       </div>
     </div>
@@ -692,6 +694,27 @@
           return;
         taskDelete(taskEntryGetId(focusedEntry), true)
         	.catch(handleError);
+      }
+      function taskEntryExportToFile(event) {
+        var focusedEntry = taskEntryGetFocused();
+        if (!focusedEntry)
+          return;
+      	backend.get(taskEntryGetId(focusedEntry)).then(result => {
+      		downloadAsJson(result, taskEntryGetTitle(focusedEntry));
+      	});
+      }
+      function taskEntryExportAllToFile() {
+      	var entry = taskEntryFirst();
+      	var ids = [];
+      	while (entry != null) {
+      	  ids.push(taskEntryGetId(entry));
+      	  entry = taskEntryGetNext(entry);
+      	}
+      	if (ids.length <= 0) return;
+      	log(ids);
+      	backend.getAll(ids).then(result => {
+      	  downloadAsJson(result, selectedTaskListTitle());
+      	});
       }
 
       /*
