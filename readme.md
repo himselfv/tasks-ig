@@ -1,6 +1,6 @@
 Google Tasks is a service by Google partially integrated in Calendar. It had a separate lightweight JS frontend perfect for a using in a browser sidebar, which had been shut down:
 
-> https://mail.google.com/tasks/ig
+> **https://mail.google.com/tasks/ig**
 
 This project reimplements everything in that frontend from scratch. It uses Google Tasks API to access Tasks but can support different backends.
 
@@ -20,7 +20,7 @@ Once Google shuts down Tasks which they will eventually do because they shut dow
 
 ### How to run this
 
-Plan A:
+**Plan A:**
 
 1. You need a domain.
 
@@ -34,7 +34,7 @@ Plan A:
 
 It would be nice to simply run this from the browser extension or local files, but Google APIs need an origin hostname.
 
-Plan B: Find someone who hosts it and use their instance (if you trust them).
+**Plan B:** Find someone who hosts it and use their instance (if you trust them).
 
 
 ### How to install the browser extension
