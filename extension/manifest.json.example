@@ -1,0 +1,38 @@
+{
+	"manifest_version": 2,
+	"name": "Tasks Panel",
+	"version": "1.0",
+	"author": "me@boku.ru",
+	"description": "Open Tasks panel in sidebar.",
+	"homepage_url": "https://github.com/himselfv/tasks-ig",
+	"content_scripts": [
+		{
+			"matches": [
+				"https://example.org/URL/of/your/tasks/instance/"
+			],
+			"css": [
+				"tasks.css"
+			],
+			"run_at": "document_end",
+			"all_frames": true
+		}
+	],
+	"permissions": [
+		"menus"
+	],
+	"background": {
+		"scripts": ["common.js", "background.js"]
+	},
+	"sidebar_action": {
+		"default_icon": "img/icon16.png",
+		"default_title": "Google Tasks",
+		"default_panel": "sidebar.html"
+	},
+	"browser_action": {
+		"default_title": "Open Google Tasks in Sidebar",
+		"default_icon": "img/icon16.png"
+	},
+	"icons": {
+		"16": "img/icon16.png"
+	}
+}
