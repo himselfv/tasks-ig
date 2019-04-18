@@ -25,12 +25,21 @@ function taskResClone(oldTask) {
 function taskResSetCompleted(task, completed, completed_when) {
 	if (completed) {
 		task.status="completed";
-		task.completed = completed_when; //may be null, that's ok
+		if (!completed_when)
+			completed_when = new Date().toISOString();
+		task.completed = completed_when;
 	}
 	else {
 		task.status="needsAction";
 		task.completed = null;
 	}
+}
+//Normalizes some fields which must be changed in accord
+function taskResNormalize(task) {
+	if ((task.status == "completed") && !task.completed)
+		task.completed = new Date().toISOString();
+	if ((task.status == "needsAction") && task.completed)
+		delete task.completed;
 }
 
 //Updates fields in the resource according to the patch

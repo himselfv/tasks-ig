@@ -135,6 +135,7 @@ BackendLocal.prototype.update = function (task) {
 		log("update(): list="+JSON.stringify(list)+", task="+task.id+", not found.");
 		return Promise.reject("update(): No such task in the current list");
 	}
+	taskResNormalize(task);
 	this._setItem(task.id, task);
 	taskCache.update(task);
 	return Promise.resolve(task);
@@ -149,6 +150,7 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 		index += 1;
 	}
 	task.id = this._newId();
+	taskResNormalize(task);
 	list.splice(index, 0, task.id);
 	this._setList(tasklistId, list);
 	this._setItem(task.id, task);
