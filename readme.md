@@ -1,5 +1,3 @@
-This is a Google Tasks IG client clone written from scratch.
-
 Google Tasks is a service by Google partially integrated in Calendar. It had a separate lightweight JS frontend perfect for a using in a browser sidebar, which had been shut down:
 
 > https://mail.google.com/tasks/ig
