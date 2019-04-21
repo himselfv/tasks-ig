@@ -249,6 +249,22 @@ TaskList.prototype.find = function(taskId) {
 	return null;
 }
 
+/*
+Task entries can have undefined, "promised" IDs.
+Such IDs are placed instead of normal IDs and work as temporary IDs.
+Requirements:
+- Must eventually resolve to a single value, the ID
+- Must update the task to normal ID on resolution
+*/
+//Returns a promise to resolve IDs for entries from a given list
+function taskEntryNeedIds(entries) {
+	var prom = [];
+	//Promise.resolve(X) works for both promise and value Xes
+	entries.forEach(entry => prom.push(Promise.resolve(entry.getId())) );
+	return Promise.all(prom);
+}
+
+
 //True if a given element is a task entry's main node
 function elementIsTaskEntryNode(element) {
 	return element && element.hasOwnProperty("taskId");
