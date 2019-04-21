@@ -179,8 +179,12 @@ Backend.prototype.getAll = function(taskIds) {
 	//Default: forward to get() one by one
 	var proms = [];
 	for (let i=0; i<taskIds.length; i++)
-		proms.push(this.get(taskId));
-	return Promise.all(proms); //this'll naturally return the array of results
+		proms.push(this.get(taskIds[i]));
+	return Promise.all(proms).then(results => {
+		var dict = {};
+		results.forEach(item => dict[item.id] = item);
+		return dict;
+	});
 }
 
 //Updates only the fields mentioned in "task". Fields set to none will be deleted. ID must be set.
@@ -238,9 +242,9 @@ Backend.prototype.moveAll = function (taskIds, newParentId, newPrevId) {
 	//Default: forward to move() one by one
 	var proms = [];
 	taskIds.reverse().forEach(id => {
-		proms.push(this.move(id, newParent, newPrevId));
+		proms.push(this.move(id, newParentId, newPrevId));
 	});
-	return Promise.all();
+	return Promise.all(proms);
 }
 // Moves all children of a given task under a new parent in the same task list,
 // inserting them in the existing order after a given task (null = at the top).

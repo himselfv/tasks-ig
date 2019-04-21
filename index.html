@@ -13,7 +13,7 @@
 
   <div id="listPage" class="hidden">
     <div id="listHeader">
-      <select id="listSelectBox"></select>
+      <select id="listSelectBox" onchange="selectedTaskListChanged();"></select>
       <span id="listHeaderSpacer"></span>
       <div id="mainmenu" class="dropdown">
          <span class="dropbtn" onclick="dropdownClick(event);" title="Task list action"></span>
@@ -40,1645 +40,1141 @@
            <a onclick="taskEntryDeleteRecursiveFocusedClicked();">Delete w/children</a>
            <span class="menu-separator"></span>
            <a onclick="taskEntryExportAllToFile();">Export all to file...</a>
-           <a onclick="taskListReloadSelected();">Refresh</a>
+           <a onclick="tasklistReloadSelected();">Refresh</a>
          </div>
       </div>
     </div>
   </div>
 
-    <div id="editorPage" class="hidden">
-      <p id="editorTaskTitleP">
-        <input type="checkbox" id="editorTaskTitleBox" /><label id="editorTaskTitle" for="editorTaskTitleBox"></label>
-        <button type="button" id="editorDelete">Delete</button>
-      </p>
-      <p id="editorTaskListP"><select id="editorTaskList"></select></p>
-      <p id="editorTaskDateP"><input type="date" id="editorTaskDate"></input></p>
-      <textarea id="editorTaskNotes"></textarea>
-      <p id="editorMoveNotice">The task will appear in the different list when you switch to it.</p>
-      <p id="editorControls">
-        <button type="button" id="editorSave">Save</button>
-        <button type="button" id="editorCancel">Cancel</button>
-      </p>
-    </div>
+  <div id="editorPage" class="hidden">
+    <p id="editorTaskTitleP">
+      <input type="checkbox" id="editorTaskTitleBox" /><label id="editorTaskTitle" for="editorTaskTitleBox"></label>
+      <button type="button" id="editorDelete">Delete</button>
+    </p>
+    <p id="editorTaskListP"><select id="editorTaskList"></select></p>
+    <p id="editorTaskDateP"><input type="date" id="editorTaskDate"></input></p>
+    <textarea id="editorTaskNotes"></textarea>
+    <p id="editorMoveNotice">The task will appear in the different list when you switch to it.</p>
+    <p id="editorControls">
+      <button type="button" id="editorSave">Save</button>
+      <button type="button" id="editorCancel">Cancel</button>
+    </p>
+  </div>
 
-    <div id="errorPopup" class="hidden"></div>
+  <div id="errorPopup" class="hidden"></div>
 
-	<script src="config.js"></script>
-    <script src="utils.js"></script>
-    <script src="backend.js"></script>
-    <script src="backendLocal.js"></script>
-    <script src="backendGt.js"></script>
 
-    <script type="text/javascript">
-      var backend = null;
+<script src="config.js"></script>
+<script src="utils.js"></script>
+<script src="backend.js"></script>
+<script src="backendLocal.js"></script>
+<script src="backendGt.js"></script>
+<script src="tasklist.js"></script>
 
-      var startPage = document.getElementById('startPage');
-      var listPage = document.getElementById('listPage');
-      var editorPage = document.getElementById('editorPage');
+<script type="text/javascript">
 
-      function handleClientLoad() {
-        tasklistInit();
-        editorInit();
-        var backendName = window.localStorage.getItem("tasksIg_ui_backend");
-        if (!backendName || !initBackend(backendName))
-        	updateSigninStatus(false);
-      }
+  var backend = null;
 
-      function handleAuthorizeGoogleClick(event) {
-        log("Authorizing with Google");
-        initBackend('BackendGTasks');
-      }
-      function handleAuthorizeLocalClick(event) {
-        log("Authorizing locally");
-        initBackend('BackendLocal');
-      }
+  var startPage = document.getElementById('startPage');
+  var listPage = document.getElementById('listPage');
+  var editorPage = document.getElementById('editorPage');
+
+  function handleClientLoad() {
+    tasklistInit();
+    editorInit();
+    var backendName = window.localStorage.getItem("tasksIg_ui_backend");
+    if (!backendName || !initBackend(backendName))
+      updateSigninStatus(false);
+  }
+
+  function handleAuthorizeGoogleClick(event) {
+    log("Authorizing with Google");
+    initBackend('BackendGTasks');
+  }
+  function handleAuthorizeLocalClick(event) {
+    log("Authorizing locally");
+    initBackend('BackendLocal');
+  }
+  
+  function initBackend(backendName) {
+    log("Using backend: "+backendName);
+    var constructor = window[backendName]; //a way to call function by string name
+    if (!constructor) {
+      handleError("Backend not found: "+backendName);
+      return false;
+    }
+    backend = new constructor();
+    if (!backend) {
+      handleError("Cannot create backend "+backendName);
+      return false;
+    }
+    backend.onSignInStatus.push(updateSigninStatus);
+    backend.connect().then(() => {
+      if (!backend.isSignedIn())
+        return backend.signin();
+      }).then(() => {
+        window.localStorage.setItem("tasksIg_ui_backend", backendName);
+      }).catch(handleError);
+    return true;
+  }
+
+  function handleSignoutClick(event) {
+    backend.signout().catch(handleError);
+    backend = null;
+    window.localStorage.removeItem("tasksIg_ui_backend");
+  }
+
+  // Called when the signed in status changes, whether after a button click or automatically
+  function updateSigninStatus(isSignedIn) {
+    if (isSignedIn) {
+      startPage.classList.add("hidden");
+      listPage.classList.remove("hidden");
+      if (backend.reset)
+        document.getElementById("resetAccountBtn").classList.remove("hidden")
+      else
+        document.getElementById("resetAccountBtn").classList.add("hidden");
+      reloadTaskLists();
+    } else {
+      editorCancel();
+      tasklistClear();
+      startPage.classList.remove("hidden");
+      listPage.classList.add("hidden");
+    }
+  }
+
+
+  /*
+  Common error handler.
+  */
+  function printError(msg) {
+    log(msg);
+    if (typeof msg != 'string')
+      msg = JSON.stringify(msg);
+    var popup = document.getElementById('errorPopup');
+    var popupText = popup.innerText;
+    if (popupText != '') popupText = popupText + '\r\n';
+    popup.innerText = (popupText+msg);
+    popup.classList.remove("hidden");
+  }
+  function handleError(reason) {
+    if (reason.result) {
+      if (reason.result.error)
+        printError('Error: ' + reason.result.error.message);
+      else
+        printError(reason.result);
+    }
+    else
+      printError(reason);
+  }
+
+
+  /*
+  Task list selection box
+  */
+  var listSelectBox = document.getElementById('listSelectBox');
+
+  //Reloads the task list selection boxes + the currently selected task list
+  function reloadTaskLists() {
+    return tasklistBoxesReload().then(response => {
+      selectedTaskListChanged();
+    });
+  }
+  
+  function selectedTaskList() {
+    return listSelectBox.value;
+  }
+  function selectedTaskListTitle() {
+    return listSelectBox.options[listSelectBox.selectedIndex].text;
+  }
+  function setSelectedTaskList(tasklistId) {
+    listSelectBox.value = tasklistId;
+    selectedTaskListChanged(); //Won't get called automatically
+  }
+  function selectedTaskListChanged() {
+    tasklistReloadSelected();
+  }
+  
+  //Reloads the contents of the task list boxes without reacting to possible
+  //changes of the currently selected list
+  function tasklistBoxesReload() {
+    return backend.tasklistList().then(taskLists => {
+      var oldSelection = listSelectBox.value;
+      nodeRemoveAllChildren(listSelectBox); //clear the list
+      nodeRemoveAllChildren(editorTaskList);
       
-      function initBackend(backendName) {
-        log("Using backend: "+backendName);
-        var constructor = window[backendName]; //a way to call function by string name
-        if (!constructor) {
-        	handleError("Backend not found: "+backendName);
-        	return false;
-        }
-        backend = new constructor();
-        if (!backend) {
-        	handleError("Cannot create backend "+backendName);
-        	return false;
-        }
-        backend.onSignInStatus.push(updateSigninStatus);
-        backend.connect().then(() => {
-        	if (!backend.isSignedIn())
-        		return backend.signin();
-        }).then(() => {
-          window.localStorage.setItem("tasksIg_ui_backend", backendName);
-        }).catch(handleError);
-        return true;
-      }
-
-      function handleSignoutClick(event) {
-        backend.signout().catch(handleError);
-        backend = null;
-        window.localStorage.removeItem("tasksIg_ui_backend");
-      }
-
-      // Called when the signed in status changes, whether after a button click or automatically
-      function updateSigninStatus(isSignedIn) {
-        if (isSignedIn) {
-          startPage.classList.add("hidden");
-          listPage.classList.remove("hidden");
-          if (backend.reset)
-          	document.getElementById("resetAccountBtn").classList.remove("hidden")
-          else
-            document.getElementById("resetAccountBtn").classList.add("hidden");
-          reloadTaskLists();
-        } else {
-          editorCancel();
-          taskListClear();
-          startPage.classList.remove("hidden");
-          listPage.classList.add("hidden");
-        }
-      }
-
-
-      /*
-      Common error handler.
-      */
-      function printError(msg) {
-        log(msg);
-        if (typeof msg != 'string')
-        	msg = JSON.stringify(msg);
-        var popup = document.getElementById('errorPopup');
-        var popupText = popup.innerText;
-        if (popupText != '') popupText = popupText + '\r\n';
-        popup.innerText = (popupText+msg);
-        popup.classList.remove("hidden");
-      }
-      function handleError(reason) {
-        if (reason.result) {
-          if (reason.result.error)
-            printError('Error: ' + reason.result.error.message);
-          else
-            printError(reason.result);
-        }
-        else
-          printError(reason);
-      }
-
-
-      /*
-      Task list list
-      */
-      var listSelectBox = document.getElementById('listSelectBox');
-      
-      function tasklistInit() {
-          listSelectBox.onchange = selectedTaskListChanged;
-          document.addEventListener("mousemove", documentDragMouseMove);
-          document.addEventListener("mouseup", documentDragMouseUp);
-      }
-       
-      //Reloads the task list selection boxes + the currently selected task list
-      function reloadTaskLists() {
-        return tasklistBoxesReload().then(response => {
-          selectedTaskListChanged();
-        });
-      }
-      
-      function selectedTaskList() {
-        return listSelectBox.value;
-      }
-      function selectedTaskListTitle() {
-        return listSelectBox.options[listSelectBox.selectedIndex].text;
-      }
-      function setSelectedTaskList(tasklistId) {
-        listSelectBox.value = tasklistId;
-        selectedTaskListChanged(); //Won't get called automatically
-      }
-      function selectedTaskListChanged() {
-        taskListReloadSelected();
-      }
-      
-      //Only reloads the contents of the task list boxes,
-      //without reacting to possible changes of the currently selected list
-      function tasklistBoxesReload() {
-        return backend.tasklistList().then(taskLists => {
-          var oldSelection = listSelectBox.value;
-          nodeRemoveAllChildren(listSelectBox); //clear the list
-          nodeRemoveAllChildren(editorTaskList);
-          
-          if (taskLists && taskLists.length > 0) {
-            for (let i = 0; i < taskLists.length; i++) {
-              let taskList = taskLists[i];
-              let option = document.createElement("option");
-              option.text = taskList.title;
-              option.value = taskList.id;
-              editorTaskList.add(option.cloneNode(true));
-              listSelectBox.add(option);
-            }
-          }
-          
-          listSelectBox.value = oldSelection;
-          if ((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0))
-            listSelectBox.selectedIndex = 0;
-        }).catch(handleError);
-      }
-
-     /*
-     Selected task list
-     */
-      function taskListClear() {
-        if (backend)
-          backend.selectTaskList(null); //clear the cache
-        taskEntriesClear();
-      }
-      
-      function taskListReloadSelected() {
-        backend.selectTaskList(null); //clear the cache
-        var selectedValue = selectedTaskList();
-        if (!selectedValue) {
-          taskEntriesClear();
-          return;
-        }
-        log('Loading list: '+selectedValue);
-        
-        backend.selectTaskList(null);
-        backend.selectTaskList(selectedValue).then(response => {
-          //Publish from cache
-          taskEntriesClear();
-          taskEntriesInsert(null, 0);
-        });
-      }
-      
-
-
-      /*
-      Task entries are HTML representation of tasks in the active task list
-      */
-      var listContent = document.getElementById('listContent');
-      
-      function taskEntriesClear() {
-        nodeRemoveAllChildren(listContent);
-      }
-      
-      function taskEntriesInsert(parentTaskId, level)
-      {
-        // 1. Select all matching tasks
-        var list = backend.getChildren(parentTaskId);
-        // 2. Insert one by one
-        for (let i=0; i < list.length; i++) {
-          listContent.appendChild(taskEntryCreate(list[i], level));
-          taskEntriesInsert(list[i].id, level+1); //Add children
+      if (taskLists && taskLists.length > 0) {
+        for (let i = 0; i < taskLists.length; i++) {
+          let taskList = taskLists[i];
+          let option = document.createElement("option");
+          option.text = taskList.title;
+          option.value = taskList.id;
+          editorTaskList.add(option.cloneNode(true));
+          listSelectBox.add(option);
         }
       }
-
-      //Creates a task entry HTML
-      function taskEntryCreate(task, level) {
-        var entry = document.createElement("div");
-        entry.className = "task";
-        entry.taskId = task.id;
-        entry.addEventListener("dragstart", (event) => { return false; }); //disable native drag
-        entry.addEventListener("mousedown", taskEntryDragMouseDown);
-        entry.addEventListener("mousemove", taskEntryDragMouseMove);
-        entry.addEventListener("mouseup", taskEntryDragMouseUp);
-        entry.addEventListener("focusin", taskEntryFocus);
-        entry.addEventListener("focusout", taskEntryBlur);
-        
-        var item = document.createElement("div");
-        item.className = "taskGrip";
-        item.addEventListener("mousedown", taskEntryDragMouseDownGrip);
-        entry.appendChild(item);
-
-        item = document.createElement("input");
-        item.type = "checkbox";
-        item.className = "taskCheck";
-        item.display = "inline";
-        item.addEventListener("change", () => { taskEntryChecked(entry); });
-        entry.appendChild(item);
-
-        var wrap = document.createElement("div");
-        wrap.className="taskWrap";
-        entry.appendChild(wrap)
-
-        item = document.createElement("div");
-        item.className = "taskTitle";
-        item.contentEditable=true;
-        item.addEventListener("input", () => { taskEntryTitleInput(entry); });
-        item.addEventListener("paste", (event) => { taskEntryTitlePaste(entry, event); });
-        item.addEventListener("blur", () => { taskEntryTitleFocusOut(entry); }, true);
-        item.addEventListener("keydown", (event) => { taskEntryKeyDown(entry, event); });
-        wrap.appendChild(item);
-
-        item = document.createElement("p");
-        item.className = "taskNotesShort";
-        item.addEventListener("click", () => { taskEntryEditClicked(entry); });
-        wrap.appendChild(item);
-
-        item = document.createElement("p");
-        item.className = "taskDue";
-        item.addEventListener("click", () => { taskEntryEditClicked(entry); });
-        wrap.appendChild(item);
-        
-        item = document.createElement("a");
-        item.className = "taskEditLink";
-        item.appendChild(document.createTextNode(">"));
-        item.addEventListener("click", () => { taskEntryEditClicked(entry); });
-        entry.appendChild(item);
-		
-		taskEntrySetTitle(entry, task.title);
-		taskEntrySetNotes(entry, task.notes);
-		taskEntrySetLevel(entry, level);
-		taskEntrySetDue(entry, task.due);
-		taskEntrySetCompleted(entry, (task.status=="completed"));
-		
-        return entry;
-      }
       
-      //Updates visual representation of a given task with given changes
-      //Only some changes are reflected. Deletions, moves and nesting changes in general aren't
-      function taskEntryPatch(patch, entry) {
-        if (!entry)
-          entry = taskEntryFind(patch.id);
-        if ('title' in patch)
-          taskEntrySetTitle(entry, patch.title);
-        if ('notes' in patch)
-          taskEntrySetNotes(entry, patch.notes);
-        if ('due' in patch)
-          taskEntrySetDue(entry, patch.due);
-        if ('status' in patch)
-          taskEntrySetCompleted(entry, (patch.status=="completed"));
-      }
+      listSelectBox.value = oldSelection;
+      if ((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0))
+        listSelectBox.selectedIndex = 0;
+    }).catch(handleError);
+  }
+
+
+
+  /*
+  Task list
+  Most procedures here update both the backend and the UI.
+  
+  Task entry and backend synchronization rules:
+  1. Update the UI first, post to backend later
+  2. Backend requests are processed more or less in order so eventually they catch up
+  3. Rely on the UI for current state
+  
+  The only thing that we need back from backend are new task IDs.
+  So everywhere instead of task IDs we should use promises to have task IDs. Even if task nodes
+  are by then deleted, promises should still be fulfilled if anyone holds them.
+  
+  Note: any data that we don't have stored locally in the nodes we should only update synchronously.
+  (See: taskMerge, editorOpen)
+  */
+
+  var tasks = null;
+
+  function tasklistInit() {
+    tasks = new TaskList(document.getElementById('listContent'));
+    tasks.addEventListener("dragstart", this.taskEntryDragStart);
+    tasks.addEventListener("dragend", this.taskEntryDragEnd);
+    tasks.addEventListener("dragmove", this.taskEntryDragMove);
+    tasks.addEventListener("titlechanged", this.taskEntryTitleChanged);
+    tasks.addEventListener("titlefocusout", this.taskEntryTitleFocusOut);
+    tasks.addEventListener("editclicked", this.taskEntryEditClicked);
+    tasks.addEventListener("checked", this.taskEntryChecked);
+    tasks.addEventListener("keydown", this.taskListKeyDown, {capture: true});
+  }
+  
+  function tasklistClear() {
+    if (backend)
+      backend.selectTaskList(null); //clear the cache
+    tasks.clear();
+  }
+  
+  function tasklistReloadSelected() {
+    backend.selectTaskList(null); //clear the cache
+    var selectedValue = selectedTaskList();
+    if (!selectedValue) {
+      tasks.clear();
+      return;
+    }
+    log('Loading list: '+selectedValue);
       
-      function taskEntryDelete(entry) {
-        entry.remove();
-      }
-      function taskEntryDeleteById(taskId) {
-        var entry = taskEntryFind(taskId);
-        if (entry)
-          taskEntryDelete(entry);
-      }
+    backend.selectTaskList(null);
+    backend.selectTaskList(selectedValue).then(response => {
+      //Publish from cache
+      tasks.clear();
+      tasks.appendTaskChildren(null, 0);
+    });
+  }
 
 
-      /*
-      Task entry and backend synchronization rules:
-      1. Update the UI first, post to backend later
-      2. Backend requests are processed more or less in order so eventually they catch up
-      3. Rely on the UI for current state
-      
-      The only thing that we need back from backend are new task IDs.
-      So everywhere instead of task IDs we should use promises to have task IDs. Even if task nodes
-      are by then deleted, promises should still be fulfilled if anyone holds them.
-      
-      Note: any data that we don't have stored locally in the nodes we should only update synchronously.
-      (See: taskMerge, editorOpen)
-      */
+  /*
+  Task entry / task list commands
+  */
+  function taskEntryEdit(entry) {
+    taskEntryTitleCommitNow(entry); //commit any pending changes
+    editorOpen(taskEntryGetId(entry));
+  }
+  //Called when the editor button for the entry had been clicked
+  function taskEntryEditClicked(event) {
+    if (!event.entry) return;
+    taskEntryEdit(event.entry)
+  }
+  //Called when the edit button is clicked for the focused task
+  function taskEntryEditFocusedClicked() {
+    taskEntryEdit(tasks.getFocusedEntry());
+  }
+  
+  //Called when the task entry checkbox has been checked/unchecked
+  function taskEntryChecked(event) {
+    var patch = { "id": taskEntryGetId(event.entry) };
+    taskResSetCompleted(patch, event.entry.getCompleted());
+    backend.patch(patch).catch(handleError);
+  }
 
-      //Returns the taskId associated with the given entry
-      function taskEntryGetId(entry) {
-        return (entry) ? entry.taskId : null;
-      }
-      //Returns a task entry with associated task or task id
-      function taskEntryFind(taskId) {
-        if (taskId && taskId.id)
-          taskId = taskId.id;
-        var entries = listContent.children;
-        for (let i = 0; i < entries.length; i++) {
-          if (taskEntryGetId(entries[i]) == taskId)
-            return entries[i];
-        }
-        return null;
-      }
-      
-      //True if a given element is a task entry
-      function elementIsTaskEntry(element) {
-        return element && element.hasOwnProperty("taskId");
-      }
-      //Returns the task node that contains a given control, or null
-      function elementGetOwnerTaskEntry(element) {
-        while (element && !elementIsTaskEntry(element))
-          element = element.parentNode;
-        return element;
-      }
-      
-      //Returns a parent node of this node, or null
-      function taskEntryGetParent(entry) {
-        //Parents are always above us
-        var level = taskEntryGetLevel(entry);
-        if (level == 0) return null;
-        entry = entry.previousElementSibling;
-        while (entry) {
-          if (taskEntryGetLevel(entry) < level)
-            return entry;
-          entry = entry.previousElementSibling;
-        }
-      }
-      //True if a task node is a child node of a given parent node or that parent node itself
-      function taskEntryHasParent(entry, parent) {
-        while (entry && (entry != parent))
-          entry = taskEntryGetParent(entry);
-      }
-      
-      function taskEntryFirst() {
-        return listContent.firstChild;
-      }
-      function taskEntryLast() {
-        return listContent.lastChild;
-      }
-      //Returns the task entry just above this one in the list, or null
-      function taskEntryGetPrev(entry) {
-        return entry.previousElementSibling; //for now this is good
-      }
-      function taskEntryGetNext(entry) {
-        return entry.nextElementSibling; //may later need while(!true_entry_sibling)
-      }
-      //Previous on the same level
-      function taskEntryGetPreviousSibling(entry) {
-        var level = taskEntryGetLevel(entry);
-        entry = entry.previousElementSibling;
-        while (entry && taskEntryGetLevel(entry) > level)
-          entry = entry.previousElementSibling;
-        if (!entry || (taskEntryGetLevel(entry) < level)) //we're at the top in this parent
-          return null;
-        return entry;
-      }
-      //Next on the same level
-      function taskEntryGetNextSibling(entry) {
-        var level = taskEntryGetLevel(entry);
-        entry = entry.nextElementSibling;
-        while (entry && taskEntryGetLevel(entry) > level)
-          entry = entry.nextElementSibling;
-        if (!entry || (taskEntryGetLevel(entry) < level))
-          return null;
-        return entry;
-      }
-      //Returns all child task nodes of all levels, in the order shown
-      function taskEntryGetAllChildren(entry) {
-        var result = [];
-        var level = taskEntryGetLevel(entry);
-        entry = entry.nextElementSibling;
-        while (entry && taskEntryGetLevel(entry) > level) {
-          result.push(entry);
-          entry = entry.nextElementSibling;
-        }
-        return result;
-      }
-      function taskEntryGetChildren(entry) {
-        var level = taskEntryGetLevel(entry);
-        var result = [];
-        taskEntryGetAllChildren(entry).forEach(child => {
-          if (taskEntryGetLevel(child) == level+1)
-            result.push(child);
-        });
-        return result;
-      }
-      function taskEntryGetLastChild(entry) {
-        var level = taskEntryGetLevel(entry);
-        var lastChild = null;
-        taskEntryGetAllChildren(entry).forEach(child => {
-          if (taskEntryGetLevel(child) == level+1)
-            lastChild = child;
-        });
-        return lastChild;
-      }
-
-      //Returns nesting level as stored in the node itself
-      function taskEntryGetLevel(entry) {
-        return entry.taskNestingLevel ? entry.taskNestingLevel : 0;
-      }
-      function taskEntrySetLevel(entry, level) {
-        var oldLevel = entry.taskNestingLevel;
-        if (oldLevel)
-          entry.classList.remove("childlvl-"+oldLevel);
-        entry.taskNestingLevel = level;
-        entry.classList.add("childlvl-"+level);
-		entry.style.paddingLeft = (level*10) + "px"; /* can also be implemented with CSS */
-      }
-      //Increases or decreases the entry's nesting level (maybe with children)
-      function taskEntryAdjustLevel(entry, shift, recursive) {
-        var allChildren = taskEntryGetAllChildren(entry);
-        taskEntrySetLevel(entry, taskEntryGetLevel(entry)+shift);
-        allChildren.forEach(child => taskEntrySetLevel(child, taskEntryGetLevel(child)+shift));
-      }
-      
-      /*
-      Moves the node with all of its children and/or updates theirs nesting levels.
-      newLevel: New nesting level to be applied to this task (and to shift its children accordingly)
-      */
-      function taskEntryMove(entry, insertAfter, newLevel) {
-        //log("taskEntryMoveChildren");
-        //log(entry);
-        //log(insertAfter);
-        //Get the node's children before it's moved
-        var allChildren = taskEntryGetChildren(entry);
-        //Move the node itself
-        if (insertAfter != entry.previousSibling)
-          if (insertAfter)
-            insertAfter.parentNode.insertBefore(entry, insertAfter.nextSibling);
-          else
-            listContent.insertBefore(entry, listContent.firstChild);
-        //Level adjustment to apply to node and all children
-        var levelShift = newLevel - taskEntryGetLevel(entry);
-        taskEntrySetLevel(entry, newLevel);
-        
-        //Move its children
-        return taskEntryInsertChildren(entry, allChildren, levelShift);
-      }
-      function taskEntryMoveChildren(entry_from, insertAfter, levelShift) {
-        //log("taskEntryMoveChildren");
-        //log(entry_from);
-        //log(insertAfter);
-        //log(levelShift);
-        return taskEntryInsertChildren(
-          taskEntryGetChildren(entry_from),
-          insertAfter,
-          levelShift
-        );
-      }
-      function taskEntryInsertChildren(children, insertAfter, levelShift) {
-        children.forEach(child => {
-          insertAfter.parentNode.insertBefore(child, insertAfter.nextSibling);
-          taskEntryAdjustLevel(child, levelShift);
-          insertAfter = child;
-        });
-        return insertAfter;
-      }
-
-      /*
-      Task entry content data
-      */
-      //Returns the control of the given style for the given entry
-      function taskEntryGetControl(entry, className) {
-        var control = entry.getElementsByClassName(className)[0];
-        if (!control)
-          throw "Control '"+className+"' not found for taskEntry '"+entry+'"';
-        return control;
-      }
-      function taskEntryGetTitleCtl(entry) {
-        return taskEntryGetControl(entry, "taskTitle");
-      }
-      function taskEntryGetNotesCtl(entry) {
-        return taskEntryGetControl(entry, "taskNotesShort");
-      }
-      function taskEntryGetDueCtl(entry) {
-        return taskEntryGetControl(entry, "taskDue");
-      }
+  function taskEntryAddClicked(event) {
+    taskEntryTitleCommitNow(); //commit any pending changes
+    taskNewInCurrentList({}, null).then((newEntry) => {
+      newEntry.setCaret(0); //move focus to it
+    }).catch(handleError);
+  }
+  function taskEntryDeleteFocusedClicked(event) {
+    var focusedEntry = tasks.getFocusedEntry();
+    if (!focusedEntry)
+      return;
+    taskDelete(taskEntryGetId(focusedEntry), false)
+      .catch(handleError);
+  }
+  function taskEntryDeleteRecursiveFocusedClicked(event) {
+    var focusedEntry = tasks.getFocusedEntry();
+    if (!focusedEntry)
+      return;
+    taskDelete(taskEntryGetId(focusedEntry), true)
+      .catch(handleError);
+  }
+  function taskEntryExportToFile(event) {
+    var focusedEntry = tasks.getFocusedEntry();
+    if (!focusedEntry)
+      return;
+    backend.get(taskEntryGetId(focusedEntry)).then(result => {
+      downloadAsJson(result, focusedEntry.getTitle());
+    });
+  }
+  function taskEntryCopyJSON(event) {
+    var focusedEntry = tasks.getFocusedEntry();
+    if (!focusedEntry)
+      return;
+    backend.get(taskEntryGetId(focusedEntry)).then(result => {
+      copyToClipboard(JSON.stringify(result));
+    });
+  }
+  function taskEntryExportAllToFile() {
+    var entry = tasks.first();
+    var ids = [];
+    while (entry != null) {
+      ids.push(taskEntryGetId(entry));
+      entry = entry.getNext();
+    }
+    if (ids.length <= 0) return;
+    backend.getAll(ids).then(result => {
+      downloadAsJson(result, selectedTaskListTitle());
+    });
+  }
+  
+  //Returns tasklist-relative Y offset of the last task in the list
+  function tasklistLastTaskY(event) {
+    var lastTask = tasks.last();
+    return lastTask ? relativeBoundingRect(lastTask.node, lastTask.node.parentNode).bottom : -1;
+  }
+  function tasklistClick(event) {
+    if (!options.singleClickAdd)
+      return;
+    if (event.offsetY <= tasklistLastTaskY())
+      return;
+    taskEntryAddClicked(event);
+  }
+  function tasklistDblClick(event) {
+    if (event.offsetY <= tasklistLastTaskY())
+      return;
+    taskEntryAddClicked(event);
+  }
 
 
-      //Returns the title text of the task, compatible with caret functions
-      function taskEntryGetTitle(entry) {
-        return editableGetText(taskEntryGetTitleCtl(entry));
+  /*
+  Entry keyboard handling
+  */
+  function taskListKeyDown(event) {
+    //This captures all TaskList keypresses so filter it
+    var entry = elementGetOwnerTaskEntry(event.target);
+    if (!entry) return; //not in an entry
+    //log(event);
+    
+    if (event.ctrlKey) {
+      if (event.key=="ArrowUp") {
+        event.preventDefault();
+        taskMoveEntryUp(entry);
+      } else if (event.key=="ArrowDown") {
+        event.preventDefault();
+        taskMoveEntryDown(entry);
       }
-      function taskEntrySetTitle(entry, title) {
-        editableSetText(taskEntryGetTitleCtl(entry), title)
-      }
-      //Cleans the title text for saving
-      function taskEntryNormalizeTitle(title) {
-        //Trim the spaces. Loading text with the space later behaves weird in some browsers.
-        return title.trim();
-      }
-      function taskEntrySetNotes(entry, notes) {
-        var notesCtl = taskEntryGetNotesCtl(entry);
-        nodeRemoveAllChildren(notesCtl);
-        if (notes)
-          //Trim notes and further ellipsis-trim + single-line with CSS
-          notesCtl.appendChild(document.createTextNode(notes.substring(0, 200)));
-      }
-      function taskEntrySetDue(entry, due) {
-        var dueCtl = taskEntryGetDueCtl(entry);
-        nodeRemoveAllChildren(dueCtl);
-        if (due) {
-          let date = new Date(due);
-          dueCtl.appendChild(document.createTextNode(date.toDateString()));
-        }
-      }
-      function taskEntrySetCompleted(entry, completed) {
-        var checkbox = taskEntryGetControl(entry, "taskCheck");
-        checkbox.checked = completed;
-        if (completed)
-          entry.classList.add("completed")
-        else
-          entry.classList.remove("completed");
-      }
-
-      /*
-      Focus and caret position.
-      Last focused task node remains "focused"; task operations apply to it.
-      */
-      var focusedTaskEntry = null;
-      function taskEntryFocus(event) {
-        if (focusedTaskEntry)
-          taskEntryClearFocus(focusedTaskEntry);
-        focusedTaskEntry = this;
-        this.classList.add("focused");
-      }
-      function taskEntryBlur(event) {
-        //Do nothing -- remember the focus
-      }
-      //Removes the focus markings. Only called manually
-      function taskEntryClearFocus(entry) {
-        if (!entry || (focusedTaskEntry == entry))
-          focusedTaskEntry = null;
-        if (entry)
-          entry.classList.remove("focused");
-      }
-      //Returns the currently focused taskEntry or null
-      function taskEntryGetFocused() {
-        //Check that the remembered entry is still valid -- could've been deleted for any number of reasons
-        if (focusedTaskEntry && !document.body.contains(focusedTaskEntry))
-          taskEntryClearFocus(focusedTaskEntry);
-        var caretEntry = elementGetOwnerTaskEntry(getCaretControl());
-        if (caretEntry && (caretEntry != focusedTaskEntry))
-          log("Focus is different from the active entry!");
-        return focusedTaskEntry;
-      }
-      function taskEntryGetLength(entry) {
-        var ret = editableGetLength(taskEntryGetTitleCtl(entry));
-        //log("taskEntryGetLength => "+ret);
-        return ret;
-      }
-      function taskEntryGetSelection(entry) {
-        return editableGetSelection(taskEntryGetTitleCtl(entry));
-      }
-      function taskEntryGetCaret(entry) {
-        var ret = editableGetCaret(taskEntryGetTitleCtl(entry));
-        //log("taskEntryGetCaret => "+ret);
-        return ret;
-      }
-      function taskEntrySetCaret(entry, start, end) {
-        //log("taskEntrySetCaret("+start+", "+end+")");
-        editableSetCaret(taskEntryGetTitleCtl(entry), start, end);
-      }
-
-      /*
-      Task entry / task list commands
-      */
-      //Called when the editor button for the entry had been clicked
-      function taskEntryEditClicked(entry) {
-        if (!entry) return;
-        taskEntryTitleCommitNow(entry); //commit any pending changes
-        editorOpen(taskEntryGetId(entry));
-      }
-      //Called when the edit button is clicked for the focused task
-      function taskEntryEditFocusedClicked() {
-		var focusedEntry = taskEntryGetFocused();
-        if (!focusedEntry)
-          return;
-        taskEntryEditClicked(focusedEntry);
-      }
-      
-      //Called when the task entry checkbox has been checked/unchecked
-      function taskEntryChecked(entry) {
-        var checkbox = taskEntryGetControl(entry, "taskCheck");
-        var checked = checkbox.checked;
-        
-        taskEntrySetCompleted(entry, checked); //re-style the entry
-        
-        var patch = { "id": taskEntryGetId(entry) };
-        taskResSetCompleted(patch, checked);
-        backend.patch(patch).catch(handleError);
-      }
-
-      function taskEntryAddClicked(event) {
-        taskEntryTitleCommitNow(); //commit any pending changes
-        taskNewInCurrentList({}, null).then((newEntry) => {
-          taskEntrySetCaret(newEntry, 0); //move focus to it
-        }).catch(handleError);
-      }
-      function taskEntryDeleteFocusedClicked(event) {
-        var focusedEntry = taskEntryGetFocused();
-        if (!focusedEntry)
-          return;
-        taskDelete(taskEntryGetId(focusedEntry), false)
-        	.catch(handleError);
-      }
-      function taskEntryDeleteRecursiveFocusedClicked(event) {
-        var focusedEntry = taskEntryGetFocused();
-        if (!focusedEntry)
-          return;
-        taskDelete(taskEntryGetId(focusedEntry), true)
-        	.catch(handleError);
-      }
-      function taskEntryExportToFile(event) {
-        var focusedEntry = taskEntryGetFocused();
-        if (!focusedEntry)
-          return;
-      	backend.get(taskEntryGetId(focusedEntry)).then(result => {
-      		downloadAsJson(result, taskEntryGetTitle(focusedEntry));
-      	});
-      }
-      function taskEntryCopyJSON(event) {
-        var focusedEntry = taskEntryGetFocused();
-        if (!focusedEntry)
-          return;
-      	backend.get(taskEntryGetId(focusedEntry)).then(result => {
-      		copyToClipboard(JSON.stringify(result));
-      	});
-      }
-      function taskEntryExportAllToFile() {
-      	var entry = taskEntryFirst();
-      	var ids = [];
-      	while (entry != null) {
-      	  ids.push(taskEntryGetId(entry));
-      	  entry = taskEntryGetNext(entry);
-      	}
-      	if (ids.length <= 0) return;
-      	log(ids);
-      	backend.getAll(ids).then(result => {
-      	  downloadAsJson(result, selectedTaskListTitle());
-      	});
-      }
-
-      /*
-      Entry keyboard handling
-      */
-      function taskEntryKeyDown(entry, event) {
-        //log(event);
-        
-        if (event.ctrlKey) {
-          if (event.key=="ArrowUp") {
-            event.preventDefault();
-            taskMoveEntryUp(entry);
-          } else if (event.key=="ArrowDown") {
-            event.preventDefault();
-            taskMoveEntryDown(entry);
-          }
-          return;
-        }
-        
-        if (event.key=="Tab") {
-          event.preventDefault();
-          if (event.shiftKey)
-            taskEntryShiftTab(entry);
-          else
-            taskEntryTab(entry);
-        }
-        
-        if (event.shiftKey) {
-          return; //Do not do most of normal handling with shift
-        }
-        
-        //Normal keys
-        if (event.key=="ArrowUp") {
-          let prev = taskEntryGetPrev(entry);
-          if (prev) {
-            taskEntrySetCaret(prev, taskEntryGetCaret(entry));
-            event.preventDefault();
-          }
-        } else if (event.key=="ArrowDown") {
-          let next = taskEntryGetNext(entry);
-          if (next) {
-            taskEntrySetCaret(next, taskEntryGetCaret(entry));
-            event.preventDefault();
-          }
-        } else if (event.key=="ArrowLeft") {
-          let caretPos = taskEntryGetCaret(entry);
-          if (caretPos === 0) {
-            let prev = taskEntryGetPrev(entry);
-            if (prev) {
-              taskEntrySetCaret(prev, taskEntryGetLength(prev));
-              event.preventDefault();
-            }
-          }
-        } else if (event.key=="ArrowRight") {
-          let caretPos = taskEntryGetCaret(entry);
-          if (caretPos === taskEntryGetLength(entry)) {
-            let next = taskEntryGetNext(entry);
-            if (next) {
-              taskEntrySetCaret(next, 0);
-              event.preventDefault();
-            }
-          }
-        } else if (event.key=="Enter") {
-          event.preventDefault(); //we don't accept returns in titles any way
-          var caretPos = taskEntryGetCaret(entry);
-          taskNewSplit(entry, caretPos)
-            .catch(handleError);
-        } else if (event.key=="Delete") {
-          //If we're at the end, delete the next entry and merge its title and notes into this one.
-          var caretPos = taskEntryGetCaret(entry);
-          if (options.mergeByDelete && (caretPos == taskEntryGetLength(entry)) && window.getSelection().isCollapsed) {
-            event.preventDefault();
-            taskMergeForward(entry);
-          }
-        } else if (event.key=="Backspace") {
-          //If we're at the beginning, delete this entry and merge its title and notes into the previous one.
-          var caretPos = taskEntryGetCaret(entry);
-          if (options.mergeByBackspace && (caretPos == 0) && window.getSelection().isCollapsed) {
-            event.preventDefault();
-            taskMergeBackward(entry);
-          }
-        }
-      }
-
-      //Called when the user types in the task title
-      function taskEntryTitleInput(entry) {
-        //log("taskEntryTitleInput: "+entry);
-        taskEntryTitleChanged(entry);
-      }
-      function taskEntryTitlePaste(entry, event) {
-        //log("taskEntryTitlePaste: "+entry);
-        event.preventDefault(); //do not paste as HTML
-        var pasteText = event.clipboardData.getData("text/plain") //as plain text
-          .replace('\r','').replace('\n',''); //remove linebreaks for now, though we can also treat them like a "new entry" signals
-        //Paste the data at the caret position
-        var selection = taskEntryGetSelection(entry);
-        if (!selection) {
-          log("caret outside the paste-event control, wut");
-          return;
-        }
-        //Delete any selected text and replace it by pasted text
-        var title = taskEntryGetTitle(entry);
-        title = title.substring(0, selection.startOffset) + pasteText + title.substring(selection.endOffset);
-        taskEntrySetTitle(entry, title);
-        taskEntrySetCaret(entry, selection.startOffset + pasteText.length);
-        taskEntryTitleChanged(entry);
-      }
-      //Called when the user moves out of the task title
-      function taskEntryTitleFocusOut(entry) {
-        //log("taskEntryTitleFocusOut: "+entry);
-        taskEntryTitleCommitNow(entry);
-      }
-      
-      var taskEntryTitleCommitEntry = null; //only one entry can be waiting for commit
-      var taskEntryTitleCommitTimer = null;
-
-      function taskEntryTitleChanged(entry) {
-        //Commit any changes for other entries
-        if ((taskEntryTitleCommitEntry) && (taskEntryTitleCommitEntry != entry))
-          taskEntryTitleCommitNow();
-        taskEntryTitleCommitEntry = entry;
-        //Cancel the timer for current entry and reset it
-        taskEntryTitleTriggerClear();
-        taskEntryTitleCommitTimer = setTimeout(taskEntryTitleCommitNow, 2000);
-      }
-      
-      function taskEntryTitleTriggerClear() {
-        //log("taskEntryTitleTriggerClear");
-        if (taskEntryTitleCommitTimer) {
-          clearTimeout(taskEntryTitleCommitTimer);
-          taskEntryTitleCommitTimer = null;
-        }
-      }
-      //Commits any pending changes for list entries.
-      //If an entry is given, commits only pending changes to that entry.
-      function taskEntryTitleCommitNow(entry) {
-        if (!entry)
-          entry = taskEntryTitleCommitEntry;
-        else if (entry != taskEntryTitleCommitEntry)
-          return;
-
-        log("taskEntryTitleCommitNow");
-        taskEntryTitleTriggerClear();
-        if (!entry)
-          return;
-         
-        var patch = { "id": taskEntryGetId(entry) };
-        patch.title = taskEntryNormalizeTitle(taskEntryGetTitle(entry));
-        //log('newText: "'+patch.title+'"');
-
-        backend.patch(patch).catch(handleError);
-        taskEntryTitleCommitEntry = null;
-      }
-
-
-      /*
-      Drag handling
-      */
-      var dragStartTimer = null;
-      var dragNode = null; //node targeted for next drag or already dragged
-      var dragContext = {}; //stores some things temporarily while dragging
-      var dragging = false; //actually dragging
-      var dragOffsetPos = { x: null, y: null }; //Mouse offset from the TL of the element at the start of the drag
-
-      function taskEntryDragStartTimerAbort() {
-        if (dragStartTimer)
-          clearTimeout(dragStartTimer);
-        dragStartTimer = null;
-      }
-      
-      //Prepares the context for drag but does not start it right away. 
-      //Call taskEntryDragStart to proceed with dragging.
-      //Event: The click event that caused the drag preparations.
-      function taskEntryDragConfigure(entry, event) {
-        taskEntryDragStartTimerAbort();
-        dragNode = entry; //taskEntry to which the event have bubbled
-        
-        //calculate true offset relative to taskEntry
-        var trueOffset = { x: event.offsetX, y: event.offsetY };
-		var target = event.target;
-        while (target && target!=dragNode) {
-          trueOffset.x += target.offsetLeft;
-          trueOffset.y += target.offsetTop;
-          target = target.offsetParent;
-        }
-        
-        dragOffsetPos.x = trueOffset.x;
-        dragOffsetPos.y = trueOffset.y;
-      }
-      
-      //Starts the drag
-      function taskEntryDragStart() {
-        //log("startDrag")
-        taskEntryDragStartTimerAbort();
-        
-        //Cancel any text selection that might be going on due to not capturing that initial mouse click
-        document.activeElement.blur();
-        resetSelection();
-        
-        //Configure node for dragging
-        dragNode.classList.add("dragging");
-        
-        //To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
-        //we need to shield the page while dragging
-        dragContext.shield = document.createElement("div");
-        dragContext.shield.classList.add("dragging");
-        dragContext.shield.style.position = "fixed";
-        dragContext.shield.style.left = "0px";
-        dragContext.shield.style.right = "0px";
-        dragContext.shield.style.top = "0px";
-        dragContext.shield.style.bottom = "0px";
-        dragContext.shield.style.zIndex = 10;
-        document.body.appendChild(dragContext.shield);
-        
-        //Remember existing place for simple restoration
-        //We need previous sibling because next sibling might well be our child
-        dragContext.oldPreviousSibling = dragNode.previousSibling;
-        dragContext.oldLevel = taskEntryGetLevel(dragNode);
-        
-        //Hide all children
-        dragContext.oldChildren = document.createElement("div");
-        dragContext.oldChildren.style.display = "none";
-        var childNodes = taskEntryGetAllChildren(dragNode);
-        childNodes.forEach(node => { //move to offsite in the same order
-          dragContext.oldChildren.insertBefore(node, null);
-        });
-
-        //From now on we're dragging
-        dragging = true;
-        
-        //Move first time now that it's in position:absolute
-        let r = dragNode.getBoundingClientRect();
-        taskEntryDragUpdate({
-          x: r.left + dragOffsetPos.x,
-          y: r.top + dragOffsetPos.y,
-        });
-      }
-      
-      //Ends the drag and commits the move
-      function taskEntryDragEnd() {
-        if (!dragging) { //not yet dragging => nothing to restore
-          dragNode = null;
-          return;
-        }
-        
-        //log("endDrag");
-        dragging = false;
-        if (!dragNode) return;
-        
-        var cancelDrag = false;
-        
-        if (cancelDrag) {
-          //Move the node back to where it were
-          if (dragContext.previousSibling)
-            dragNode.parentNode.insertBefore(dragNode, dragContext.previousSibling.nextSibling)
-          else
-            dragNode.parentNode.insertBefore(dragNode, dragNode.parentNode.firstElementChild);
-          taskEntrySetLevel(dragNode, dragContext.oldLevel);
-        };
-        
-        var newLevel = cancelDrag ? dragContext.oldLevel : taskEntryGetLevel(dragNode);
-        
-        //Unhide all children + move to where the parent is + adjust level
-        let nextNode = dragNode.nextElementSibling;
-        for (let i=0; i < dragContext.oldChildren.children.length;) { //don't increment, stay at 0
-          let node = dragContext.oldChildren.children[i];
-          dragNode.parentNode.insertBefore(node, nextNode);
-          if (newLevel != dragContext.oldLevel)
-            taskEntrySetLevel(node, taskEntryGetLevel(node) - dragContext.oldLevel + newLevel); //warning, likes to add as strings
-        }
-        
-        //Remove the shield
-        document.body.removeChild(dragContext.shield);
-        delete dragContext.shield;
-        
-        //restore backed up properties
-        dragNode.classList.remove("dragging");
-        
-        //find where we have moved
-        if (!cancelDrag && (dragContext.oldPreviousSibling != dragNode.previousSibling)) {
-          //Move the nodes on the backend! We only need to move the parent, but we have to properly select where
-          var newParent = taskEntryGetParent(dragNode);
-          var newPrev = taskEntryGetPreviousSibling(dragNode);
-          backend.move(taskEntryGetId(dragNode), taskEntryGetId(newParent), taskEntryGetId(newPrev))
-            .catch(handleError);
-        }
-        
-        dragNode = null;
-      }
-      
-      //Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
-      function taskEntryDragUpdate(pos) {
-        //log("taskEntryDragUpdate: x="+pos.x+", y="+pos.y);
-        
-        //Move the node to a new place in the same parent list, tentatively
-        
-        //Unfortunately we can't use elementFromPoint as that would just give us the shield,
-        //and hiding the shield temporarily is too slow and makes the cursor flicker.
-        //We'll just iterate through the nodes
-        var targetNode = taskEntryFirst();
-        var nodeRect = null;
-        while (targetNode) {
-          nodeRect = targetNode.getBoundingClientRect();
-          if ((pos.y >= nodeRect.top) && (pos.y < nodeRect.bottom))
-            break;
-          targetNode = taskEntryGetNext(targetNode);
-        }
-        if (!targetNode || (targetNode == dragNode))
-          return; //leave the dragged node where it is
-        
-        //Whether we move it above or before the node depends on where the node is now
-        var dragNodeRect = dragNode.getBoundingClientRect();
-        var insertAfter = (dragNodeRect.top < nodeRect.top);
-        
-        /*
-        Nodes may be of different heights so we risk causing infinite switch sequence:
-           D    N    D
-           N -> N -> N -> ...
-           N    D    N
-        Only move if the pointer is in the top (bottom) dragNodeHeight of the target node.
-        */
-        if (insertAfter) {
-          if (pos.y < nodeRect.bottom - dragNodeRect.height)
-          	return;
-        } else {
-          if (pos.y > nodeRect.top + dragNodeRect.height)
-            return;
-        }
-        
-        var beforeNode = (insertAfter) ? targetNode.nextElementSibling : targetNode;
-        var afterNode = (insertAfter) ? targetNode : targetNode.previousElementSibling;
-        targetNode.parentNode.insertBefore(dragNode, beforeNode); //though all nodes have the same parent HTML element!
-        
-        //Which parent to put this under? Always the same level as the node after us, or before us
-        var newLevel = beforeNode ? taskEntryGetLevel(beforeNode) : afterNode ? taskEntryGetLevel(afterNode) : 0;
-        taskEntrySetLevel(dragNode, newLevel);
-      }
-
-      //Drag anywhere and hold
-      function taskEntryDragMouseDown(event) {
-        //log("taskEntryDragMouseDown");
-        taskEntryDragConfigure(this, event)
-        dragStartTimer = setTimeout(taskEntryDragStart, 500);
-      }
-      //Drag on a grip
-      function taskEntryDragMouseDownGrip(event) {
-        //log("taskEntryDragMouseDownGrip");
-        taskEntryDragConfigure(elementGetOwnerTaskEntry(event.target), event);
-        taskEntryDragStart(); //immediately
-        event.stopPropagation(); //handled here, don't start the timer
+      return;
+    }
+    
+    if (event.key=="Tab") {
+      event.preventDefault();
+      if (event.shiftKey)
+        taskEntryShiftTab(entry);
+      else
+        taskEntryTab(entry);
+    }
+    
+    if (event.shiftKey)
+      return; //Do not do most of normal handling with shift
+    
+    //Normal keys
+    if (event.key=="ArrowUp") {
+      let prev = entry.getPrev();
+      if (prev) {
+        prev.setCaret(entry.getCaret());
         event.preventDefault();
       }
-      function taskEntryDragMouseUp(event) {
-        //log("taskEntryDragMouseUp");
-        taskEntryDragStartTimerAbort();
-        taskEntryDragEnd();
+    } else if (event.key=="ArrowDown") {
+      let next = entry.getNext();
+      if (next) {
+        next.setCaret(entry.getCaret());
+        event.preventDefault();
       }
-      function taskEntryDragMouseMove(event) {
-        if (dragging)
-          //Dragging, ignore mouse move events for the node itself
-          event.preventDefault();
-        else
-          //Mouse moved before timer fired, abort timer
-          taskEntryDragStartTimerAbort();
-      }
-      
-      function documentDragMouseMove(event) {
-        if (dragging) {
-          taskEntryDragUpdate({x:event.clientX, y:event.clientY});
+    } else if (event.key=="ArrowLeft") {
+      let caretPos = entry.getCaret();
+      if (caretPos === 0) {
+        let prev = entry.getPrev();
+        if (prev) {
+          prev.setCaret(prev.getLength());
           event.preventDefault();
         }
       }
-      function documentDragMouseUp(event) {
-        //Mouseup is not required to fire, and does not fire under some conditions,
-        //when the mouse is released outside the dragged element's borders.
-        //This is a fallback:
-        if (dragging || dragNode)
-          taskEntryDragMouseUp(event);
-      }
-
-
-      /*
-      Combined task entry procedures
-      */
-      //Returns tasklist-relative Y offset of the last task in the list
-      function tasklistLastTaskY(event) {
-        var lastTask = taskEntryLast();
-        return lastTask ? relativeBoundingRect(lastTask, lastTask.parentNode).bottom : -1;
-      }
-      function tasklistClick(event) {
-        if (!options.singleClickAdd)
-          return;
-        if (event.offsetY <= tasklistLastTaskY())
-          return;
-        taskEntryAddClicked(event);
-      }
-      function tasklistDblClick(event) {
-        if (event.offsetY <= tasklistLastTaskY())
-          return;
-        taskEntryAddClicked(event);
-      }
-      
-      /*
-      Tab:
-        Make the entry the child of it's immediate previous sibling.
-        Add it to the end.
-      */
-      function taskEntryTab(entry) {
-        //log("taskEntryTab");
-        taskEntryTitleCommitNow(entry); //commit any pending changes
-        
-        //Find immediate previous sibling on the same task level
-        var prevEntry = taskEntryGetPreviousSibling(entry);
-        if (!prevEntry) {
-          log("Already first sibling, can't shift right");
-          return; //if we're the first sibling, can't Tab->
+    } else if (event.key=="ArrowRight") {
+      let caretPos = entry.getCaret();
+      if (caretPos === entry.getLength()) {
+        let next = entry.getNext();
+        if (next) {
+          next.setCaret(0);
+          event.preventDefault();
         }
-        
-        var prevEntryLastChild = taskEntryGetLastChild(prevEntry); //null is OK
-        
-        //Update nesting
-        taskEntryAdjustLevel(entry, +1, true); //recursive
+      }
+    } else if (event.key=="Enter") {
+      event.preventDefault(); //we don't accept returns in titles any way
+      var caretPos = entry.getCaret();
+      taskNewSplit(entry, caretPos)
+        .catch(handleError);
+    } else if (event.key=="Delete") {
+      //If we're at the end, delete the next entry and merge its title and notes into this one.
+      var caretPos = entry.getCaret();
+      if (options.mergeByDelete && (caretPos == entry.getLength()) && window.getSelection().isCollapsed) {
+        event.preventDefault();
+        taskMergeForward(entry);
+      }
+    } else if (event.key=="Backspace") {
+      //If we're at the beginning, delete this entry and merge its title and notes into the previous one.
+      var caretPos = entry.getCaret();
+      if (options.mergeByBackspace && (caretPos == 0) && window.getSelection().isCollapsed) {
+        event.preventDefault();
+        taskMergeBackward(entry);
+      }
+    }
+  }
 
-        //Post to the backend
-        backend.move(taskEntryGetId(entry), taskEntryGetId(prevEntry), taskEntryGetId(prevEntryLastChild))
-          .catch(handleError);
+
+  /*
+  Title editing
+  */
+  var taskEntryTitleCommitEntry = null; //only one entry can be waiting for commit
+  var taskEntryTitleCommitTimer = null;
+
+  //Called when the user changes the task title (by typing in or pasting)
+  function taskEntryTitleChanged(event) {
+    //Commit any changes for other entries
+    if ((taskEntryTitleCommitEntry) && (taskEntryTitleCommitEntry != event.entry))
+      taskEntryTitleCommitNow();
+    taskEntryTitleCommitEntry = event.entry;
+    //Cancel the timer for current entry and reset it
+    taskEntryTitleTriggerClear();
+    taskEntryTitleCommitTimer = setTimeout(taskEntryTitleCommitNow, 2000);
+  }
+  //Called when the user moves out of the task title
+  function taskEntryTitleFocusOut(event) {
+    //log("taskEntryTitleFocusOut: "+event.entry);
+    taskEntryTitleCommitNow(event.entry);
+  }
+  function taskEntryTitleTriggerClear() {
+    //log("taskEntryTitleTriggerClear");
+    if (taskEntryTitleCommitTimer) {
+      clearTimeout(taskEntryTitleCommitTimer);
+      taskEntryTitleCommitTimer = null;
+    }
+  }
+  //Commits any pending changes for list entries.
+  //If an entry is given, commits only pending changes to that entry.
+  function taskEntryTitleCommitNow(entry) {
+    if (!entry)
+      entry = taskEntryTitleCommitEntry;
+    else if (entry != taskEntryTitleCommitEntry)
+      return;
+    
+    log("taskEntryTitleCommitNow");
+    taskEntryTitleTriggerClear();
+    if (!entry)
+      return;
+    
+    var patch = { "id": taskEntryGetId(entry) };
+    patch.title = taskEntryNormalizeTitle(entry.getTitle());
+    //log('newText: "'+patch.title+'"');
+    
+    backend.patch(patch).catch(handleError);
+    taskEntryTitleCommitEntry = null;
+  }
+
+
+  /*
+  Drag handling
+  */
+  var dragContext = {}; //stores some things temporarily while dragging
+
+  //Starts the drag
+  function taskEntryDragStart(event) {
+    //Cancel any text selection that might be going on due to not capturing that initial mouse click
+    document.activeElement.blur();
+    resetSelection();
+        
+    //Configure node for dragging
+    var dragEntry = event.entry;
+    var dragNode = event.entry.node;
+    dragNode.classList.add("dragging");
+        
+    //To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
+    //we need to shield the page while dragging
+    dragContext.shield = document.createElement("div");
+    dragContext.shield.classList.add("dragging");
+    dragContext.shield.style.position = "fixed";
+    dragContext.shield.style.left = "0px";
+    dragContext.shield.style.right = "0px";
+    dragContext.shield.style.top = "0px";
+    dragContext.shield.style.bottom = "0px";
+    dragContext.shield.style.zIndex = 10;
+    document.body.appendChild(dragContext.shield);
+    
+    //Remember existing place for simple restoration
+    //We need previous sibling because next sibling might well be our child
+    dragContext.oldPrev = dragEntry.getPrev();
+    dragContext.oldLevel = dragEntry.getLevel();
+    
+    //Hide all children
+    dragContext.oldChildren = document.createElement("div");
+    dragContext.oldChildren.style.display = "none";
+    var childEntries = dragEntry.getAllChildren();
+    childEntries.forEach(entry => { //move to offsite in the same order
+      dragContext.oldChildren.insertBefore(entry.node, null);
+    });
+  }
+  
+  //Ends the drag and commits the move
+  function taskEntryDragEnd(event) {
+    var dragEntry = event.entry;
+    var dragNode = event.entry.node;
+    var cancelDrag = event.cancelDrag;
+    
+    if (event.cancelDrag)
+      //Move the node back to where it were
+      dragEntry.move(dragContext.oldPrev, dragContext.oldLevel);
+    
+    var newLevel = cancelDrag ? dragContext.oldLevel : dragEntry.getLevel();
+    
+    //Unhide all children + move to where the parent is + adjust level
+    let nextNode = dragNode.nextElementSibling;
+    for (let i=0; i < dragContext.oldChildren.children.length;) { //don't increment, stay at 0
+      let node = dragContext.oldChildren.children[i];
+      dragNode.parentNode.insertBefore(node, nextNode);
+      if (newLevel != dragContext.oldLevel)
+        node.taskEntry.setLevel(node.taskEntry.getLevel() - dragContext.oldLevel + newLevel); //warning, likes to add as strings
+    }
+    
+    //Remove the shield
+    document.body.removeChild(dragContext.shield);
+    delete dragContext.shield;
+    
+    //restore backed up properties
+    dragNode.classList.remove("dragging");
+    
+    //find where we have moved
+    if (!cancelDrag && (dragContext.oldPrev != dragEntry.getPrev())) {
+      //Move the nodes on the backend! We only need to move the parent, but we have to properly select where
+      var newParent = dragEntry.getParent();
+      var newPrev = dragEntry.getPreviousSibling();
+      backend.move(taskEntryGetId(dragNode), taskEntryGetId(newParent), taskEntryGetId(newPrev))
+        .catch(handleError);
+    }
+  }
+  
+  //Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
+  function taskEntryDragMove(event) {
+    //Move the node to a new place in the same parent list, tentatively
+    var pos = event.pos;
+    var dragEntry = event.entry;
+    
+    //We can't use elementFromPoint as that would just give us the shield,
+    //and hiding the shield temporarily is too slow and makes the cursor flicker.
+    var targetEntry = tasks.entryFromViewportPoint(pos, nodeRect);
+    if (!targetEntry || (targetEntry == dragEntry))
+      return; //leave the dragged node where it is
+    var nodeRect = targetEntry.node.getBoundingClientRect();
+    
+    //Whether we move it above or before the node depends on where the node is now
+    var dragNodeRect = dragEntry.node.getBoundingClientRect();
+    var insertAfter = (dragNodeRect.top < nodeRect.top);
+    
+    /*
+    Nodes may be of different heights so we risk causing infinite switch sequence:
+       D    N    D
+       N -> N -> N -> ...
+       N    D    N
+    Only move if the pointer is in the top (bottom) dragNodeHeight of the target node.
+    */
+    if (insertAfter) {
+      if (pos.y < nodeRect.bottom - dragNodeRect.height)
+        return;
+    } else {
+      if (pos.y > nodeRect.top + dragNodeRect.height)
+        return;
+    }
+    
+    var beforeEntry = (insertAfter) ? targetEntry.getNext() : targetEntry;
+    var afterEntry = (insertAfter) ? targetEntry : targetEntry.getPrev();
+    tasks.insertEntryBefore(dragEntry, beforeEntry); //though all nodes have the same parent HTML element!
+      
+    //Which parent to put this under? Always the same level as the node after us, or before us
+    var newLevel = beforeEntry ? beforeEntry.getLevel() : afterEntry ? afterEntry.getLevel() : 0;
+    dragEntry.setLevel(newLevel);
+  }
+
+
+  /*
+  Tab:
+    Make the entry the child of it's immediate previous sibling.
+    Add it to the end.
+  */
+  function taskEntryTab(entry) {
+    //log("taskEntryTab");
+    taskEntryTitleCommitNow(entry); //commit any pending changes
+    
+    //Find immediate previous sibling on the same task level
+    var prevEntry = entry.getPreviousSibling();
+    if (!prevEntry) {
+      log("Already first sibling, can't shift right");
+      return; //if we're the first sibling, can't Tab->
+    }
+    
+    var prevEntryLastChild = prevEntry.getLastDirectChild(); //null is OK
+    
+    //Update nesting
+    entry.adjustLevel(+1, true); //recursive
+    
+    //Post to the backend
+    backend.move(taskEntryGetId(entry), taskEntryGetId(prevEntry), taskEntryGetId(prevEntryLastChild))
+      .catch(handleError);
+  }
+  
+  /*
+  Shift-Tab:
+    Move the entry to the same level as it's parent. Add it after that parent.
+    Visually update with all of its children.
+    Make following siblings into children of this entry.
+  */
+  function taskEntryShiftTab(entry) {
+   //log("taskEntryShiftTab");
+    taskEntryTitleCommitNow(entry); //commit any pending changes
+    
+    if (entry.getLevel() <= 0) {
+      log("Already top element, can't tab up");
+      return;
+    }
+    var entryId = taskEntryGetId(entry);
+    var parentEntry = entry.getParent();
+    var newParentEntry = parentEntry.getParent();
+    
+    //Query siblings now while the task is still in place
+    let lastChild = entry.getLastDirectChild();
+    let siblings = parentEntry.getChildren();
+    let i = siblings.findIndex(item => { return item==entry; }) + 1;
+    
+    //Visually update the entry and all of its children.
+    entry.adjustLevel(-1, true); //recursive
+    
+    //Move the entry to the same level as it's parent, after that parent
+    var prom = backend.move(entryId, taskEntryGetId(newParentEntry), taskEntryGetId(parentEntry));
+    
+    //Append consequent siblings to the end of the children
+    while (i < siblings.length) {
+      let sibling = siblings[i]; //avoid closures on I and IDs by declaring all instance variables locally with "let"
+      let prevId = (lastChild) ? taskEntryGetId(lastChild) : null;
+      let siblingId = taskEntryGetId(sibling);
+      prom = prom.then(response => backend.move(siblingId, entryId, prevId));
+      lastChild = sibling;
+      i++;
+    };
+    
+    prom = prom.catch(handleError);
+  }
+
+
+  //Moves the entry to before the entry above it, on the same level as the entry above it.
+  function taskMoveEntryUp(entry) {
+    //Find the entry_above
+    var entry_above = entry.getPrev();
+    if (!entry_above) return; //nowhere to move
+    
+    var oldCaret = entry.getCaret();
+    
+    //Move this entry to the same level as entry_above, just before it
+    //Entry list in the UI is flat so newPrevEntry may be entirely unrelated but that's okay
+    var newLevel = entry_above.getLevel();
+    var newPrevEntry = entry_above.getPrev();
+    var newPrevSibling = entry_above.getPreviousSibling(); //take note before we break it
+    entry.move(newPrevEntry, newLevel); //with all child_tasks
+    entry.setCaret(oldCaret); //preserve focus
+    
+    //On the backend do the same but "task before" is going to be an actual "previous sibling" this time (maybe null)
+    var newParent = entry_above.getParent();
+    backend.move(taskEntryGetId(entry), taskEntryGetId(newParent), taskEntryGetId(newPrevSibling))
+      .catch(handleError);
+  }
+
+  //Moves the entry to after the entry below it, on the same level as the entry below it.
+  function taskMoveEntryDown(entry) {
+    /*
+      No, it's more complicated.
+        A         B         B
+        B    ->    A   ->    C
+         C         C         A
+      In other words, IF the entry below has children, we move into it as its first child.
+      
+    */
+    
+    //We move the whole subtree, so we need the next node on the same level as a target
+    var entry_below = entry.getNextSibling();
+    if (!entry_below) return; //nowhere to move
+    
+    var oldCaret = entry.getCaret();
+    
+    //Are we moving below or "below + into children"?
+    var newParent = null;
+    var newLevel = entry_below.getLevel();
+    var newPrevSibling = null;
+    if (entry_below.getAllChildren().length > 0) {
+      newParent = entry_below;
+      newLevel += 1;
+      newPrevSibling = null;
+    } else {
+      newParent = entry_below.getParent();
+      newPrevSibling = entry_below;
+    }
+    
+    //Update nesting level and move the location of this_task's node and all of its child_tasks.
+    entry.move(entry_below, newLevel);
+    entry.setCaret(oldCaret); //preserve focus
+    
+    //Move the entry on the backend
+    backend.move(taskEntryGetId(entry), taskEntryGetId(newParent), taskEntryGetId(newPrevSibling))
+      .catch(handleError);
+  }
+
+
+  /*
+  Merge another entry with all of its contents and children into the given one
+  */
+  function taskMerge(entry_to, entry_what) {
+    //log("taskMerge");
+    if (!entry_to || !entry_what) return;
+    
+    var mergePos = entry_to.getTitle().length;
+    var entryToId = taskEntryGetId(entry_to);
+    var entryWhatId = taskEntryGetId(entry_what);
+    
+    //We don't have some data at hand (Notes, Due) so we have to query the backend first
+    //Otherwise if we leave the function and the user opens the editor while our promise here is waiting to GET() data,
+    //they're going to see old unmerged Notes.
+    
+    backend.getAll([entryToId, entryWhatId]).then(results => {
+      //log("have entry data");
+      task_to = results[entryToId];
+      task_what = results[entryWhatId];
+      
+      //Now that we have everything,
+      //First update the UI
+      
+      //Move children:
+      //- Merging our own child? Place its children in its place
+      //- Merging someone else? Place their children to the end of our list
+      var newPrevEntry = null; //Last child at any level, to move nodes after it
+      var newPrevChildId = null; //Last direct child id for actual move later
+      if (entry_what.getParent() == entry_to) {
+        newPrevEntry = entry_what.getPrev();
+        newPrevChildId = taskEntryGetId(entry_what.getPreviousSibling());
+      } else {
+        let targetChildren = entry_to.getAllChildren();
+        newPrevEntry = (targetChildren.length>0) ? targetChildren[targetChildren.length-1] : entry_to; 
+        newPrevChildId = taskEntryGetId(entry_to.getLastDirectChild());
       }
       
-      /*
-      Shift-Tab:
-        Move the entry to the same level as it's parent. Add it after that parent.
-        Visually update with all of its children.
-        Make following siblings into children of this entry.
-      */
-      function taskEntryShiftTab(entry) {
-        //log("taskEntryShiftTab");
-        taskEntryTitleCommitNow(entry); //commit any pending changes
-        
-        if (taskEntryGetLevel(entry) <= 0) {
-          log("Already top element, can't tab up");
-          return;
-        }
-        var entryId = taskEntryGetId(entry);
-        var parentEntry = taskEntryGetParent(entry);
-        var newParentEntry = taskEntryGetParent(parentEntry);
-        
-        //Query siblings now while the task is still in place
-        let lastChild = taskEntryGetLastChild(entry);
-        let siblings = taskEntryGetChildren(parentEntry);
-        let i = siblings.findIndex(item => { return item==entry; }) + 1;
-        
-        //Visually update the entry and all of its children.
-        taskEntryAdjustLevel(entry, -1, true); //recursive
-        
-        //Move the entry to the same level as it's parent, after that parent
-        var prom = backend.move(entryId, taskEntryGetId(newParentEntry), taskEntryGetId(parentEntry));
-        
-        //Append consequent siblings to the end of the children
-        while (i < siblings.length) {
-          let sibling = siblings[i]; //avoid closures on I and IDs by declaring all instance variables locally with "let"
-          let prevId = (lastChild) ? taskEntryGetId(lastChild) : null;
-          let siblingId = taskEntryGetId(sibling);
-          prom = prom.then(response => backend.move(siblingId, entryId, prevId));
-          lastChild = sibling;
-          i++;
-        };
-
-        prom = prom.catch(handleError);
-      }
-
+      var allChildren = entry_what.getAllChildren();
+      newPrevEntry.insertEntriesAfter(allChildren, entry_to.getLevel() - entry_what.getLevel());
       
-      //Moves the entry to before the entry above it, on the same level as the entry above it.
-      function taskMoveEntryUp(entry) {
-        //Find the entry_above
-        var entry_above = taskEntryGetPrev(entry);
-        if (!entry_above) return; //nowhere to move
-        
-        var oldCaret = taskEntryGetCaret(entry);
-
-        //Move this entry to the same level as entry_above, just before it
-        //Entry list in the UI is flat so newPrevEntry may be entirely unrelated but that's okay
-        var newLevel = taskEntryGetLevel(entry_above);
-		var newPrevEntry = taskEntryGetPrev(entry_above);
-		var newPrevSibling = taskEntryGetPreviousSibling(entry_above); //take note before we break it
-        taskEntryMove(entry, newPrev, newLevel); //with all child_tasks
-        taskEntrySetCaret(entry, oldCaret); //preserve focus
-
-        //On the backend do the same but "task before" is going to be an actual "previous sibling" this time (maybe null)
-		var newParent = taskEntryGetParent(task_above);
-        backend.move(taskEntryGetId(entry), taskEntryGetId(newParent), taskEntryGetId(newPrevSibling))
-          .catch(handleError);
-      }
+      //Patch entry_to and delete entry_what
+      var patch_to = {
+        id: taskEntryGetId(entry_to),
+        title: taskEntryNormalizeTitle(entry_to.getTitle() + entry_what.getTitle()),
+        notes: [task_to.notes, task_what.notes].filter(Boolean).join('\r\n'), //join non-empty parts
+      };
+      tasks.delete(entry_what);
+      entry_to.patch(patch_to);
+      entry_to.setCaret(mergePos);
       
-      //Moves the entry to after the entry below it, on the same level as the entry below it.
-      function taskMoveEntryDown(entry) {
-        /*
-          No, it's more complicated.
-            A         B         B
-            B    ->    A   ->    C
-             C         C         A
-          In other words, IF the entry below has children, we move into it as its first child.
-          
-        */
-      
-        //We move the whole subtree, so we need the next node on the same level as a target
-        var entry_below = taskEntryGetNextSibling(entry);
-        if (!entry_below) return; //nowhere to move
-
-        var oldCaret = taskEntryGetCaret(entry);
-
-        //Are we moving below or "below + into children"?
-        var newParent = null;
-        var newLevel = taskEntryGetLevel(entry_below);
-        var newPrevSibling = null;
-        if (taskEntryGetAllChildren(entry_below).length > 0) {
-          newParent = entry_below;
-          newLevel += 1;
-          newPrevSibling = null;
-        } else {
-          newParent = taskEntryGetParent(entry_below);
-          newPrevSibling = entry_below;
-        }
-
-        //Update nesting level and move the location of this_task's node and all of its child_tasks.
-        taskEntryMove(entry, entry_below, newLevel);
-        taskEntrySetCaret(entry, oldCaret); //preserve focus
-
-        //Move the entry on the backend
-        backend.move(taskEntryGetId(entry), taskEntryGetId(newParent), taskEntryGetId(newPrevSibling))
-          .catch(handleError);
-      }
-
-      /*
-      Merge another entry with all of its contents and children into the given one
-      */
-      function taskMerge(entry_to, entry_what) {
-        //log("taskMerge");
-        if (!entry_to || !entry_what) return;
-        
-        var mergePos = taskEntryGetTitle(entry_to).length;
-        var entryToId = taskEntryGetId(entry_to);
-        var entryWhatId = taskEntryGetId(entry_what);
-        
-        //We don't have some data at hand (Notes, Due) so we have to query the backend first
-        //Otherwise if we leave the function and the user opens the editor while our promise here is waiting to GET() data,
-        //they're going to see old unmerged Notes.
-        
-        backend.getAll([entryToId, entryWhatId]).then(results => {
-          //log("have entry data");
-          task_to = results[entryToId];
-          task_what = results[entryWhatId];
-          
-          //Now that we have everything,
-          //First update the UI
-          
-          //Move children:
-          //- Merging our own child? Place its children in its place
-          //- Merging someone else? Place their children to the end of our list
-          var newPrevEntry = null; //Last child at any level, to move nodes after it
-          var newPrevChildId = null; //Last direct child id for actual move later
-          if (taskEntryGetParent(entry_what) == entry_to) {
-            newPrevEntry = taskEntryGetPrev(entry_what);
-            newPrevChildId = taskEntryGetId(taskEntryGetPreviousSibling(entry_what));
-          } else {
-            let targetChildren = taskEntryGetAllChildren(entry_to);
-            newPrevEntry = (targetChildren.length>0) ? targetChildren[targetChildren.length-1] : entry_to; 
-            newPrevChildId = taskEntryGetId(taskEntryGetLastChild(entry_to));
-          }
-          
-          var allChildren = taskEntryGetAllChildren(entry_what);
-          taskEntryInsertChildren(allChildren, newPrevEntry,
-            taskEntryGetLevel(entry_to) - taskEntryGetLevel(entry_what)
-          );
-          
-          //Patch entry_to and delete entry_what
-          var patch_to = {
-            id: taskEntryGetId(entry_to),
-            title: taskEntryNormalizeTitle(taskEntryGetTitle(entry_to) + taskEntryGetTitle(entry_what)),
-            notes: [task_to.notes, task_what.notes].filter(Boolean).join('\r\n'), //join non-empty parts
-          };
-          taskEntryPatch(patch_to);
-          taskEntryDelete(entry_what);
-          taskEntrySetCaret(entry_to, mergePos);
-          
-          //Now produce calls to the backend
-          //TODO: We could do both updates batched
-          return backend.patch(patch_to)
-            .then(response => {
-              //log("patched entry to");
-              //Move children first!
-              return backend.moveChildren(entryWhatId, entryToId, newPrevChildId);
-            }).then(response => {
-              //log("moved children")
-              return backend.delete(entryWhatId);
-            });
-        }).catch(handleError);
-      }
-      
-      //Merges the next entry into this one
-      function taskMergeForward(entry) {
-        //log("taskMergeForward");
-        var entry_after = taskEntryGetNext(entry); //at any level
-        if (!entry_after) return;
-        return taskMerge(entry, entry_after);
-      }
-      
-      function taskMergeBackward(entry) {
-        //log("taskMergeBackward");
-        var entry_before = taskEntryGetPrev(entry); //at any level
-        if (!entry_before) return;
-        return taskMerge(entry_before, entry);
-      }
-
-
-      /*
-      Combined common procedures
-      Update both the backend and the UI.
-      */
-      
-      function tasklistAdd() {
-        var title = prompt("Enter a name for the new task list:", "");
-        if (!title)
-          return;
-        
-        var newTasklistId = null;
-        backend.tasklistAdd(title).then(result => {
-        	newTasklistId = result.id;
-        	return this.tasklistBoxesReload()
+      //Now produce calls to the backend
+      //TODO: We could do both updates batched
+      return backend.patch(patch_to)
+        .then(response => {
+          //log("patched entry to");
+          //Move children first!
+          return backend.moveChildren(entryWhatId, entryToId, newPrevChildId);
         }).then(response => {
-        	setSelectedTaskList(newTasklistId);
-        }).catch(handleError);
-      }
-      
-      function tasklistRename() {
-        var oldTitle = selectedTaskListTitle();
-        var title = prompt("Enter new name for this task list:", oldTitle);
-        if (!title || (title == oldTitle))
-          return;
-        var patch = {
-          'id': selectedTaskList(),
-          'title': title,
-        };
-        return backend.tasklistPatch(patch).then(result => {
-          return this.tasklistBoxesReload();
-        }).catch(handleError);
-      }
-      
-      function tasklistDelete() {
-      	if (taskEntryFirst() != null) {
-      	  window.alert("This task list is not empty. Please delete all tasks before deleting the task list.");
-      	  return;
-      	}
-      	var tasklistId = selectedTaskList();
-      	var title = selectedTaskListTitle();
-      	if (!confirm('Are you SURE you want to delete task list "'+title+'"?'))
-      	  return;
-      	return backend.tasklistDelete(tasklistId).then(result => {
-      	  return this.tasklistBoxesReload();
-      	}).then(response => {
-      	  selectedTaskListChanged();
-      	})
-      	.catch(handleError);
-      }
-      
-      function accountReset() {
-      	if (!confirm('WARNING. This will delete all your tasks and task lists and RESET your account. Do you want to continue?'))
-      	  return;
-      	if (!confirm('Are you SURE you want to delete ALL your task lists and tasks?'))
-      	  return;
-      	backend.reset().then(() => {
-      	  reloadTaskLists();
-      	}).catch(handleError);
-      }
-
-      //Adds a new task to the current list, after and with the same parent as the given task.
-      //Creates a taskEntry representation for it.
-      function taskNewInCurrentList(newTask, prevTaskId) {
-        var prevEntry = null;
-        //if no parent is given the node will be added by default to the end of the list
-        if (!prevTaskId) {
-          prevEntry = taskEntryLast();
-          prevTaskId = taskEntryGetId(prevEntry);
-        } else
-          prevEntry = taskEntryFind(prevTaskId);
-        //log(prevEntry);
-        return backend.insertToCurrentList(newTask, prevTaskId).then(result => {
-          //Insert new task entry
-          var level = backend.getLevel(result);
-          var newEntry = taskEntryCreate(result, level);
-          if (prevEntry)
-            listContent.insertBefore(newEntry, prevEntry.nextSibling);
-          else
-            listContent.insertBefore(newEntry, listContent.firstChild);
-          return newEntry;
+          //log("moved children")
+          return backend.delete(entryWhatId);
         });
+    }).catch(handleError);
+  }
+  
+  //Merges the next entry into this one
+  function taskMergeForward(entry) {
+    //log("taskMergeForward");
+    var entry_after = entry.getNext(); //at any level
+    if (!entry_after) return;
+    return taskMerge(entry, entry_after);
+  }
+  
+  function taskMergeBackward(entry) {
+    //log("taskMergeBackward");
+    var entry_before = entry.getPrev(); //at any level
+    if (!entry_before) return;
+    return taskMerge(entry_before, entry);
+  }
+
+
+  //Adds a new task to the current list, after and with the same parent as the given task.
+  //Creates a taskEntry representation for it.
+  function taskNewInCurrentList(newTask, prevTaskId) {
+    var prevEntry = null;
+    //if no parent is given the node will be added by default to the end of the list
+    if (!prevTaskId) {
+      prevEntry = tasks.last();
+      prevTaskId = taskEntryGetId(prevEntry);
+    } else
+      prevEntry = tasks.find(prevTaskId);
+    //log(prevEntry);
+    return backend.insertToCurrentList(newTask, prevTaskId).then(result => {
+      //Insert new task entry
+      var level = backend.getLevel(result);
+      var newEntry = tasks.createEntry(result, level);
+      tasks.insertEntryAfter(newEntry, prevEntry);
+      return newEntry;
+    });
+  }
+  
+  //Create new entry on the same level and after a given one, splitting the part of the title after the caret into it
+  function taskNewSplit(prevEntry, caretPos) {
+    taskEntryTitleCommitNow(); //commit any pending changes
+    
+    var prevTaskId = taskEntryGetId(prevEntry);
+    
+    let prevTitle = prevEntry.getTitle();
+    if (caretPos === null)
+      caretPos = prevTitle.length;
+    
+    var parentEntry = prevEntry.getParent();
+    
+    let newTaskReq = { //new task to create
+      'parent': taskEntryGetId(parentEntry), //same parent as current item
+      'title': prevTitle.substring(caretPos) //the rest of the string
+    };
+    let prevPatch = { //old task to trim
+      'id': prevTaskId,
+      'title': prevTitle.substring(0, caretPos)
+    };
+    
+    var newTaskId = null; //must be var -- promise will put value here
+    
+    var prom = taskNewInCurrentList(newTaskReq, prevTaskId);
+    
+    prom = prom.then(newEntry => {
+      newTaskId = taskEntryGetId(newEntry); //store in shared context for later promises
+      newEntry.setCaret(0); //move focus to it
+      if (prevPatch.title != prevTitle) { //trim the previous one
+        //Update the task entry before the request to avoid the visual lag between moving part of the title and removing it
+        taskCache.patch(prevPatch);
+        prevEntry.patch(prevPatch);
+        return backend.patch(prevPatch);
+      }; //else no update needed
+    });
+    
+    //Move all children of the original task to the new task
+    prom = prom.then(response => {
+      //log("running backend.moveChildren")
+      return backend.moveChildren(prevTaskId, newTaskId, null); //TODO: Maybe without "return"? Or do we need to wait for update "position" order? Or do we not care?
+    });
+    
+    return prom;
+  }
+
+  /*
+  Moves all children of the task out of it.
+  Makes the first child their new parent.
+  */
+  function taskLiberateChildren(taskId) {
+    //log("taskLiberateChildren:");
+    //log(taskId);
+    
+    var entry = tasks.find(taskId);
+    
+    var children = entry.getChildren();
+    if (!children || (children.length <= 0))
+      return Promise.resolve();
+    
+    var entryParent = entry.getParent();
+    
+    //log("taskLiberateChildren: Making this one new parent:");
+    //log(children[0]);
+    
+    //log("taskLiberateChildren: Updating UI");
+    //This entry is the only one that's visually changing nesting level
+    children[0].adjustLevel(-1, false); //non-recursive
+    
+    //Of the children tasks select the top one
+    //Move it to this task's parent, under this task.
+    var prom = backend.move(taskEntryGetId(children[0]), taskEntryGetId(entryParent), taskId);
+    //Move the rest under it
+    for (let i=1; i<children.length; i++)
+      prom = prom.then(response => {
+        //log("Adjusting subchild "+i)
+        let prevTaskId = (i>1) ? taskEntryGetId(children[i-1]) : null;
+        return backend.move(taskEntryGetId(children[i]), taskEntryGetId(children[0]), prevTaskId);
+      });
+    return prom;
+  }
+
+  /*
+  Deletes the task. Liberates the children.
+  recursive: Kill the children too
+  */
+  function taskDelete(taskId, recursive) {
+    taskEntryTitleCommitNow(); //commit any pending changes
+    
+    var prom = null;
+    if (!recursive) {
+      //Move the children outside parent first
+      prom = taskLiberateChildren(taskId);
+    } else {
+      //Delete the UI entries for all children
+      tasks.find(taskId).getAllChildren().forEach(child => tasks.delete(child));
+      prom = Promise.resolve();
+    }
+    
+    prom = prom.then(response => {
+      let thisNode = tasks.find(taskId);
+      //Find next node to focus:
+      let nextNode = thisNode.getNextSibling(); //either the new liberated parent or the next sibling
+      if (!nextNode)
+        nextNode = thisNode.getPreviousSibling(); //or the previous sibling (but not their child)
+      if (!nextNode)
+        nextNode = thisNode.getParent(); //or the parent
+        //Else => top level, no siblings => no other nodes to focus, sorry
+      //Delete the node itself
+      if (thisNode) //though why would it be not
+        tasks.delete(thisNode);
+      if (nextNode)
+        nextNode.setCaret();
+    });
+    
+    //Delete the task on the backend
+    prom = prom.then(response => {
+      return backend.delete(taskId);
+    });
+    return prom;
+  }
+
+  //Edits the task properties unrelated to its position in the list
+  function taskPatch(patch) {
+    tasks.patchEntry(patch); //Update the task UI node
+    return backend.patch(patch);
+  }
+
+  //Moves the task and all of its children to a different tasklist
+  function taskMoveToList(entry, newTaskListId, newParentId, newPrevId) {
+    //Warning! This function has to play nice to taskPatchMoveToList and only use cached task data.
+    
+    var taskId = taskEntryGetId(entry); //before we taskEntryDelete
+    
+    //Delete the nodes first, THEN move the task:
+    //responsible UI + we won't have children lists after we delete the local tasks
+    entry.getAllChildren().forEach(child => tasks.delete(child));
+    tasks.delete(entry);
+    
+    return backend.moveToList(taskId, newTaskListId, newParentId, newPrevId);
+  }
+
+  //Edits the task and immediately moves it and all of its children to a different tasklist
+  function taskPatchMoveToList(patch, newTaskListId, newParentId, newPrevId) {
+    //To avoid a pointless update of the task in the original list we play unfair:
+    //1. Update the current task locally
+    //2. Post it to another list and delete from this one
+    taskCache.patch(patch); //patch locally
+    return taskMoveToList(tasks.find(patch.id), newTaskListId, newParentId, newPrevId);
+  }
+
+
+  /*
+  Tasklist and account actions
+  */
+  
+  function tasklistAdd() {
+    var title = prompt("Enter a name for the new task list:", "");
+    if (!title)
+      return;
+    
+    var newTasklistId = null;
+    backend.tasklistAdd(title).then(result => {
+      newTasklistId = result.id;
+      return this.tasklistBoxesReload()
+    }).then(response => {
+      setSelectedTaskList(newTasklistId);
+    }).catch(handleError);
+  }
+  
+  function tasklistRename() {
+    var oldTitle = selectedTaskListTitle();
+    var title = prompt("Enter new name for this task list:", oldTitle);
+    if (!title || (title == oldTitle))
+      return;
+    var patch = {
+      'id': selectedTaskList(),
+      'title': title,
+    };
+    return backend.tasklistPatch(patch).then(result => {
+      return this.tasklistBoxesReload();
+    }).catch(handleError);
+  }
+  
+  function tasklistDelete() {
+    if (taskEntryFirst() != null) {
+      window.alert("This task list is not empty. Please delete all tasks before deleting the task list.");
+      return;
+    }
+    var tasklistId = selectedTaskList();
+    var title = selectedTaskListTitle();
+    if (!confirm('Are you SURE you want to delete task list "'+title+'"?'))
+      return;
+    return backend.tasklistDelete(tasklistId).then(result => {
+      return this.tasklistBoxesReload();
+    }).then(response => {
+      selectedTaskListChanged();
+    })
+    .catch(handleError);
+  }
+  
+  function accountReset() {
+    if (!confirm('WARNING. This will delete all your tasks and task lists and RESET your account. Do you want to continue?'))
+      return;
+    if (!confirm('Are you SURE you want to delete ALL your task lists and tasks?'))
+      return;
+    backend.reset().then(() => {
+      reloadTaskLists();
+    }).catch(handleError);
+  }
+
+
+
+  /*
+  Editor
+  */
+  var editor = document.getElementById("editor");
+  var editorTaskList = document.getElementById("editorTaskList");
+  var editorSaveBtn = document.getElementById("editorSave");
+  var editorCancelBtn = document.getElementById("editorCancel");
+  var editorDeleteBtn = document.getElementById("editorDelete");
+  var editorTaskId = null;
+  var editorListPageBackup = {}; //overwritten properties of listPage
+  
+  function editorInit() {
+    editorTaskList.onchange = editorTaskListChanged;
+    editorSaveBtn.onclick = editorSaveClose;
+    editorCancelBtn.onclick = editorCancel;
+    editorDeleteBtn.onclick = editorDelete;
+  }
+
+  //Show the editor
+  function editorOpen(taskId) {
+    if (!taskId) return;
+    log("Opening editor for task "+taskId);
+    
+    //Load the task data into the editor
+    backend.get(taskId).then(task => {
+      if (!task) {
+        log("Failed to load the requested task for editing");
+        editorTaskId = null;
+        return;
       }
+      document.getElementById("editorTaskTitle").innerText = task.title;
+      document.getElementById("editorTaskTitleBox").checked = (task.completed != null);
+      if (task.completed != null)
+        document.getElementById("editorTaskTitleP").classList.add("completed");
+      else
+        document.getElementById("editorTaskTitleP").classList.remove("completed");
       
-      //Create new entry on the same level and after a given one, splitting the part of the title after the caret into it
-      function taskNewSplit(prevEntry, caretPos) {
-          taskEntryTitleCommitNow(); //commit any pending changes
-          
-          var prevTaskId = taskEntryGetId(prevEntry);
-          
-          let prevTitle = taskEntryGetTitle(prevEntry);
-          if (caretPos === null)
-            caretPos = prevTitle.length;
-          
-          var parentEntry = taskEntryGetParent(prevEntry);
-          
-          let newTaskReq = { //new task to create
-            'parent': taskEntryGetId(parentEntry), //same parent as current item
-            'title': prevTitle.substring(caretPos) //the rest of the string
-          };
-          let patchTask = { //old task to trim
-            'id': prevTaskId,
-            'title': prevTitle.substring(0, caretPos)
-          };
-
-          var newTaskId = null; //must be var -- promise will put value here
-          
-          var prom = taskNewInCurrentList(newTaskReq, prevTaskId);
-          
-          prom = prom.then(newEntry => {
-            newTaskId = taskEntryGetId(newEntry); //store in shared context for later promises
-            taskEntrySetCaret(newEntry, 0); //move focus to it
-            if (patchTask.title != prevTitle) { //trim the previous one
-              //Update the task entry before the request to avoid the visual lag between moving part of the title and removing it
-              taskCache.patch(patchTask);
-              taskEntryPatch(patchTask);
-              return backend.patch(patchTask);
-            }; //else no update needed
-          });
-          
-          //Move all children of the original task to the new task
-          prom = prom.then(response => {
-            //log("running backend.moveChildren")
-            return backend.moveChildren(prevTaskId, newTaskId, null); //TODO: Maybe without "return"? Or do we need to wait for update "position" order? Or do we not care?
-          });
-
-          return prom;
-      }
-
-      /*
-      Moves all children of the task out of it.
-      Makes the first child their new parent.
-      */
-      function taskLiberateChildren(taskId) {
-        //log("taskLiberateChildren:");
-        //log(taskId);
-        
-        var entry = taskEntryFind(taskId);
-        
-        var children = taskEntryGetChildren(entry);
-        if (!children || (children.length <= 0))
-          return Promise.resolve();
-
-        var entryParent = taskEntryGetParent(entry);
-
-        //log("taskLiberateChildren: Making this one new parent:");
-        //log(children[0]);
-        
-        //log("taskLiberateChildren: Updating UI");
-        //This entry is the only one that's visually changing nesting level
-        taskEntryAdjustLevel(children[0], -1, false); //non-recursive
-        
-        //Of the children tasks select the top one
-        //Move it to this task's parent, under this task.
-        var prom = backend.move(taskEntryGetId(children[0]), taskEntryGetId(entryParent), taskId);
-        //Move the rest under it
-        for (let i=1; i<children.length; i++)
-          prom = prom.then(response => {
-            //log("Adjusting subchild "+i)
-            let prevTaskId = (i>1) ? taskEntryGetId(children[i-1]) : null;
-            return backend.move(taskEntryGetId(children[i]), taskEntryGetId(children[0]), prevTaskId);
-          });
-        return prom;
-      }
-
-      /*
-      Deletes the task. Liberates the children.
-      recursive: Kill the children too
-      */
-      function taskDelete(taskId, recursive) {
-        taskEntryTitleCommitNow(); //commit any pending changes
-        
-        var prom = null;
-        if (!recursive) {
-          //Move the children outside parent first
-          prom = taskLiberateChildren(taskId);
-        } else {
-          //Delete the UI entries for all children
-          taskEntryGetAllChildren(taskEntryFind(taskId)).forEach(child => taskEntryDelete(child));
-          prom = Promise.resolve();
-        }
-        
-        prom = prom.then(response => {
-          let thisNode = taskEntryFind(taskId);
-          //Find next node to focus:
-          let nextNode = taskEntryGetNextSibling(thisNode); //either the new liberated parent or the next sibling
-          if (!nextNode)
-            nextNode = taskEntryGetPreviousSibling(thisNode); //or the previous sibling (but not their child)
-          if (!nextNode)
-            nextNode = taskEntryGetParent(thisNode); //or the parent
-            //Else => top level, no siblings => no other nodes to focus, sorry
-          //Delete the node itself
-          if (thisNode) //though why would it be not
-            taskEntryDelete(thisNode);
-          if (nextNode)
-            taskEntrySetCaret(nextNode);
-        });
-        
-        //Delete the task on the backend
-        prom = prom.then(response => {
-          return backend.delete(taskId);
-        });
-        return prom;
-      }
-
-      //Edits the task properties unrelated to its position in the list
-      function taskPatch(patch) {
-        taskEntryPatch(patch); //Update the task UI node
-        return backend.patch(patch);
-      }
-
-      //Moves the task and all of its children to a different tasklist
-      function taskMoveToList(entry, newTaskListId, newParentId, newPrevId) {
-        //Warning! This function has to play nice to taskPatchMoveToList and only use cached task data.
-        
-        var taskId = taskEntryGetId(entry); //before we taskEntryDelete
-        
-        //Delete the nodes first, THEN move the task:
-        //responsible UI + we won't have children lists after we delete the local tasks
-        taskEntryGetAllChildren(entry).forEach(child => { taskEntryDelete(child); });
-        taskEntryDelete(entry);
-        
-        return backend.moveToList(taskId, newTaskListId, newParentId, newPrevId);
-      }
-
-      //Edits the task and immediately moves it and all of its children to a different tasklist
-      function taskPatchMoveToList(patch, newTaskListId, newParentId, newPrevId) {
-        //To avoid a pointless update of the task in the original list we play unfair:
-        //1. Update the current task locally
-        //2. Post it to another list and delete from this one
-        taskCache.patch(patch); //patch locally
-        return taskMoveToList(taskEntryFind(patch.id), newTaskListId, newParentId, newPrevId);
-      }
-
-
-      /*
-      Editor
-      */
-      var editor = document.getElementById("editor");
-      var editorTaskList = document.getElementById("editorTaskList");
-      var editorSaveBtn = document.getElementById("editorSave");
-      var editorCancelBtn = document.getElementById("editorCancel");
-      var editorDeleteBtn = document.getElementById("editorDelete");
-      var editorTaskId = null;
-      var editorListPageBackup = {}; //overwritten properties of listPage
+      document.getElementById("editorTaskList").value = selectedTaskList();
+      document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
+      document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
+      document.getElementById("editorMoveNotice").style.display = "none";
       
-      function editorInit() {
-          editorTaskList.onchange = editorTaskListChanged;
-          editorSaveBtn.onclick = editorSaveClose;
-          editorCancelBtn.onclick = editorCancel;
-          editorDeleteBtn.onclick = editorDelete;
-      }
-
-      //Show the editor
-      function editorOpen(taskId) {
-        if (!taskId) return;
-        log("Opening editor for task "+taskId);
-        
-        //Load the task data into the editor
-        backend.get(taskId).then(task => {
-          if (!task) {
-            log("Failed to load the requested task for editing");
-            editorTaskId = null;
-            return;
-          }
-          document.getElementById("editorTaskTitle").innerText = task.title;
-          document.getElementById("editorTaskTitleBox").checked = (task.completed != null);
-          if (task.completed != null)
-            document.getElementById("editorTaskTitleP").classList.add("completed");
-          else
-            document.getElementById("editorTaskTitleP").classList.remove("completed");
-          
-          document.getElementById("editorTaskList").value = selectedTaskList();
-          document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
-          document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
-          document.getElementById("editorMoveNotice").style.display = "none";
-          
-          editorTaskId = taskId;
-          
-          editorListPageBackup.display = listPage.style.display;
-          listPage.style.display = "none";
-          editorPage.classList.remove("hidden");
-        });
-      }
+      editorTaskId = taskId;
       
-      //Called when the user selects a new list to move task to
-      function editorTaskListChanged() {
-        if (!editorTaskId) return;
-        if (document.getElementById("editorTaskList").value != selectedTaskList())
-          document.getElementById("editorMoveNotice").style.display = "block";
-        else
-          document.getElementById("editorMoveNotice").style.display = "none";
-      }
-      
-      //Save the task data currently in the editor
-      function editorSaveClose() {
-        if (!editorTaskId) {
-          editorCancel();
-          return;
-        }
-        
-        var patch = { "id": editorTaskId };
-        taskResSetCompleted(patch, document.getElementById("editorTaskTitleBox").checked);
-        patch.due = document.getElementById("editorTaskDate").valueAsDate; //null is fine!
-        patch.notes = document.getElementById("editorTaskNotes").value;
-        
-        var prom = null;
-        
-        var newTaskList = document.getElementById("editorTaskList").value;
-        if (newTaskList == selectedTaskList())
-          //Simple version, just edit the task
-          prom = taskPatch(patch).catch(handleError);
-        else
-          //Complicated version, edit and move
-          prom = taskPatchMoveToList(patch, newTaskList, null, null);
-        
-        prom = prom.then(response => { editorCancel(); })
-          .catch(handleError);
-      }
-      
-      //Close the editor
-      function editorCancel() {
-        log("Closing the editor");
-        editorPage.classList.add("hidden");
-        listPage.style.display = editorListPageBackup.display;
-      	editorTaskId = null;
-        document.getElementById("editorMoveNotice").style.display = "none";
-      }
+      editorListPageBackup.display = listPage.style.display;
+      listPage.style.display = "none";
+      editorPage.classList.remove("hidden");
+    });
+  }
+  
+  //Called when the user selects a new list to move task to
+  function editorTaskListChanged() {
+    if (!editorTaskId) return;
+    if (document.getElementById("editorTaskList").value != selectedTaskList())
+      document.getElementById("editorMoveNotice").style.display = "block";
+    else
+      document.getElementById("editorMoveNotice").style.display = "none";
+  }
+  
+  //Save the task data currently in the editor
+  function editorSaveClose() {
+    if (!editorTaskId) {
+      editorCancel();
+      return;
+    }
+    
+    var patch = { "id": editorTaskId };
+    taskResSetCompleted(patch, document.getElementById("editorTaskTitleBox").checked);
+    patch.due = document.getElementById("editorTaskDate").valueAsDate; //null is fine!
+    patch.notes = document.getElementById("editorTaskNotes").value;
+    
+    var prom = null;
+    
+    var newTaskList = document.getElementById("editorTaskList").value;
+    if (newTaskList == selectedTaskList())
+      //Simple version, just edit the task
+      prom = taskPatch(patch).catch(handleError);
+    else
+      //Complicated version, edit and move
+      prom = taskPatchMoveToList(patch, newTaskList, null, null);
+    
+    prom = prom.then(response => { editorCancel(); })
+      .catch(handleError);
+  }
+  
+  //Close the editor
+  function editorCancel() {
+    log("Closing the editor");
+    editorPage.classList.add("hidden");
+    listPage.style.display = editorListPageBackup.display;
+    editorTaskId = null;
+    document.getElementById("editorMoveNotice").style.display = "none";
+  }
 
-      function editorDelete() {
-        if (!editorTaskId)
-          return;
-        taskDelete(editorTaskId).then(response => {
-          editorCancel();
-        },
-        handleError);
-      }
-    </script>
+  function editorDelete() {
+    if (!editorTaskId)
+      return;
+    taskDelete(editorTaskId).then(response => {
+      editorCancel();
+    },
+    handleError);
+  }
+</script>
 
-    <script async defer src="https://apis.google.com/js/api.js"
-      onload="this.onload=function(){};handleClientLoad()"
-      onreadystatechange="if (this.readyState === 'complete') this.onload()">
-    </script>
+<script async defer src="https://apis.google.com/js/api.js"
+  onload="this.onload=function(){};handleClientLoad()"
+  onreadystatechange="if (this.readyState === 'complete') this.onload()">
+</script>
 </body>
 </html>

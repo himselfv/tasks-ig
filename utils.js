@@ -74,18 +74,38 @@ function editableGetSelection(editableNode) {
 	var range = sel.getRangeAt(0);
 	if (!nodeHasParent(range.commonAncestorContainer, editableNode))
 		return null;
-	if (range.endContainer.nodeType != Node.TEXT_NODE) {
-		log("editableGetCaret => in non-text, null");
-		return null;
-	}
 	return range;
 }
 //Retrieves the caret position in a given editable element, or null.
 //Assumes the node only has one child of type Text (typical for editable elements)
 function editableGetCaret(node) {
 	var range = editableGetSelection(node)
-	//log("editableGetCaret => "+range.endOffset);
-	return range.endOffset;
+	if (range.endContainer.nodeType == Node.TEXT_NODE) {
+		//Simple case: we're in the text
+		//log("editableGetCaret => "+range.endOffset);
+		return range.endOffset;
+	}
+		
+	//If we're outside the TEXT_NODE but inside the editable, try to return something anyway
+	log("editableGetCaret => in non-text: type="+range.endContainer.nodeType+", offset="+range.endOffset);
+	//Go to the top level
+	let container = range.endContainer;
+	let offset = range.endOffset;
+	while (container != node) {
+		offset = container.parentNode.childNodes.values().indexOf(container);
+		container = container.parentNode;
+	}
+	
+	//Now figure whether the text is to the left or to the right
+	let i = range.endOffset;
+	while (i >= 1) {
+		if (editable.childNodes[i-1].nodeType==Node.TEXT_NODE) {
+			log("editableGetCaret: caret is to the right");
+			return editable.childNodes[i-1].textContent.length; //caret is after the end of the text
+		}
+	}
+	log("editableGetCaret: caret is to the left/empty text");
+	return 0; //caret is before the start of the text or there's no text
 }
 
 //Sets focus AND caret position/selection to a given editable element with a text content.
