@@ -277,7 +277,12 @@ TaskEntry.prototype.whenHaveId = function() {
 //Returns a promise to resolve IDs for entries from a given list
 function taskEntryNeedIds(entries) {
 	var prom = [];
-	entries.forEach(entry => prom.push(entry.whenHaveId()) );
+	entries.forEach(entry => {
+		if (entry)
+			prom.push(entry.whenHaveId());
+		else
+			prom.push(Promise.resolve(null));
+	});
 	return Promise.all(prom);
 }
 

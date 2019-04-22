@@ -105,7 +105,7 @@ Activity indicator
   background-color: lime;
 }
 #activityIndicator.working {
-  background-color: yellow;
+  background-color: orange;
 }
 #activityIndicator.error {
   background-color: red;

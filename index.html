@@ -313,8 +313,8 @@
   function taskEntryChecked(event) {
     var patch = {};
     taskResSetCompleted(patch, event.entry.getCompleted());
-    var prom = taskEntryNeedIds([event.entry]).then(id => {
-      patch.id = id;
+    var prom = taskEntryNeedIds([event.entry]).then(ids => {
+      patch.id = ids[0];
       return backend.patch(patch);
     });
     pushJob(prom);
@@ -341,29 +341,31 @@
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
-    backend.get(taskEntryGetId(focusedEntry)).then(result => {
-      downloadAsJson(result, focusedEntry.getTitle());
-    });
+    var prom = taskEntryNeedIds([focusedEntry])
+    	.then(ids => backend.get(ids[0]))
+    	.then(result => downloadAsJson(result, focusedEntry.getTitle()));
+    pushJob(prom);
   }
   function taskEntryCopyJSON(event) {
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
-    backend.get(taskEntryGetId(focusedEntry)).then(result => {
-      copyToClipboard(JSON.stringify(result));
-    });
+    var prom = taskEntryNeedIds([focusedEntry])
+    	.then(ids => backend.get(ids[0]))
+    	.then(result => copyToClipboard(JSON.stringify(result)));
+    pushJob(prom);
   }
   function taskEntryExportAllToFile() {
+    var entries = [];
     var entry = tasks.first();
-    var ids = [];
-    while (entry != null) {
-      ids.push(taskEntryGetId(entry));
+    while(entry != null) {
+      entries.push(entry);
       entry = entry.getNext();
     }
-    if (ids.length <= 0) return;
-    backend.getAll(ids).then(result => {
-      downloadAsJson(result, selectedTaskListTitle());
-    });
+    var prom = taskEntryNeedIds(entries)
+    	.then(ids => backend.getAll(ids))
+    	.then(result => downloadAsJson(result, selectedTaskListTitle()));
+    pushJob(prom);
   }
   
   //Returns tasklist-relative Y offset of the last task in the list
@@ -511,12 +513,17 @@
     if (!entry)
       return;
     
-    var patch = { "id": taskEntryGetId(entry) };
+    var patch = { };
     patch.title = taskEntryNormalizeTitle(entry.getTitle());
     //log('newText: "'+patch.title+'"');
-    
-    backend.patch(patch).catch(handleError);
     taskEntryTitleCommitEntry = null;
+    
+    var prom = taskEntryNeedIds([entry])
+    	.then(ids => {
+    	  patch.id = ids[0];
+    	  return backend.patch(patch);
+    	});
+    pushJob(prom);
   }
 
 
@@ -664,8 +671,9 @@
     entry.adjustLevel(+1, true); //recursive
     
     //Post to the backend
-    backend.move(taskEntryGetId(entry), taskEntryGetId(prevEntry), taskEntryGetId(prevEntryLastChild))
-      .catch(handleError);
+    var prom = taskEntryNeedIds([entry, prevEntry, prevEntryLastChild])
+    	.then(ids => backend.move(ids[0], ids[1], ids[2]));
+    pushJob(prom);
   }
   
   /*
@@ -682,7 +690,6 @@
       log("Already top element, can't tab up");
       return;
     }
-    var entryId = taskEntryGetId(entry);
     var parentEntry = entry.getParent();
     var newParentEntry = parentEntry.getParent();
     
@@ -695,19 +702,18 @@
     entry.adjustLevel(-1, true); //recursive
     
     //Move the entry to the same level as it's parent, after that parent
-    var prom = backend.move(entryId, taskEntryGetId(newParentEntry), taskEntryGetId(parentEntry));
-    
+    var entryId = null; //to be filled by promise
+    var lastChildId = null;
+    var prom = taskEntryNeedIds([entry, newParentEntry, parentEntry, lastChild])
+    	.then(ids => {
+    		entryId = ids[0];
+    		lastChildId = ids[3];
+    		return backend.move(ids[0], ids[1], ids[2])
+    	});
     //Append consequent siblings to the end of the children
-    while (i < siblings.length) {
-      let sibling = siblings[i]; //avoid closures on I and IDs by declaring all instance variables locally with "let"
-      let prevId = (lastChild) ? taskEntryGetId(lastChild) : null;
-      let siblingId = taskEntryGetId(sibling);
-      prom = prom.then(response => backend.move(siblingId, entryId, prevId));
-      lastChild = sibling;
-      i++;
-    };
-    
-    prom = prom.catch(handleError);
+    prom.then(result => taskEntryNeedIds(siblings))
+    	.then(siblingIds => backend.moveAll(siblings, entryId, lastChildId));
+    pushJob(prom);
   }
 
 
