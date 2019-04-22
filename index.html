@@ -190,7 +190,7 @@
   function handleBeforeUnload(event) {
     //Show the confirmation popup if the changes are still pending
     //These days most browsers ignore the message contents + only show the popup if you have interacted with the page
-    var message = null;
+    var message = ""; //empty string! not null!
     if (hadErrors)
       message = "Some changes to your tasks might have failed.";
     else if (jobCount >= 1)
@@ -614,7 +614,7 @@
       var newParent = dragEntry.getParent();
       var newPrev = dragEntry.getPreviousSibling();
       var job = taskEntryNeedIds([dragEntry, newParent, newPrev])
-      	.then(ids => backend.move(ids[0], ids[1], ids[2]);
+      	.then(ids => backend.move(ids[0], ids[1], ids[2]));
       pushJob(job);
     }
   }
@@ -1018,7 +1018,7 @@
     
     //Delete the task on the backend
     job = Promise.all([job, whenTaskId])
-    	.then(response => backend.delete(response[1][0]));
+    	.then(response => backend.delete(response[1]));
     return pushJob(job);
   }
 
