@@ -578,7 +578,7 @@
       //Move the nodes on the backend! We only need to move the parent, but we have to properly select where
       var newParent = dragEntry.getParent();
       var newPrev = dragEntry.getPreviousSibling();
-      backend.move(taskEntryGetId(dragNode), taskEntryGetId(newParent), taskEntryGetId(newPrev))
+      backend.move(taskEntryGetId(dragEntry), taskEntryGetId(newParent), taskEntryGetId(newPrev))
         .catch(handleError);
     }
   }
