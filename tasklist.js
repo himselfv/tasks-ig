@@ -234,6 +234,9 @@ TaskEntry.prototype.getNext = function() {
 TaskEntry.prototype.getId = function() {
 	return this.node.taskId;
 }
+TaskEntry.prototype.setId = function(id) {
+	this.node.taskId = id;
+}
 //We also have this function which works for null entries
 function taskEntryGetId(entry) {
 	return (entry) ? entry.getId() : null;
@@ -250,17 +253,31 @@ TaskList.prototype.find = function(taskId) {
 }
 
 /*
-Task entries can have undefined, "promised" IDs.
-Such IDs are placed instead of normal IDs and work as temporary IDs.
-Requirements:
-- Must eventually resolve to a single value, the ID
-- Must update the task to normal ID on resolution
+Installs a new ID promise based on a task promise
+ID promise:
+ 1. Available in place of ID until it completes
+ 2. Returns ID when fulfilled
+ 3. Updates the ID in a task it's assigned to
 */
+TaskEntry.prototype.promiseId = function(taskPromise) {
+	var idProm = taskPromise.then(task => {
+		this.setId(task.id)
+		return task.id;
+	});
+	this.setId(idProm);
+	return idProm;
+}
+
+//Returns a promise which resolves to a task ID, whether it's already available or not
+TaskEntry.prototype.whenHaveId = function() {
+	//Promise.resolve(X) works for both promise and value Xes
+	return Promise.resolve(this.getId());
+}
+
 //Returns a promise to resolve IDs for entries from a given list
 function taskEntryNeedIds(entries) {
 	var prom = [];
-	//Promise.resolve(X) works for both promise and value Xes
-	entries.forEach(entry => prom.push(Promise.resolve(entry.getId())) );
+	entries.forEach(entry => prom.push(entry.whenHaveId()) );
 	return Promise.all(prom);
 }
 

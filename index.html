@@ -302,9 +302,8 @@
 
   function taskEntryAddClicked(event) {
     taskEntryTitleCommitNow(); //commit any pending changes
-    taskNewInCurrentList({}, null).then((newEntry) => {
-      newEntry.setCaret(0); //move focus to it
-    }).catch(handleError);
+    var newEntry = taskNewInCurrentList({}, null, null);
+    newEntry.setCaret(0); //move focus to it
   }
   function taskEntryDeleteFocusedClicked(event) {
     var focusedEntry = tasks.getFocusedEntry();
@@ -838,22 +837,27 @@
 
   //Adds a new task to the current list, after and with the same parent as the given task.
   //Creates a taskEntry representation for it.
-  function taskNewInCurrentList(newTask, prevTaskId) {
-    var prevEntry = null;
+  function taskNewInCurrentList(newTask, parentEntry, prevEntry) {
     //if no parent is given the node will be added by default to the end of the list
-    if (!prevTaskId) {
+    if (!prevEntry)
       prevEntry = tasks.last();
-      prevTaskId = taskEntryGetId(prevEntry);
-    } else
-      prevEntry = tasks.find(prevTaskId);
+    var prevTaskId = taskEntryGetId(prevEntry);
     //log(prevEntry);
-    return backend.insertToCurrentList(newTask, prevTaskId).then(result => {
-      //Insert new task entry
-      var level = backend.getLevel(result);
-      var newEntry = tasks.createEntry(result, level);
-      tasks.insertEntryAfter(newEntry, prevEntry);
-      return newEntry;
-    });
+    //log(prevTaskId);
+    
+    newTask.parent = taskEntryGetId(parentEntry);
+    
+    //Insert new task entry
+    var level = parentEntry ? (parentEntry.getLevel()+1) : 0;
+    var newEntry = tasks.createEntry(newTask, level);
+    tasks.insertEntryAfter(newEntry, prevEntry);
+    
+    //TODO: Also, patch the stored data after the request returns;
+    var prom = backend.insertToCurrentList(newTask, prevTaskId);
+    newEntry.promiseId(prom); //set temporary promised ID
+
+	prom.catch(handleError);
+    return newEntry;
   }
   
   //Create new entry on the same level and after a given one, splitting the part of the title after the caret into it
@@ -869,7 +873,6 @@
     var parentEntry = prevEntry.getParent();
     
     let newTaskReq = { //new task to create
-      'parent': taskEntryGetId(parentEntry), //same parent as current item
       'title': prevTitle.substring(caretPos) //the rest of the string
     };
     let prevPatch = { //old task to trim
@@ -877,21 +880,22 @@
       'title': prevTitle.substring(0, caretPos)
     };
     
+    var newEntry = taskNewInCurrentList(newTaskReq, parentEntry, prevEntry);
+    newEntry.setCaret(0); //move focus to it
+    if (prevPatch.title != prevTitle)
+      prevEntry.patch(prevPatch);
+    
+    //TODO: Move all children of the original task visually here? Or do they fit automatically?
+    
+    //Once the backend request completes and we have the ID, update the old task
     var newTaskId = null; //must be var -- promise will put value here
-    
-    var prom = taskNewInCurrentList(newTaskReq, prevTaskId);
-    
-    prom = prom.then(newEntry => {
-      newTaskId = taskEntryGetId(newEntry); //store in shared context for later promises
-      newEntry.setCaret(0); //move focus to it
+    var prom = newEntry.whenHaveId().then(taskId => {
+      newTaskId = taskId; //Store in a shared context for later promise
       if (prevPatch.title != prevTitle) { //trim the previous one
-        //Update the task entry before the request to avoid the visual lag between moving part of the title and removing it
         taskCache.patch(prevPatch);
-        prevEntry.patch(prevPatch);
         return backend.patch(prevPatch);
       }; //else no update needed
     });
-    
     //Move all children of the original task to the new task
     prom = prom.then(response => {
       //log("running backend.moveChildren")
