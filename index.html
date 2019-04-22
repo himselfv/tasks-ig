@@ -82,6 +82,7 @@
   var editorPage = document.getElementById('editorPage');
 
   function handleClientLoad() {
+    window.addEventListener("beforeunload", handleBeforeUnload);
     tasklistInit();
     editorInit();
     var backendName = window.localStorage.getItem("tasksIg_ui_backend");
@@ -148,6 +149,7 @@
   /*
   Common activity and error handling.
   */
+  var hadErrors = false;
   function printError(msg) {
     log(msg);
     if (typeof msg != 'string')
@@ -158,6 +160,7 @@
     popup.innerText = (popupText+msg);
     popup.classList.remove("hidden");
     document.getElementById('activityIndicator').classList.remove('error')
+    hadErrors = true;
   }
   function handleError(reason) {
     if (reason.result) {
@@ -181,6 +184,18 @@
   	    document.getElementById('activityIndicator').classList.remove('working');
   	});
   	prom.catch(handleError);
+  }
+  
+  function handleBeforeUnload(event) {
+    //Show the confirmation popup if the changes are still pending
+    //These days most browsers ignore the message contents + only show the popup if you have interacted with the page
+    var message = null;
+    if (hadErrors)
+      message = "Some changes to your tasks might have failed.";
+    else if (jobCount >= 1)
+      message = "Some changes to your tasks are still pending. If you close the page now they may be lost";
+    event.returnValue = message;
+    return message;
   }
 
 
@@ -735,8 +750,9 @@
     
     //On the backend do the same but "task before" is going to be an actual "previous sibling" this time (maybe null)
     var newParent = entry_above.getParent();
-    backend.move(taskEntryGetId(entry), taskEntryGetId(newParent), taskEntryGetId(newPrevSibling))
-      .catch(handleError);
+    var prom = taskEntryNeedIds([entry, newParent, newPrevSibling])
+    	.then(ids => backend.move(ids[0], ids[1], ids[2]));
+    pushJob(prom);
   }
 
   //Moves the entry to after the entry below it, on the same level as the entry below it.
@@ -774,8 +790,9 @@
     entry.setCaret(oldCaret); //preserve focus
     
     //Move the entry on the backend
-    backend.move(taskEntryGetId(entry), taskEntryGetId(newParent), taskEntryGetId(newPrevSibling))
-      .catch(handleError);
+    var prom = taskEntryNeedIds([entry, newParent, newPrevSibling])
+    	.then(ids => backend.move(ids[0], ids[1], ids[2]));
+    pushJob(prom);
   }
 
 
