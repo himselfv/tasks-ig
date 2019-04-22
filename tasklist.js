@@ -228,7 +228,27 @@ TaskEntry.prototype.getNext = function() {
 	var nextElement = this.node.nextElementSibling;
 	return nextElement ? nextElement.taskEntry : null;
 }
+//Returns an array of all entries, in the order shown
+TaskList.prototype.allEntries = function() {
+    var results = [];
+    var entry = this.first();
+    while(entry != null) {
+      results.push(entry);
+      entry = entry.getNext();
+    }
+    return results;
+}
 
+
+/*
+Every task has an ID chosen by the backend.
+While the backend has not yet created the task, the entry uses PromisedID instead.
+Use:
+  entry.promiseId( backend.createTask() ); // <<-- pass a promise returning Task resource
+  entry.whenHaveId().then(id => doSomethingWithId(id));
+
+Once you've called whenHaveId() you'll get it even if the TaskEntry itself is deleted.
+*/
 
 //Returns the taskId associated with the given entry
 TaskEntry.prototype.getId = function() {
@@ -236,10 +256,6 @@ TaskEntry.prototype.getId = function() {
 }
 TaskEntry.prototype.setId = function(id) {
 	this.node.taskId = id;
-}
-//We also have this function which works for null entries
-function taskEntryGetId(entry) {
-	return (entry) ? entry.getId() : null;
 }
 //Returns a task entry with associated task or task id
 TaskList.prototype.find = function(taskId) {
@@ -251,7 +267,6 @@ TaskList.prototype.find = function(taskId) {
 	}
 	return null;
 }
-
 /*
 Installs a new ID promise based on a task promise
 ID promise:
@@ -267,14 +282,13 @@ TaskEntry.prototype.promiseId = function(taskPromise) {
 	this.setId(idProm);
 	return idProm;
 }
-
 //Returns a promise which resolves to a task ID, whether it's already available or not
 TaskEntry.prototype.whenHaveId = function() {
 	//Promise.resolve(X) works for both promise and value Xes
 	return Promise.resolve(this.getId());
 }
-
-//Returns a promise to resolve IDs for entries from a given list
+//Returns a promise to resolve IDs for all entries from a given list.
+//If an entry is null, null will be returned as its ID.
 function taskEntryNeedIds(entries) {
 	var prom = [];
 	entries.forEach(entry => {

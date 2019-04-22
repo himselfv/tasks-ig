@@ -184,6 +184,7 @@
   	    document.getElementById('activityIndicator').classList.remove('working');
   	});
   	prom.catch(handleError);
+  	return prom;
   }
   
   function handleBeforeUnload(event) {
@@ -312,7 +313,7 @@
   */
   function taskEntryEdit(entry) {
     taskEntryTitleCommitNow(entry); //commit any pending changes
-    editorOpen(taskEntryGetId(entry));
+    entry.whenHaveId(taskId => editorOpen(taskId));
   }
   //Called when the editor button for the entry had been clicked
   function taskEntryEditClicked(event) {
@@ -328,11 +329,12 @@
   function taskEntryChecked(event) {
     var patch = {};
     taskResSetCompleted(patch, event.entry.getCompleted());
-    var prom = taskEntryNeedIds([event.entry]).then(ids => {
-      patch.id = ids[0];
-      return backend.patch(patch);
-    });
-    pushJob(prom);
+    var job = taskEntryNeedIds([event.entry])
+    	.then(ids => {
+      		patch.id = ids[0];
+      		return backend.patch(patch);
+    	});
+    pushJob(job);
   }
 
   function taskEntryAddClicked(event) {
@@ -344,43 +346,38 @@
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
-    taskDelete(focusedEntry, false).catch(handleError);
+    taskDelete(focusedEntry, false);
   }
   function taskEntryDeleteRecursiveFocusedClicked(event) {
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
-    taskDelete(focusedEntry, true).catch(handleError);
+    taskDelete(focusedEntry, true);
   }
   function taskEntryExportToFile(event) {
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
-    var prom = taskEntryNeedIds([focusedEntry])
+    var job = taskEntryNeedIds([focusedEntry])
     	.then(ids => backend.get(ids[0]))
     	.then(result => downloadAsJson(result, focusedEntry.getTitle()));
-    pushJob(prom);
+    pushJob(job);
   }
   function taskEntryCopyJSON(event) {
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
-    var prom = taskEntryNeedIds([focusedEntry])
+    var job = taskEntryNeedIds([focusedEntry])
     	.then(ids => backend.get(ids[0]))
     	.then(result => copyToClipboard(JSON.stringify(result)));
-    pushJob(prom);
+    pushJob(job);
   }
   function taskEntryExportAllToFile() {
-    var entries = [];
-    var entry = tasks.first();
-    while(entry != null) {
-      entries.push(entry);
-      entry = entry.getNext();
-    }
-    var prom = taskEntryNeedIds(entries)
+    var entries = tasks.allEntries();
+    var job = taskEntryNeedIds(entries)
     	.then(ids => backend.getAll(ids))
     	.then(result => downloadAsJson(result, selectedTaskListTitle()));
-    pushJob(prom);
+    pushJob(job);
   }
   
   //Returns tasklist-relative Y offset of the last task in the list
@@ -467,8 +464,7 @@
     } else if (event.key=="Enter") {
       event.preventDefault(); //we don't accept returns in titles any way
       var caretPos = entry.getCaret();
-      taskNewSplit(entry, caretPos)
-        .catch(handleError);
+      taskNewSplit(entry, caretPos);
     } else if (event.key=="Delete") {
       //If we're at the end, delete the next entry and merge its title and notes into this one.
       var caretPos = entry.getCaret();
@@ -528,17 +524,17 @@
     if (!entry)
       return;
     
-    var patch = { };
+    var patch = {};
     patch.title = taskEntryNormalizeTitle(entry.getTitle());
     //log('newText: "'+patch.title+'"');
     taskEntryTitleCommitEntry = null;
     
-    var prom = taskEntryNeedIds([entry])
+    var job = taskEntryNeedIds([entry])
     	.then(ids => {
     	  patch.id = ids[0];
     	  return backend.patch(patch);
     	});
-    pushJob(prom);
+    pushJob(job);
   }
 
 
@@ -617,8 +613,9 @@
       //Move the nodes on the backend! We only need to move the parent, but we have to properly select where
       var newParent = dragEntry.getParent();
       var newPrev = dragEntry.getPreviousSibling();
-      backend.move(taskEntryGetId(dragEntry), taskEntryGetId(newParent), taskEntryGetId(newPrev))
-        .catch(handleError);
+      var job = taskEntryNeedIds([dragEntry, newParent, newPrev])
+      	.then(ids => backend.move(ids[0], ids[1], ids[2]);
+      pushJob(job);
     }
   }
   
@@ -686,9 +683,9 @@
     entry.adjustLevel(+1, true); //recursive
     
     //Post to the backend
-    var prom = taskEntryNeedIds([entry, prevEntry, prevEntryLastChild])
+    var job = taskEntryNeedIds([entry, prevEntry, prevEntryLastChild])
     	.then(ids => backend.move(ids[0], ids[1], ids[2]));
-    pushJob(prom);
+    pushJob(job);
   }
   
   /*
@@ -719,16 +716,16 @@
     //Move the entry to the same level as it's parent, after that parent
     var entryId = null; //to be filled by promise
     var lastChildId = null;
-    var prom = taskEntryNeedIds([entry, newParentEntry, parentEntry, lastChild])
+    var job = taskEntryNeedIds([entry, newParentEntry, parentEntry, lastChild])
     	.then(ids => {
     		entryId = ids[0];
     		lastChildId = ids[3];
     		return backend.move(ids[0], ids[1], ids[2])
     	});
     //Append consequent siblings to the end of the children
-    prom.then(result => taskEntryNeedIds(siblings))
+    job = job.then(result => taskEntryNeedIds(siblings))
     	.then(siblingIds => backend.moveAll(siblings, entryId, lastChildId));
-    pushJob(prom);
+    pushJob(job);
   }
 
 
@@ -750,9 +747,9 @@
     
     //On the backend do the same but "task before" is going to be an actual "previous sibling" this time (maybe null)
     var newParent = entry_above.getParent();
-    var prom = taskEntryNeedIds([entry, newParent, newPrevSibling])
+    var job = taskEntryNeedIds([entry, newParent, newPrevSibling])
     	.then(ids => backend.move(ids[0], ids[1], ids[2]));
-    pushJob(prom);
+    pushJob(job);
   }
 
   //Moves the entry to after the entry below it, on the same level as the entry below it.
@@ -790,9 +787,9 @@
     entry.setCaret(oldCaret); //preserve focus
     
     //Move the entry on the backend
-    var prom = taskEntryNeedIds([entry, newParent, newPrevSibling])
+    var job = taskEntryNeedIds([entry, newParent, newPrevSibling])
     	.then(ids => backend.move(ids[0], ids[1], ids[2]));
-    pushJob(prom);
+    pushJob(job);
   }
 
 
@@ -804,41 +801,48 @@
     if (!entry_to || !entry_what) return;
     
     var mergePos = entry_to.getTitle().length;
-    var entryToId = taskEntryGetId(entry_to);
-    var entryWhatId = taskEntryGetId(entry_what);
+    
+    //Figure how to move children:
+    //- Merging our own child? Place its children in its place
+    //- Merging someone else? Place their children to the end of our list
+    var newPrevEntry = null; //Last child at any level, to move nodes after it
+    var newPrevChild = null; //Last direct child for actual move later
+    if (entry_what.getParent() == entry_to) {
+      newPrevEntry = entry_what.getPrev();
+      newPrevChild = entry_what.getPreviousSibling();
+    } else {
+      let targetChildren = entry_to.getAllChildren();
+      newPrevEntry = (targetChildren.length>0) ? targetChildren[targetChildren.length-1] : entry_to; 
+      newPrevChild = entry_to.getLastDirectChild();
+    }
     
     //We don't have some data at hand (Notes, Due) so we have to query the backend first
     //Otherwise if we leave the function and the user opens the editor while our promise here is waiting to GET() data,
     //they're going to see old unmerged Notes.
     
-    backend.getAll([entryToId, entryWhatId]).then(results => {
+    var entryToId = null;
+    var entryWhatId = null;
+    var newPrevChildId = null;
+    var job = taskEntryNeedIds([entry_to, entry_what, newPrevChild])
+    .then(ids => {
+    	entryToId = ids[0];
+    	entryWhatId = ids[1];
+    	newPrevChildId = ids.splice(2, 1); //don't query this one
+    	return backend.getAll(ids)
+    })
+    .then(results => {
       //log("have entry data");
       task_to = results[entryToId];
       task_what = results[entryWhatId];
       
-      //Now that we have everything,
-      //First update the UI
-      
-      //Move children:
-      //- Merging our own child? Place its children in its place
-      //- Merging someone else? Place their children to the end of our list
-      var newPrevEntry = null; //Last child at any level, to move nodes after it
-      var newPrevChildId = null; //Last direct child id for actual move later
-      if (entry_what.getParent() == entry_to) {
-        newPrevEntry = entry_what.getPrev();
-        newPrevChildId = taskEntryGetId(entry_what.getPreviousSibling());
-      } else {
-        let targetChildren = entry_to.getAllChildren();
-        newPrevEntry = (targetChildren.length>0) ? targetChildren[targetChildren.length-1] : entry_to; 
-        newPrevChildId = taskEntryGetId(entry_to.getLastDirectChild());
-      }
-      
+      //Now that we have everything, first update the UI
+      //Move children
       var allChildren = entry_what.getAllChildren();
       newPrevEntry.insertEntriesAfter(allChildren, entry_to.getLevel() - entry_what.getLevel());
       
       //Patch entry_to and delete entry_what
       var patch_to = {
-        id: taskEntryGetId(entry_to),
+        id: entryToId,
         title: taskEntryNormalizeTitle(entry_to.getTitle() + entry_what.getTitle()),
         notes: [task_to.notes, task_what.notes].filter(Boolean).join('\r\n'), //join non-empty parts
       };
@@ -857,7 +861,8 @@
           //log("moved children")
           return backend.delete(entryWhatId);
         });
-    }).catch(handleError);
+    });
+    pushJob(job);
   }
   
   //Merges the next entry into this one
@@ -882,30 +887,27 @@
     //if no parent is given the node will be added by default to the end of the list
     if (!prevEntry)
       prevEntry = tasks.last();
-    var prevTaskId = taskEntryGetId(prevEntry);
     //log(prevEntry);
-    //log(prevTaskId);
-    
-    newTask.parent = taskEntryGetId(parentEntry);
     
     //Insert new task entry
     var level = parentEntry ? (parentEntry.getLevel()+1) : 0;
     var newEntry = tasks.createEntry(newTask, level);
     tasks.insertEntryAfter(newEntry, prevEntry);
     
-    //TODO: Also, patch the stored data after the request returns;
-    var prom = backend.insertToCurrentList(newTask, prevTaskId);
-    pushJob(prom);
+    var job = taskEntryNeedIds([parentEntry, prevEntry])
+    	.then(ids => {
+    	  newTask.parent = ids[0];
+    	  return backend.insertToCurrentList(newTask, ids[1]);
+    	});
+    pushJob(job);
 
-    newEntry.promiseId(prom); //set temporary promised ID
+    newEntry.promiseId(job); //set temporary promised ID
     return newEntry;
   }
   
   //Create new entry on the same level and after a given one, splitting the part of the title after the caret into it
   function taskNewSplit(prevEntry, caretPos) {
     taskEntryTitleCommitNow(); //commit any pending changes
-    
-    var prevTaskId = taskEntryGetId(prevEntry);
     
     let prevTitle = prevEntry.getTitle();
     if (caretPos === null)
@@ -917,7 +919,6 @@
       'title': prevTitle.substring(caretPos) //the rest of the string
     };
     let prevPatch = { //old task to trim
-      'id': prevTaskId,
       'title': prevTitle.substring(0, caretPos)
     };
     
@@ -926,61 +927,61 @@
     if (prevPatch.title != prevTitle)
       prevEntry.patch(prevPatch);
     
-    //TODO: Move all children of the original task visually here? Or do they fit automatically?
+    //TODO: Move all children of the original task visually here? Or are they automatically where they need to be?
     
     //Once the backend request completes and we have the ID, update the old task
     var newTaskId = null; //must be var -- promise will put value here
-    var prom = newEntry.whenHaveId().then(taskId => {
-      newTaskId = taskId; //Store in a shared context for later promise
-      if (prevPatch.title != prevTitle) { //trim the previous one
-        taskCache.patch(prevPatch);
-        return backend.patch(prevPatch);
-      }; //else no update needed
+    var prevTaskId = null;
+    var job = taskEntryNeedIds([newEntry, prevEntry])
+   	.then(ids => {
+   		newTaskId = ids[0]; //Store in a shared context for later promise
+  		prevTaskId = ids[1];
+   		prevPatch.id = ids[1];
+   		if (prevPatch.title != prevTitle) { //trim the previous one
+     		taskCache.patch(prevPatch);
+     		return backend.patch(prevPatch);
+    	}; //else no update needed
     });
     //Move all children of the original task to the new task
-    prom = prom.then(response => {
+    job = job.then(response => {
       //log("running backend.moveChildren")
-      return backend.moveChildren(prevTaskId, newTaskId, null); //TODO: Maybe without "return"? Or do we need to wait for update "position" order? Or do we not care?
+      return backend.moveChildren(prevTaskId, newTaskId, null);
     });
-    
-    pushJob(prom);
-    return prom;
+    return pushJob(job);
   }
 
   /*
   Moves all children of the task out of it.
   Makes the first child their new parent.
   */
-  function taskLiberateChildren(taskId) {
+  function taskLiberateChildren(entry) {
     //log("taskLiberateChildren:");
-    //log(taskId);
-    
-    var entry = tasks.find(taskId);
-    
+    //log(entry);
     var children = entry.getChildren();
     if (!children || (children.length <= 0))
       return Promise.resolve();
     
     var entryParent = entry.getParent();
     
+    //Of the child tasks select the top one
+    var firstChild = children.splice(0, 1);
     //log("taskLiberateChildren: Making this one new parent:");
-    //log(children[0]);
+    //log(firstChild);
     
-    //log("taskLiberateChildren: Updating UI");
     //This entry is the only one that's visually changing nesting level
-    children[0].adjustLevel(-1, false); //non-recursive
+    firstChild.adjustLevel(-1, false); //non-recursive
     
-    //Of the children tasks select the top one
-    //Move it to this task's parent, under this task.
-    var prom = backend.move(taskEntryGetId(children[0]), taskEntryGetId(entryParent), taskId);
-    //Move the rest under it
-    for (let i=1; i<children.length; i++)
-      prom = prom.then(response => {
-        //log("Adjusting subchild "+i)
-        let prevTaskId = (i>1) ? taskEntryGetId(children[i-1]) : null;
-        return backend.move(taskEntryGetId(children[i]), taskEntryGetId(children[0]), prevTaskId);
-      });
-    return prom;
+    var firstChildId = null; //shared between promises
+    var childIds = null;
+    var job = taskEntryNeedIds([entry, entryParent, firstChild].concat(children))
+   	.then(ids => {
+   		childIds = ids.splice(3);
+   		firstChildId = ids[2];
+   		//Move it to this task's parent, under this task.
+   		return backend.move(firstChildId, ids[1], ids[0]);
+   	})
+   	.then(result => backend.moveAll(childIds, firstChildId, null));
+    return pushJob(job);
   }
 
   /*
@@ -990,62 +991,63 @@
   function taskDelete(entry, recursive) {
     taskEntryTitleCommitNow(); //commit any pending changes
     
-    var taskId = entry.getId();
-    
-    var prom = null;
+    var job = null;
     if (!recursive) {
       //Move the children outside parent first
-      prom = taskLiberateChildren(taskId);
+      job = taskLiberateChildren(entry);
     } else {
       //Delete the UI entries for all children
-      tasks.find(taskId).getAllChildren().forEach(child => tasks.delete(child));
-      prom = Promise.resolve();
+      entry.getAllChildren().forEach(child => tasks.delete(child));
+      job = Promise.resolve();
     }
     
-    prom = prom.then(response => {
-      let thisNode = tasks.find(taskId);
-      //Find next node to focus:
-      let nextNode = thisNode.getNextSibling(); //either the new liberated parent or the next sibling
-      if (!nextNode)
-        nextNode = thisNode.getPreviousSibling(); //or the previous sibling (but not their child)
-      if (!nextNode)
-        nextNode = thisNode.getParent(); //or the parent
-        //Else => top level, no siblings => no other nodes to focus, sorry
-      //Delete the node itself
-      if (thisNode) //though why would it be not
-        tasks.delete(thisNode);
-      if (nextNode)
-        nextNode.setCaret();
-    });
+    //Find next entry to focus:
+    //* either the new liberated parent or the next sibling
+    //* or the previous sibling (but not their child)
+    //* or the parent
+    let nextEntry = entry.getNextSibling() || entry.getPreviousSibling() || entry.getParent();
+    //All null? => top level, no siblings => no other nodes to focus, sorry
+    
+    //BEFORE DELETION, copy the ID promise
+    var whenTaskId = entry.whenHaveId();
+    
+    //Delete the node itself
+    tasks.delete(entry);
+    if (nextEntry)
+      nextEntry.setCaret();
     
     //Delete the task on the backend
-    prom = prom.then(response => {
-      return backend.delete(taskId);
-    });
-    return prom;
+    job = Promise.all([job, whenTaskId])
+    	.then(response => backend.delete(response[1][0]));
+    return pushJob(job);
   }
 
   //Edits the task properties unrelated to its position in the list
   function taskPatch(patch) {
     tasks.patchEntry(patch); //Update the task UI node
-    return backend.patch(patch);
+    var job = backend.patch(patch);
+    return pushJob(job);
   }
 
   //Moves the task and all of its children to a different tasklist
+  //WARNING: Only 'entry' supports PromisedIDs. newTaskListId, newParentId and newPrevId must be explicitly passed.
   function taskMoveToList(entry, newTaskListId, newParentId, newPrevId) {
     //Warning! This function has to play nice to taskPatchMoveToList and only use cached task data.
     
-    var taskId = taskEntryGetId(entry); //before we taskEntryDelete
+    var whenTaskId = entry.whenHaveId(); //before we .delete() it
     
     //Delete the nodes first, THEN move the task:
     //responsible UI + we won't have children lists after we delete the local tasks
     entry.getAllChildren().forEach(child => tasks.delete(child));
     tasks.delete(entry);
     
-    return backend.moveToList(taskId, newTaskListId, newParentId, newPrevId);
+    var job = whenTaskId
+    	.then(taskId => backend.moveToList(taskId, newTaskListId, newParentId, newPrevId));
+    return pushJob(job);
   }
 
   //Edits the task and immediately moves it and all of its children to a different tasklist
+  //WARNING: At the moment, all IDs must be explicitly set
   function taskPatchMoveToList(patch, newTaskListId, newParentId, newPrevId) {
     //To avoid a pointless update of the task in the original list we play unfair:
     //1. Update the current task locally
@@ -1065,12 +1067,14 @@
       return;
     
     var newTasklistId = null;
-    backend.tasklistAdd(title).then(result => {
+    var job = backend.tasklistAdd(title)
+    .then(result => {
       newTasklistId = result.id;
       return this.tasklistBoxesReload()
     }).then(response => {
       setSelectedTaskList(newTasklistId);
-    }).catch(handleError);
+    });
+    pushJob(job);
   }
   
   function tasklistRename() {
@@ -1082,9 +1086,9 @@
       'id': selectedTaskList(),
       'title': title,
     };
-    return backend.tasklistPatch(patch).then(result => {
-      return this.tasklistBoxesReload();
-    }).catch(handleError);
+    var job = backend.tasklistPatch(patch)
+    	.then(result => this.tasklistBoxesReload());
+    pushJob(job);
   }
   
   function tasklistDelete() {
@@ -1096,12 +1100,10 @@
     var title = selectedTaskListTitle();
     if (!confirm('Are you SURE you want to delete task list "'+title+'"?'))
       return;
-    return backend.tasklistDelete(tasklistId).then(result => {
-      return this.tasklistBoxesReload();
-    }).then(response => {
-      selectedTaskListChanged();
-    })
-    .catch(handleError);
+    var job = backend.tasklistDelete(tasklistId)
+    .then(result => this.tasklistBoxesReload())
+    .then(response => selectedTaskListChanged());
+    pushJob(job);
   }
   
   function accountReset() {
@@ -1109,9 +1111,9 @@
       return;
     if (!confirm('Are you SURE you want to delete ALL your task lists and tasks?'))
       return;
-    backend.reset().then(() => {
-      reloadTaskLists();
-    }).catch(handleError);
+    var job = backend.reset()
+    	.then(() => reloadTaskLists());
+    pushJob(job);
   }
 
 
@@ -1140,7 +1142,8 @@
     log("Opening editor for task "+taskId);
     
     //Load the task data into the editor
-    backend.get(taskId).then(task => {
+    var job = backend.get(taskId)
+    .then(task => {
       if (!task) {
         log("Failed to load the requested task for editing");
         editorTaskId = null;
@@ -1164,6 +1167,7 @@
       listPage.style.display = "none";
       editorPage.classList.remove("hidden");
     });
+    pushJob(job);
   }
   
   //Called when the user selects a new list to move task to
@@ -1187,18 +1191,18 @@
     patch.due = document.getElementById("editorTaskDate").valueAsDate; //null is fine!
     patch.notes = document.getElementById("editorTaskNotes").value;
     
-    var prom = null;
+    var job = null;
     
     var newTaskList = document.getElementById("editorTaskList").value;
     if (newTaskList == selectedTaskList())
       //Simple version, just edit the task
-      prom = taskPatch(patch).catch(handleError);
+      job = taskPatch(patch);
     else
       //Complicated version, edit and move
-      prom = taskPatchMoveToList(patch, newTaskList, null, null);
+      job = taskPatchMoveToList(patch, newTaskList, null, null);
     
-    prom = prom.then(response => { editorCancel(); })
-      .catch(handleError);
+    job = job.then(response => editorCancel());
+    pushJob(job);
   }
   
   //Close the editor
@@ -1213,10 +1217,10 @@
   function editorDelete() {
     if (!editorTaskId)
       return;
-    taskDelete(tasks.find(editorTaskId)).then(response => {
-      editorCancel();
-    },
-    handleError);
+    pushJob(
+    	taskDelete(tasks.find(editorTaskId))
+    	.then(response => editorCancel())
+    );
   }
 </script>
 
