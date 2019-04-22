@@ -86,6 +86,30 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   align-items: baseline;
   padding: 3px 2px;
 }
+#listFooterSpacer {
+  flex-grow: 5;
+}
+
+/*
+Activity indicator
+*/
+#activityIndicator {
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin: auto;
+  margin-left: 4px;
+}
+#activityIndicator { /* ready */
+  background-color: lime;
+}
+#activityIndicator.working {
+  background-color: yellow;
+}
+#activityIndicator.error {
+  background-color: red;
+}
 
 
 /*

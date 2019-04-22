@@ -29,6 +29,8 @@
     </div>
     <div id="listContent" onclick="tasklistClick(event);" ondblclick="tasklistDblClick(event);"></div>
     <div id="listFooter">
+      <div id="activityIndicator"></div>
+      <span id="listFooterSpacer"></span>
       <a class="button" id="listAddBtn" onclick="taskEntryAddClicked(event);" title="Add task"></a>
       <a class="button" id="listDeleteBtn" onclick="taskEntryDeleteFocusedClicked(event);" title="Delete task"></a>
       <div id="taskmenu" class="dropdown">
@@ -144,7 +146,7 @@
 
 
   /*
-  Common error handler.
+  Common activity and error handling.
   */
   function printError(msg) {
     log(msg);
@@ -155,6 +157,7 @@
     if (popupText != '') popupText = popupText + '\r\n';
     popup.innerText = (popupText+msg);
     popup.classList.remove("hidden");
+    document.getElementById('activityIndicator').classList.remove('error')
   }
   function handleError(reason) {
     if (reason.result) {
@@ -165,6 +168,19 @@
     }
     else
       printError(reason);
+  }
+  
+  //Pass any promises to track their execution + catch errors.
+  var jobCount = 0;
+  function pushJob(prom) {
+  	jobCount += 1;
+  	document.getElementById('activityIndicator').classList.add('working');
+  	prom.then(result => {
+  	  jobCount -= 1;
+  	  if (jobCount <= 0)
+  	    document.getElementById('activityIndicator').classList.remove('working');
+  	});
+  	prom.catch(handleError);
   }
 
 
@@ -295,9 +311,13 @@
   
   //Called when the task entry checkbox has been checked/unchecked
   function taskEntryChecked(event) {
-    var patch = { "id": taskEntryGetId(event.entry) };
+    var patch = {};
     taskResSetCompleted(patch, event.entry.getCompleted());
-    backend.patch(patch).catch(handleError);
+    var prom = taskEntryNeedIds([event.entry]).then(id => {
+      patch.id = id;
+      return backend.patch(patch);
+    });
+    pushJob(prom);
   }
 
   function taskEntryAddClicked(event) {
@@ -309,15 +329,13 @@
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
-    taskDelete(taskEntryGetId(focusedEntry), false)
-      .catch(handleError);
+    taskDelete(focusedEntry, false).catch(handleError);
   }
   function taskEntryDeleteRecursiveFocusedClicked(event) {
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
-    taskDelete(taskEntryGetId(focusedEntry), true)
-      .catch(handleError);
+    taskDelete(focusedEntry, true).catch(handleError);
   }
   function taskEntryExportToFile(event) {
     var focusedEntry = tasks.getFocusedEntry();
@@ -854,9 +872,9 @@
     
     //TODO: Also, patch the stored data after the request returns;
     var prom = backend.insertToCurrentList(newTask, prevTaskId);
-    newEntry.promiseId(prom); //set temporary promised ID
+    pushJob(prom);
 
-	prom.catch(handleError);
+    newEntry.promiseId(prom); //set temporary promised ID
     return newEntry;
   }
   
@@ -902,6 +920,7 @@
       return backend.moveChildren(prevTaskId, newTaskId, null); //TODO: Maybe without "return"? Or do we need to wait for update "position" order? Or do we not care?
     });
     
+    pushJob(prom);
     return prom;
   }
 
@@ -945,8 +964,10 @@
   Deletes the task. Liberates the children.
   recursive: Kill the children too
   */
-  function taskDelete(taskId, recursive) {
+  function taskDelete(entry, recursive) {
     taskEntryTitleCommitNow(); //commit any pending changes
+    
+    var taskId = entry.getId();
     
     var prom = null;
     if (!recursive) {
@@ -1169,7 +1190,7 @@
   function editorDelete() {
     if (!editorTaskId)
       return;
-    taskDelete(editorTaskId).then(response => {
+    taskDelete(tasks.find(editorTaskId)).then(response => {
       editorCancel();
     },
     handleError);
