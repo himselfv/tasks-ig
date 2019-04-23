@@ -852,7 +852,7 @@
     .then(ids => {
     	entryToId = ids[0];
     	entryWhatId = ids[1];
-    	newPrevChildId = ids.splice(2, 1); //don't query this one
+    	newPrevChildId = ids.splice(2, 1)[0]; //don't query this one
     	return backend.getAll(ids)
     })
     .then(results => {
@@ -989,7 +989,7 @@
     var entryParent = entry.getParent();
     
     //Of the child tasks select the top one
-    var firstChild = children.splice(0, 1);
+    var firstChild = children.splice(0, 1)[0];
     //log("taskLiberateChildren: Making this one new parent:");
     //log(firstChild);
     
