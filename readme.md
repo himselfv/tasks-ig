@@ -12,6 +12,7 @@ This project reimplements everything in that frontend from scratch. It uses Goog
 * Self-hosted
 * Works with Google Tasks
 * Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands. If something is missing, file a bug.
+* Async requests -- fast UI
 * Firefox/Chrome/Opera extension to display your instance (or any page) in a side panel
 * LocalStorage backend as a proof of concept. Though I don't recommend storing anything important in it because it's glorified cookies.
 
