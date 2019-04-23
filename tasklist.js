@@ -67,6 +67,7 @@ TaskList.prototype.dispatchEvent = function(event) {
 
 //Clears the task list entirely
 TaskList.prototype.clear = function() {
+	this.clearFocus();
 	nodeRemoveAllChildren(this.root);
 }
 //Appends a task entry to the end of the list. Does not change its nesting level.
@@ -118,6 +119,7 @@ TaskList.prototype.createEntry = function(task, level) {
 
 //Previously: taskEntryDelete
 TaskList.prototype.delete = function(entry) {
+	this.clearFocus(entry); //because we don't clear on blur
 	entry.node.remove();
 }
 
@@ -519,6 +521,7 @@ TaskList.prototype.onEntryFocus = function(event) {
 		this.clearFocus(this.focusedTaskEntry);
 	this.focusedTaskEntry = event.currentTarget.taskEntry;
 	event.currentTarget.classList.add("focused");
+	this.focusChanged();
 }
 TaskList.prototype.onEntryBlur = function(event) {
 	//Do nothing -- remember the focus
@@ -529,6 +532,12 @@ TaskList.prototype.clearFocus = function(entry) {
 		this.focusedTaskEntry = null;
 	if (entry)
 		entry.node.classList.remove("focused");
+	this.focusChanged();
+}
+TaskList.prototype.focusChanged = function() {
+	var event = new CustomEvent("focuschanged");
+	event.type = "focuschanged";
+	this.dispatchEvent(event);
 }
 //Returns the currently focused taskEntry or null
 TaskList.prototype.getFocusedEntry = function() {

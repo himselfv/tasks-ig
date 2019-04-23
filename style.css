@@ -187,19 +187,19 @@ Bottom panel buttons
   background-color: LightSkyBlue;
 }
 /* See https://codepen.io/sosuke/pen/Pjoqqp to generate filters: black->color */
-#listAddBtn {
+#taskAddBtn {
   background-image: url("res/plus2.png");
 }
-#listDeleteBtn {
+#taskDeleteBtn {
   background-image: url("res/trash2.png");
 }
 #taskmenu .button {
   background-image: url("res/items3.png");
 }
-#listAddBtn, #listDeleteBtn, #taskmenu .button {
+#taskAddBtn, #taskDeleteBtn, #taskmenu .button {
   filter: invert(41%) sepia(37%) saturate(581%) hue-rotate(176deg) brightness(91%) contrast(87%); /* black -> 4D6C98 */
 }
-#listAddBtn:hover, #listDeleteBtn:hover, #taskmenu .button:hover {
+#taskAddBtn:hover, #taskDeleteBtn:hover, #taskmenu .button:hover {
   background-color: white; /* will be filtered per above */
 }
 

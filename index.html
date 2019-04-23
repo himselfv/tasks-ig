@@ -31,17 +31,17 @@
     <div id="listFooter">
       <div id="activityIndicator"></div>
       <span id="listFooterSpacer"></span>
-      <a class="button" id="listAddBtn" onclick="taskEntryAddClicked(event);" title="Add task"></a>
-      <a class="button" id="listDeleteBtn" onclick="taskEntryDeleteFocusedClicked(event);" title="Delete task"></a>
+      <a class="button" id="taskAddBtn" onclick="taskEntryAddClicked(event);" title="Add task"></a>
+      <a class="button" id="taskDeleteBtn" onclick="taskEntryDeleteFocusedClicked(event);" title="Delete task"></a>
       <div id="taskmenu" class="dropdown">
          <a class="dropbtn button" onclick="dropdownClick(event);" title="Task actions"></a>
          <div class="dropdown-content">
-           <a onclick="taskEntryCopyJSON();">Copy JSON</a>
-           <a onclick="taskEntryExportToFile();">Export to file...</a>
-           <a onclick="taskEntryEditFocusedClicked();">Edit</a>
-           <a onclick="taskEntryDeleteRecursiveFocusedClicked();">Delete w/children</a>
+           <a id="taskCopyJSON" onclick="taskEntryCopyJSON();">Copy JSON</a>
+           <a id="taskExportToFile" onclick="taskEntryExportToFile();">Export to file...</a>
+           <a id="taskEditFocused" onclick="taskEntryEditFocusedClicked();">Edit</a>
+           <a id="taskDeleteRecursive" onclick="taskEntryDeleteRecursiveFocusedClicked();">Delete w/children</a>
            <span class="menu-separator"></span>
-           <a onclick="taskEntryExportAllToFile();">Export all to file...</a>
+           <a id="tasksExportAllToFile" onclick="taskEntryExportAllToFile();">Export all to file...</a>
            <a onclick="tasklistReloadSelected();">Refresh</a>
          </div>
       </div>
@@ -223,6 +223,8 @@
     var taskList = selectedTaskList();
     document.getElementById('renameListBtn').classList.toggle("hidden", !taskList);
     document.getElementById('deleteListBtn').classList.toggle("hidden", !taskList);
+  	document.getElementById("taskAddBtn").classList.toggle("hidden", !taskList);
+  	document.getElementById("tasksExportAllToFile").classList.toggle("hidden", !taskList);
    	tasklistReloadSelected();
   }
   
@@ -274,6 +276,7 @@
 
   function tasklistInit() {
     tasks = new TaskList(document.getElementById('listContent'));
+    tasks.addEventListener("focuschanged", tasksFocusChanged);
     tasks.addEventListener("dragstart", this.taskEntryDragStart);
     tasks.addEventListener("dragend", this.taskEntryDragEnd);
     tasks.addEventListener("dragmove", this.taskEntryDragMove);
@@ -295,6 +298,7 @@
     var selectedValue = selectedTaskList();
     if (!selectedValue) {
       tasks.clear();
+      tasksFocusChanged();
       return;
     }
     log('Loading list: '+selectedValue);
@@ -304,7 +308,18 @@
       //Publish from cache
       tasks.clear();
       tasks.appendTaskChildren(null, 0);
+      tasksFocusChanged();
     });
+  }
+  
+  //Called when the focused task changes
+  function tasksFocusChanged() {
+  	var entry = tasks.getFocusedEntry();
+  	document.getElementById("taskDeleteBtn").classList.toggle("hidden", !entry);
+  	document.getElementById("taskCopyJSON").classList.toggle("hidden", !entry);
+  	document.getElementById("taskExportToFile").classList.toggle("hidden", !entry);
+  	document.getElementById("taskEditFocused").classList.toggle("hidden", !entry);
+  	document.getElementById("taskDeleteRecursive").classList.toggle("hidden", !entry);
   }
 
 
@@ -388,12 +403,16 @@
   function tasklistClick(event) {
     if (!options.singleClickAdd)
       return;
+    if (!selectedTaskList())
+      return;
     if (event.offsetY <= tasklistLastTaskY())
       return;
     taskEntryAddClicked(event);
   }
   function tasklistDblClick(event) {
     if (event.offsetY <= tasklistLastTaskY())
+      return;
+    if (!selectedTaskList())
       return;
     taskEntryAddClicked(event);
   }
@@ -1095,7 +1114,7 @@
   }
   
   function tasklistDelete() {
-    if (taskEntryFirst() != null) {
+    if (tasks.first() != null) {
       window.alert("This task list is not empty. Please delete all tasks before deleting the task list.");
       return;
     }
