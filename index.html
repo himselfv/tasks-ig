@@ -132,10 +132,7 @@
     if (isSignedIn) {
       startPage.classList.add("hidden");
       listPage.classList.remove("hidden");
-      if (backend.reset)
-        document.getElementById("resetAccountBtn").classList.remove("hidden")
-      else
-        document.getElementById("resetAccountBtn").classList.add("hidden");
+      document.getElementById("resetAccountBtn").classList.toggle("hidden", !backend.reset);
       reloadTaskLists();
     } else {
       editorCancel();
@@ -159,7 +156,7 @@
     if (popupText != '') popupText = popupText + '\r\n';
     popup.innerText = (popupText+msg);
     popup.classList.remove("hidden");
-    document.getElementById('activityIndicator').classList.remove('error')
+    document.getElementById('activityIndicator').classList.add('error');
     hadErrors = true;
   }
   function handleError(reason) {
@@ -223,7 +220,10 @@
     selectedTaskListChanged(); //Won't get called automatically
   }
   function selectedTaskListChanged() {
-    tasklistReloadSelected();
+    var taskList = selectedTaskList();
+    document.getElementById('renameListBtn').classList.toggle("hidden", !taskList);
+    document.getElementById('deleteListBtn').classList.toggle("hidden", !taskList);
+   	tasklistReloadSelected();
   }
   
   //Reloads the contents of the task list boxes without reacting to possible
@@ -1154,11 +1154,7 @@
       }
       document.getElementById("editorTaskTitle").innerText = task.title;
       document.getElementById("editorTaskTitleBox").checked = (task.completed != null);
-      if (task.completed != null)
-        document.getElementById("editorTaskTitleP").classList.add("completed");
-      else
-        document.getElementById("editorTaskTitleP").classList.remove("completed");
-      
+      document.getElementById("editorTaskTitleP").classList.toggle("completed", task.completed != null);
       document.getElementById("editorTaskList").value = selectedTaskList();
       document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
       document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
