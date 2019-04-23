@@ -257,7 +257,7 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId) {
 	if (!children || (children.length <= 0))
 		return Promise.resolve();
 	var childIds = [];
-	children.forEach(child => childIds.push(child));
+	children.forEach(child => childIds.push(child.id));
 	
 	//log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
 	return this.moveAll(childIds, newParentId, newPrevId);
