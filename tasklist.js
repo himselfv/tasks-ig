@@ -322,8 +322,8 @@ TaskEntry.prototype.getLevel = function() {
 }
 TaskEntry.prototype.setLevel = function(level) {
 	var oldLevel = this.taskNestingLevel;
-	if (oldLevel)
-		this.node.classList.remove("childlvl-"+oldLevel);
+	if (!oldLevel) oldLevel = 0;
+	this.node.classList.remove("childlvl-"+oldLevel);
 	this.taskNestingLevel = level;
 	this.node.classList.add("childlvl-"+level);
 	this.node.style.paddingLeft = (level*10) + "px"; /* can also rely purely on CSS */
