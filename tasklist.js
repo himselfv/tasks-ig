@@ -26,6 +26,9 @@ function TaskList(where) {
 	this.initCustomEvents();
 	document.addEventListener("mousemove", (event) => this.onDocumentDragMouseMove(event));
 	document.addEventListener("mouseup", (event) => this.onDocumentDragMouseUp(event));
+	document.addEventListener("touchmove", (event) => this.onDocumentDragMouseMove(event));
+	document.addEventListener("touchend", (event) => this.onDocumentDragMouseUp(event));
+	document.addEventListener("touchcancel", (event) => this.onDocumentDragTouchCancel(event));
 }
 TaskList.prototype.toString = function() {
 	return "TaskList " + this.root.toString();
@@ -110,9 +113,14 @@ TaskList.prototype.createEntry = function(task, level) {
 	entry.addEventListener("mousedown", (event) => this.onEntryDragMouseDown(event));
 	entry.addEventListener("mousemove", (event) => this.onEntryDragMouseMove(event));
 	entry.addEventListener("mouseup", (event) => this.onEntryDragMouseUp(event));
+	entry.addEventListener("touchstart", (event) => this.onEntryDragMouseDown(event));
+	entry.addEventListener("touchmove", (event) => this.onEntryDragMouseMove(event));
+	entry.addEventListener("touchend", (event) => this.onEntryDragMouseUp(event));
+	entry.addEventListener("touchcancel", (event) => this.onEntryDragTouchCancel(event));
 	entry.addEventListener("focusin", (event) => this.onEntryFocus(event));
 	entry.addEventListener("focusout", (event) => this.onEntryBlur(event));
 	entry.gripCtl.addEventListener("mousedown", (event) => this.onEntryDragGripMouseDown(event));
+	entry.gripCtl.addEventListener("touchstart", (event) => this.onEntryDragGripMouseDown(event));
 	entry.titleCtl.addEventListener("blur", (event) => this.onEntryTitleFocusOut(event), true);
 	return entry;
 }
@@ -633,7 +641,9 @@ TaskList.prototype.dragConfigure = function(entry, event) {
 	this.dragEntry = entry; //taskEntry to which the event have bubbled
 
 	//calculate true offset relative to taskEntry
-	var trueOffset = { x: event.offsetX, y: event.offsetY };
+	var trueOffset = (event.touches) ? 
+		{ x: event.touches[0].offsetX, y: event.touches[0].offsetY } :
+		{ x: event.offsetX, y: event.offsetY };
 	var target = event.target;
 	while (target && (target!=this.dragEntry.node)) {
 		trueOffset.x += target.offsetLeft;
@@ -667,7 +677,12 @@ TaskList.prototype.onEntryDragGripMouseDown = function(event) {
 TaskList.prototype.onEntryDragMouseUp = function(event) {
 	//log("onEntryDragMouseUp");
 	this.dragStartTimerAbort();
-	this.dragEnd();
+	this.dragEnd(false);
+}
+TaskList.prototype.onEntryDragTouchCancel = function(event) {
+	//log("onEntryDragMouseUp");
+	this.dragStartTimerAbort();
+	this.dragEnd(true); //cancel
 }
 TaskList.prototype.onEntryDragMouseMove = function(event) {
 	if (this.dragging)
@@ -679,7 +694,10 @@ TaskList.prototype.onEntryDragMouseMove = function(event) {
 }
 TaskList.prototype.onDocumentDragMouseMove = function(event) {
 	if (this.dragging) {
-		this.dragUpdate({x:event.clientX, y:event.clientY});
+		if (event.touches)
+			this.dragUpdate({x:event.touches[0].clientX, y:event.touches[0].clientY});
+		else
+			this.dragUpdate({x:event.clientX, y:event.clientY});
 		event.preventDefault();
 	}
 }
@@ -690,7 +708,10 @@ TaskList.prototype.onDocumentDragMouseUp = function(event) {
 	if (this.dragging || this.dragEntry)
 		this.onEntryDragMouseUp(event);
 }
-
+TaskList.prototype.onDocumentDragTouchCancel = function(event) {
+	if (this.dragging || this.dragEntry)
+		this.onEntryDragTouchCancel(event);
+}
 
 //Starts the drag
 TaskList.prototype.dragStart = function() {
@@ -716,7 +737,7 @@ TaskList.prototype.dragStart = function() {
 }
 
 //Ends the drag and commits the move
-TaskList.prototype.dragEnd = function() {
+TaskList.prototype.dragEnd = function(cancelDrag) {
 	if (!this.dragging) { //not yet dragging => nothing to restore
 		this.dragEntry = null;
 		return;
@@ -729,7 +750,7 @@ TaskList.prototype.dragEnd = function() {
 	//Notify the subscribers
 	var event = new CustomEvent("dragend");
 	event.entry = this.dragEntry;
-	event.cancelDrag = false;
+	event.cancelDrag = cancelDrag;
 	this.dispatchEvent(event);
 	
 	this.dragEntry = null;
