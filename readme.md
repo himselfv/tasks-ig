@@ -6,6 +6,8 @@ This project reimplements everything in that frontend from scratch. It uses Goog
 
 ![Screenshot](docs/screen-features.png)
 
+**[Try it here on GitHub](https://himselfv.github.io/tasks-ig/)** (local storage only)
+
 
 ### Features
 * Runs in the browser -- though still needs to be hosted somewhere to access Google APIs, see below.
@@ -36,6 +38,8 @@ Once Google shuts down Tasks which they will eventually do because they shut dow
 It would be nice to simply run this from the browser extension or local files, but Google APIs need an origin hostname.
 
 **Plan B:** Find someone who hosts it and use their instance (if you trust them).
+
+**Plan C:** Run the [fully local version](https://himselfv.github.io/tasks-ig/) (no Google access)
 
 
 ### How to install the browser extension
