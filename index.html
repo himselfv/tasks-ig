@@ -382,10 +382,13 @@
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
-    var job = taskEntryNeedIds([focusedEntry])
-    	.then(ids => backend.get(ids[0]))
-    	.then(result => copyToClipboard(JSON.stringify(result)));
-    pushJob(job);
+    //We can't query the data properly; clipboard access won't work in some browsers unless we call it immediately
+    //We can't even do taskEntryNeedIds()
+    var taskId = focusedEntry.getId();
+    if (taskId.hasOwnProperty("taskId"))
+      return; //can't query cache with promised IDs
+    let task = taskCache.get(taskId);
+    copyToClipboard(JSON.stringify(task));
   }
   function taskEntryExportAllToFile() {
     var entries = tasks.allEntries();

@@ -545,7 +545,8 @@ TaskList.prototype.getFocusedEntry = function() {
 	if (this.focusedTaskEntry && !document.body.contains(this.focusedTaskEntry.node))
 		this.clearFocus(this.focusedTaskEntry);
 	var caretEntry = elementGetOwnerTaskEntry(getCaretControl());
-	if (caretEntry && (caretEntry != this.focusedTaskEntry))
+	//"focusedTaskEntry == null" may happen if we're called from onblur, before next onfocus
+	if (caretEntry && (caretEntry != this.focusedTaskEntry) && (this.focusedTaskEntry != null))
 		log("Focus is different from the active entry!");
 	return this.focusedTaskEntry;
 }
