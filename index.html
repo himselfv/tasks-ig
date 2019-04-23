@@ -313,7 +313,7 @@
   */
   function taskEntryEdit(entry) {
     taskEntryTitleCommitNow(entry); //commit any pending changes
-    entry.whenHaveId(taskId => editorOpen(taskId));
+    entry.whenHaveId().then(taskId => editorOpen(taskId));
   }
   //Called when the editor button for the entry had been clicked
   function taskEntryEditClicked(event) {
@@ -708,7 +708,6 @@
     //Query siblings now while the task is still in place
     let lastChild = entry.getLastDirectChild();
     let siblings = parentEntry.getChildren();
-    let i = siblings.findIndex(item => { return item==entry; }) + 1;
     
     //Visually update the entry and all of its children.
     entry.adjustLevel(-1, true); //recursive
@@ -722,9 +721,13 @@
     		lastChildId = ids[3];
     		return backend.move(ids[0], ids[1], ids[2])
     	});
+
     //Append consequent siblings to the end of the children
-    job = job.then(result => taskEntryNeedIds(siblings))
-    	.then(siblingIds => backend.moveAll(siblings, entryId, lastChildId));
+    let i = siblings.findIndex(item => (item==entry));
+    siblings.splice(0, i+1);
+    if (siblings.length >= 1)
+    	job = job.then(result => taskEntryNeedIds(siblings))
+    		.then(siblingIds => backend.moveAll(siblingIds, entryId, lastChildId));
     pushJob(job);
   }
 

@@ -238,6 +238,8 @@ BackendGTasks.prototype.move = function (taskId, parentId, previousId) {
 // inserting them in the given order after a given task (null = at the top).
 BackendGTasks.prototype.moveAll = function (taskIds, newParentId, newPrevId) {
 	//log("backend.moveAll: "+taskIds.length+" items to="+newParentId+" after="+newPrevId);
+	if (taskIds.length <= 0)
+		return Promise.resolve();
 
 	var batch = gapi.client.newBatch();
 	//Iterate in reverse so that we can insert each child after the same known one
