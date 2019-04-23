@@ -279,12 +279,13 @@ Everything inside is packed unless overriden
 }
 
 .taskCheck {
-  height: 100%;
+  height: auto;
   /* Height margins must be coordinated with taskWrap */
   margin-top: 0.42em;
-  margin-bottom: 0.25em;
   margin-right: 0.38em;
   margin-left: 0.1em;
+  /*margin-bottom: 0.25em;*/
+  margin-bottom: auto;
 }
 .taskWrap {
   overflow: hidden; /* So taskNotes doesn't expand to content */
@@ -428,4 +429,22 @@ Start page
 #startPage button {
   min-width: 160px;
   padding: 2px 5px;
+}
+
+
+/* Remove any fixed width limitations on lower widths */
+@media handheld, (max-width: 600px) { 
+body { max-width: none; }
+}
+/* Scale up the pixel dense versions */
+@media handheld, (min-resolution: 150dpi) {
+body {
+  zoom: 1.5;
+/*
+Not this:
+   transform: scale(1.5);
+   transform-origin: 0 0;
+This scales the bottom elements away from the bottom.
+*/
+}
 }

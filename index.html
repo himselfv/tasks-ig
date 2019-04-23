@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Google Tasks</title>
+  <title>Tasks</title>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -192,7 +193,10 @@
       message = "Some changes to your tasks might have failed.";
     else if (jobCount >= 1)
       message = "Some changes to your tasks are still pending. If you close the page now they may be lost";
-    event.returnValue = message;
+    if (message) { //two ways of requesting confirmation:
+      event.preventDefault();
+      event.returnValue = message;
+    }
     return message;
   }
 
