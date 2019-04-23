@@ -252,6 +252,14 @@
           editorTaskList.add(option.cloneNode(true));
           listSelectBox.add(option);
         }
+        listSelectBox.classList.remove("grayed");
+      } else {
+        let option = document.createElement("option");
+        option.hidden = true;
+        option.text = "Create a new list from the menu...";
+        option.value = "";
+        listSelectBox.add(option);
+        listSelectBox.classList.add("grayed");
       }
       
       listSelectBox.value = oldSelection;
