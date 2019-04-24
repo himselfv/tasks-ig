@@ -6,6 +6,8 @@ Requires globals:
   var GTASKS_CLIENT_ID
   var GTASKS_API_KEY
 
+
+
 */
 function BackendGTasks() {
 	Backend.call(this);
@@ -18,26 +20,50 @@ var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/tasks/v1/res
 // Authorization scopes required by the API; multiple scopes can be included, separated by spaces.
 var SCOPES = "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/tasks";
 
+
+/*
+Google API initialization
+*/
+function insertGoogleAPIs() {
+	if (document.getElementById('googleAPIscripts'))
+		return Promise.resolve();
+	return new Promise((resolve, reject) => {
+		log("adding script");
+		var script = document.createElement('script');
+		script.id = 'googleAPIscripts';
+		script.src = "https://apis.google.com/js/api.js";
+		script.async = true;
+		script.defer = true;
+		script.addEventListener("load", () => resolve());
+		script.addEventListener("readystatechange", () => { if (script.readyState == 'complete') script.onload() });
+		document.body.append(script);
+		log("script appended");
+	});
+}
+function gapiLoad() {
+	return new Promise((resolve, reject) => {
+		log("gapi.load");
+		gapi.load('client:auth2', {
+			'callback': () => resolve(),
+			'onerror': () => reject("GAPI client failed to load"),
+		});
+	});
+}
+
 /*
 Connection
 */
 BackendGTasks.prototype.connect = function() {
+	var prom = insertGoogleAPIs()
 	//Load the auth2 library and API client library.
-	var prom = new Promise((resolve, reject) => {
-		gapi.load('client:auth2', {
-		  'callback': () => resolve(),
-		  'onerror': () => reject("GAPI client failed to load"),
-		});
-	})
-	.then(result =>
-		//Initialize the API client library
-		gapi.client.init({
+	.then(result => gapiLoad())
+	//Initialize the API client library
+	.then(result => gapi.client.init({
 			apiKey: GTASKS_API_KEY,
 			clientId: GTASKS_CLIENT_ID,
 			discoveryDocs: DISCOVERY_DOCS,
 			scope: SCOPES
-		})
-	)
+	}))
 	.then(result => {
 		this._initialized = true;
 		//Listen for sign-in state changes.
