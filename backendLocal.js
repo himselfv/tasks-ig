@@ -52,11 +52,11 @@ All must implement _get, _set, _remove and optionally "reset()".
 */
 BackendLocalStorage.prototype._get = function(key) {
 	var data = window.localStorage.getItem(this.STORAGE_PREFIX+key);
-	log("_get: "+key+" -> "+data);
+	//log("_get: "+key+" -> "+data);
 	return Promise.resolve((data) ? JSON.parse(data) : null);
 }
 BackendLocalStorage.prototype._set = function(key, value) {
-	log("_set: "+key+" := "+JSON.stringify(value));
+	//log("_set: "+key+" := "+JSON.stringify(value));
 	window.localStorage.setItem(this.STORAGE_PREFIX+key, JSON.stringify(value));
 	return Promise.resolve();
 }
@@ -106,7 +106,7 @@ BackendLocal.prototype._getList = function(id) {
 	return this._get("list_"+id).then(result => result || []);
 }
 BackendLocal.prototype._setList = function(id, list) {
-	log("_setList: id="+id+", list="+JSON.stringify(list));
+	//log("_setList: id="+id+", list="+JSON.stringify(list));
 	if (!id || !list) throw "_setList: id="+id+", list="+list;
 	return this._set("list_"+id, list);
 }
@@ -117,7 +117,7 @@ BackendLocal.prototype._getItem = function(id) {
 	return this._get("item_"+id); //null is okay
 }
 BackendLocal.prototype._setItem = function(id, item) {
-	log("_setItem: id="+id+", item="+JSON.stringify(item));
+	//log("_setItem: id="+id+", item="+JSON.stringify(item));
 	if (!id || !item) throw "_setItem: id="+id+", item="+item;
 	return this._set("item_"+id, item);
 }
@@ -134,8 +134,6 @@ BackendLocal.prototype.tasklistList = function() {
 	return this._getTasklists().then(results => Object.values(results));
 }
 BackendLocal.prototype.tasklistAdd = function(title) {
-	log("tasklistAdd");
-	log(title);
 	var item = null;
 	return this._getTasklists()
 	.then(lists => {
@@ -143,10 +141,7 @@ BackendLocal.prototype.tasklistAdd = function(title) {
 		lists[item.id] = item;
 		return this._setTasklists(lists);
 	})
-	.then(results => {
-		log(item);
-		return item
-	});
+	.then(results => item);
 }
 BackendLocal.prototype.tasklistGet = function(tasklistId) {
 	return this._getTasklists()
@@ -190,7 +185,7 @@ BackendLocal.prototype.list = function(tasklistId) {
 		items = Object.values(items);
 		for (let i=0; i<items.length; i++)
 			items[i].position = i;
-		log("list(): returning "+JSON.stringify(items));
+		//log("list(): returning "+JSON.stringify(items));
 		return {'items': items};
 	});
 }
@@ -225,9 +220,9 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 		task.id = this._newId();
 		taskResNormalize(task);
 		list.splice(index, 0, task.id);
-		log("insert(): "+JSON.stringify(task));
+		//log("insert(): "+JSON.stringify(task));
 		if (tasklistId == this.selectedTaskList) {
-			log("insert(): adding to cache");
+			//log("insert(): adding to cache");
 			taskCache.add(task);
 		}
 		return Promise.all([
@@ -315,7 +310,7 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId
 	var children = this.getAllChildren(taskId);
 	if (children)
 		children.forEach(child => ids.push(child.id));
-	log("moveToList(): ids="+JSON.stringify(ids));
+	//log("moveToList(): ids="+JSON.stringify(ids));
 
 	var task = null;
 	var prom = Promise.all([
@@ -345,7 +340,7 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId
 			newList.splice(newIndex, 0, taskId);
 			//Increase insert index
 			newIndex += 1;
-			log("moveToList(): inserted "+taskId+" at position "+(newIndex-1));
+			//log("moveToList(): inserted "+taskId+" at position "+(newIndex-1));
 			
 			//Remove from the cache
 			taskCache.delete({'id': taskId});

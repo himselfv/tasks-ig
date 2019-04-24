@@ -34,7 +34,6 @@ function insertGoogleAPIs() {
 	if (document.getElementById('googleAPIscripts'))
 		return Promise.resolve();
 	return new Promise((resolve, reject) => {
-		log("adding script");
 		var script = document.createElement('script');
 		script.id = 'googleAPIscripts';
 		script.src = "https://apis.google.com/js/api.js";
@@ -43,12 +42,10 @@ function insertGoogleAPIs() {
 		script.addEventListener("load", () => resolve());
 		script.addEventListener("readystatechange", () => { if (script.readyState == 'complete') script.onload() });
 		document.body.append(script);
-		log("script appended");
 	});
 }
 function gapiLoad() {
 	return new Promise((resolve, reject) => {
-		log("gapi.load");
 		gapi.load('client:auth2', {
 			'callback': () => resolve(),
 			'onerror': () => reject("GAPI client failed to load"),
