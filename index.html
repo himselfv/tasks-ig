@@ -178,9 +178,11 @@
   var jobCount = 0;
   function pushJob(prom) {
   	jobCount += 1;
+  	//log("job added, count="+jobCount);
   	document.getElementById('activityIndicator').classList.add('working');
   	prom.then(result => {
   	  jobCount -= 1;
+  	  //log("job completed, count="+jobCount);
   	  if (jobCount <= 0)
   	    document.getElementById('activityIndicator').classList.remove('working');
   	});
@@ -537,6 +539,7 @@
     //Cancel the timer for current entry and reset it
     taskEntryTitleTriggerClear();
     taskEntryTitleCommitTimer = setTimeout(taskEntryTitleCommitNow, 2000);
+    timeoutPromiseSet();
   }
   //Called when the user moves out of the task title
   function taskEntryTitleFocusOut(event) {
@@ -560,8 +563,10 @@
     
     log("taskEntryTitleCommitNow");
     taskEntryTitleTriggerClear();
-    if (!entry)
+    if (!entry) {
+      timeoutPromiseResolve();
       return;
+    }
     
     var patch = {};
     patch.title = taskEntryNormalizeTitle(entry.getTitle());
@@ -574,6 +579,24 @@
     	  return backend.patch(patch);
     	});
     pushJob(job);
+    
+    timeoutPromiseResolve();
+  }
+  
+  //We need to keep the UI "busy" during the timeout so pass a promise
+  var timeoutPromiseResolveProc = null; //function to call on timer abort/completion
+  function timeoutPromiseSet() {
+    if (!timeoutPromiseResolveProc)
+      pushJob(new Promise((resolve, reject) => {
+        timeoutPromiseResolveProc = resolve; //will be called from commit
+      }));
+  }
+  function timeoutPromiseResolve() {
+    //Resolve the timeout promise
+    if (timeoutPromiseResolveProc) {
+      timeoutPromiseResolveProc();
+      timeoutPromiseResolveProc = null;
+    }
   }
 
 
