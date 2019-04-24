@@ -166,6 +166,7 @@ Main menu
   background-position: center;
   border: 1px solid lightgray;
   padding: 2px;
+  box-sizing: content-box;
 }
 #mainmenu > .dropbtn:hover {
   background-color: LightSkyBlue;
@@ -182,6 +183,7 @@ Bottom panel buttons
   background-repeat: no-repeat;
   background-position: center;
   padding: 2px;
+  box-sizing: content-box;
   font-color: DodgerBlue;
   font-weight: bold;
   cursor: pointer;
@@ -430,8 +432,9 @@ Start page
   min-height: 100vh;
 }
 #startPage button {
-  min-width: 160px;
+  min-width: 180px;
   padding: 2px 5px;
+  text-align: center;
 }
 
 
