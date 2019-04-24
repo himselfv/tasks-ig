@@ -107,7 +107,7 @@
       if (browser.storage.local)
         backends.push({name: "Browser storage (local)", ctor: BackendBrowserStorageLocal });
     } else
-      backends.push({name: "Local storage", ctor: BackendBrowserStorageLocal });
+      backends.push({name: "Local storage", ctor: BackendLocalStorage });
     
     //Create activation buttons
     document.getElementById('startPrompt').textContent = 
@@ -131,7 +131,7 @@
     backendInit(event.target.associatedBackend.ctor)
   }
   function backendInit(backendCtor) {
-    if (typeof backendCtor == string) {
+    if (typeof backendCtor == 'string') {
       let constructor = window[backendCtor]; //a way to call function by string name
       if (!constructor) {
         handleError("Backend not found: "+backendCtor);
@@ -152,7 +152,7 @@
       if (!backend.isSignedIn())
         return backend.signin();
       }).then(() => {
-        window.localStorage.setItem("tasksIg_ui_backend", backendName);
+        window.localStorage.setItem("tasksIg_ui_backend", backendCtor.name);
       }).catch(handleError);
     return true;
   }

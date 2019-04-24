@@ -14,11 +14,11 @@ function BackendLocal() {
 }
 BackendLocal.prototype = Object.create(Backend.prototype);
 
-function BackendLocalStore() {
-	log("BackendLocalStore");
+function BackendLocalStorage() {
+	log("BackendLocalStorage");
 	BackendLocal.call(this);
 }
-BackendLocalStore.prototype = Object.create(BackendLocal.prototype);
+BackendLocalStorage.prototype = Object.create(BackendLocal.prototype);
 
 //Pass browser.storage.sync or browser.storage.local
 function BackendBrowserStorage(storage) {
@@ -41,19 +41,19 @@ Local backend can use several actual backends:
 - Extension storage (synced)
 All must implement _get, _set, _remove and optionally "reset()".
 */
-BackendLocalStore.prototype._get = function(key) {
+BackendLocalStorage.prototype._get = function(key) {
 	var data = window.localStorage.getItem(this.STORAGE_PREFIX+key);
 	return Promise.resolve((data) ? JSON.parse(data) : null);
 }
-BackendLocalStore.prototype._set = function(key, value) {
+BackendLocalStorage.prototype._set = function(key, value) {
 	window.localStorage.setItem(this.STORAGE_PREFIX+key, JSON.stringify(value));
 	return Promise.resolve();
 }
-BackendLocalStore.prototype._remove = function(key) {
+BackendLocalStorage.prototype._remove = function(key) {
 	window.localStorage.removeItem(this.STORAGE_PREFIX+key);
 	return Promise.resolve();
 }
-BackendLocalStore.prototype.reset = function() {
+BackendLocalStorage.prototype.reset = function() {
 	for (let i=window.localStorage.length-1; i>=0; i--) {
 		let key = window.localStorage.key(i);
 		if (key.startsWith(this.STORAGE_PREFIX))
