@@ -12,6 +12,14 @@ Tasklist: id, title
 Task: id, title, parent, position, notes, status, due, completed, deleted
 */
 
+//Lists all registered backend types for the application
+//Backend normally self-register when they're available
+var backends = [];
+function registerBackend(name, ctor) {
+	backends.push({'name': name, 'ctor': ctor});
+}
+
+
 //Clones a task resource without preserving its unique IDs
 function taskResClone(oldTask) {
 	var newTask = Object.assign({}, oldTask);

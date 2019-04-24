@@ -33,6 +33,15 @@ function BackendBrowserStorageLocal() { BackendBrowserStorage.call(this, (browse
 BackendBrowserStorageSync.prototype = Object.create(BackendBrowserStorage.prototype);
 BackendBrowserStorageLocal.prototype = Object.create(BackendBrowserStorage.prototype);
 
+//Self-register
+if ((typeof browser != 'undefined') && (browser.storage)) {
+	if (browser.storage.sync)
+		registerBackend("Browser storage (synced)", BackendBrowserStorageSync);
+	if (browser.storage.local)
+		registerBackend("Browser storage (local)", BackendBrowserStorageLocal);
+} else
+	registerBackend("Local storage", BackendLocalStorage);
+
 
 /*
 Local backend can use several actual backends:

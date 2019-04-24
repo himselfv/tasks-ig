@@ -77,8 +77,6 @@
 <script src="tasklist.js"></script>
 
 <script type="text/javascript">
-
-  var backends = [];
   var backend = null;
 
   var startPage = document.getElementById('startPage');
@@ -93,22 +91,6 @@
   }
 
   function backendsInit() {
-    //Enumerate backends
-    if (GTASKS_CLIENT_ID && GTASKS_API_KEY)
-      backends.push({
-      	name: "Google Tasks",
-      	ctor: BackendGTasks,
-      });
-    else
-      log("BackendGTasks: ClientId / API key not set");
-    if ((typeof browser != 'undefined') && (browser.storage)) {
-      if (browser.storage.sync)
-        backends.push({name: "Browser storage (synced)", ctor: BackendBrowserStorageSync });
-      if (browser.storage.local)
-        backends.push({name: "Browser storage (local)", ctor: BackendBrowserStorageLocal });
-    } else
-      backends.push({name: "Local storage", ctor: BackendLocalStorage });
-    
     //Create activation buttons
     document.getElementById('startPrompt').textContent = 
       (backends.length > 0) ? "Access tasks in:"

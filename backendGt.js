@@ -20,6 +20,12 @@ var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/tasks/v1/res
 // Authorization scopes required by the API; multiple scopes can be included, separated by spaces.
 var SCOPES = "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/tasks";
 
+//Self-register
+if ((typeof GTASKS_CLIENT_ID != undefined) && (typeof GTASKS_API_KEY != undefined))
+	registerBackend("Google Tasks", BackendGTasks);
+else
+	log("BackendGTasks: ClientId / API key not set");
+
 
 /*
 Google API initialization
