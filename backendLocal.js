@@ -9,11 +9,73 @@ Stores items as:
 */
 
 function BackendLocal() {
-	log("BackendLocal");
 	Backend.call(this);
 	this.STORAGE_PREFIX = 'tasksIg_backend_';
 }
 BackendLocal.prototype = Object.create(Backend.prototype);
+
+function BackendLocalStore() {
+	log("BackendLocalStore");
+	BackendLocal.call(this);
+}
+BackendLocalStore.prototype = Object.create(BackendLocal.prototype);
+
+//Pass browser.storage.sync or browser.storage.local
+function BackendBrowserStorage(storage) {
+	log("BackendBrowserStorage")
+	BackendLocal.call(this);
+	this.storage = storage;
+}
+BackendBrowserStorage.prototype = Object.create(BackendLocal.prototype);
+
+function BackendBrowserStorageSync() { BackendBrowserStorage.call(this, (browser || chrome).storage.sync); }
+function BackendBrowserStorageLocal() { BackendBrowserStorage.call(this, (browser || chrome).storage.local); }
+BackendBrowserStorageSync.prototype = Object.create(BackendBrowserStorage.prototype);
+BackendBrowserStorageLocal.prototype = Object.create(BackendBrowserStorage.prototype);
+
+
+/*
+Local backend can use several actual backends:
+- Local storage
+- Extension storage (local)
+- Extension storage (synced)
+All must implement _get, _set, _remove and optionally "reset()".
+*/
+BackendLocalStore.prototype._get = function(key) {
+	var data = window.localStorage.getItem(this.STORAGE_PREFIX+key);
+	return Promise.resolve((data) ? JSON.parse(data) : null);
+}
+BackendLocalStore.prototype._set = function(key, value) {
+	window.localStorage.setItem(this.STORAGE_PREFIX+key, JSON.stringify(value));
+	return Promise.resolve();
+}
+BackendLocalStore.prototype._remove = function(key) {
+	window.localStorage.removeItem(this.STORAGE_PREFIX+key);
+	return Promise.resolve();
+}
+BackendLocalStore.prototype.reset = function() {
+	for (let i=window.localStorage.length-1; i>=0; i--) {
+		let key = window.localStorage.key(i);
+		if (key.startsWith(this.STORAGE_PREFIX))
+			window.localStorage.removeItem(key);
+	}
+	return Promise.resolve();
+}
+
+BackendBrowserStorage.prototype._get = function(key) {
+	//TODO: Maybe we need to parse the results further
+	return this.storage.get(key);
+}
+BackendBrowserStorage.prototype._set = function(key, value) {
+	//TODO: Maybe we need to JSON.stringify the value after all (if it's not an array)
+	return this.storage.set(key, value);
+}
+BackendBrowserStorage.prototype._remove = function(key) {
+	return this.storage.remove(key);
+}
+BackendBrowserStorage.prototype.reset = function() {
+	return this.storage.clear();
+}
 
 
 /*
@@ -23,44 +85,33 @@ BackendLocal.prototype._newId = function() {
 	return new Date().toISOString();
 }
 BackendLocal.prototype._getTasklists = function() {
-	var data = window.localStorage.getItem(this.STORAGE_PREFIX+"tasklists");
-	return (data) ? JSON.parse(data) : {};
+	return this._get("tasklists").then(result => result || {});
 }
 BackendLocal.prototype._setTasklists = function(lists) {
 	if (!lists) throw "_setTasklists: lists==undefined";
-	window.localStorage.setItem(this.STORAGE_PREFIX+"tasklists", JSON.stringify(lists));
+	return this._set("tasklists", lists);
 }
 BackendLocal.prototype._getList = function(id) {
-	var data = window.localStorage.getItem(this.STORAGE_PREFIX+"list_"+id);
-	return (data) ? JSON.parse(data) : [];
+	return this._get("list_"+id).then(result => result || []);
 }
 BackendLocal.prototype._setList = function(id, list) {
 	log("_setList: id="+id+", list="+JSON.stringify(list));
 	if (!id || !list) throw "_setList: id="+id+", list="+list;
-	window.localStorage.setItem(this.STORAGE_PREFIX+"list_"+id, JSON.stringify(list));
+	return this._set("list_"+id, list);
 }
 BackendLocal.prototype._removeList = function(id) {
-	window.localStorage.removeItem(this.STORAGE_PREFIX+"list_"+id);
+	return this._remove("list_"+id);
 }
 BackendLocal.prototype._getItem = function(id) {
-	var data = window.localStorage.getItem(this.STORAGE_PREFIX+"item_"+id);
-	return (data) ? JSON.parse(data) : null;
+	return this._get("item_"+id); //null is okay
 }
 BackendLocal.prototype._setItem = function(id, item) {
 	log("_setItem: id="+id+", item="+JSON.stringify(item));
 	if (!id || !item) throw "_setItem: id="+id+", item="+item;
-	window.localStorage.setItem(this.STORAGE_PREFIX+"item_"+id, JSON.stringify(item));
+	return this._set("item_"+id, item);
 }
 BackendLocal.prototype._removeItem = function(id) {
-	window.localStorage.removeItem(this.STORAGE_PREFIX+"item_"+id);
-}
-BackendLocal.prototype.reset = function() {
-	for (let i=window.localStorage.length-1; i>=0; i--) {
-		let key = window.localStorage.key(i);
-		if (key.startsWith(this.STORAGE_PREFIX))
-			window.localStorage.removeItem(key);
-	}
-	return Promise.resolve();
+	return this.remove("item_"+id);
 }
 
 

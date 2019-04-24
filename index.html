@@ -8,8 +8,7 @@
 </head>
 <body>
   <div id="startPage" class="hidden">
-    <button id="authorizeGoogleBtn" onclick="handleAuthorizeGoogleClick();">Authorize with Google</button>
-    <button id="authorizeLocalBtn" onclick="handleAuthorizeLocalClick();">Use local storage</button>
+  <span id="startPrompt">Authorize with:</span>
   </div>
 
   <div id="listPage" class="hidden">
@@ -79,6 +78,7 @@
 
 <script type="text/javascript">
 
+  var backends = [];
   var backend = null;
 
   var startPage = document.getElementById('startPage');
@@ -89,30 +89,62 @@
     window.addEventListener("beforeunload", handleBeforeUnload);
     tasklistInit();
     editorInit();
-    var backendName = window.localStorage.getItem("tasksIg_ui_backend");
-    if (!backendName || !initBackend(backendName))
-      updateSigninStatus(false);
+    backendsInit();
   }
 
-  function handleAuthorizeGoogleClick(event) {
-    log("Authorizing with Google");
-    initBackend('BackendGTasks');
+  function backendsInit() {
+    //Enumerate backends
+    if (GTASKS_CLIENT_ID && GTASKS_API_KEY)
+      backends.push({
+      	name: "Google Tasks",
+      	ctor: BackendGTasks,
+      });
+    else
+      log("BackendGTasks: ClientId / API key not set");
+    if ((typeof browser != 'undefined') && (browser.storage)) {
+      if (browser.storage.sync)
+        backends.push({name: "Browser storage (synced)", ctor: BackendBrowserStorageSync });
+      if (browser.storage.local)
+        backends.push({name: "Browser storage (local)", ctor: BackendBrowserStorageLocal });
+    } else
+      backends.push({name: "Local storage", ctor: BackendBrowserStorageLocal });
+    
+    //Create activation buttons
+    document.getElementById('startPrompt').textContent = 
+      (backends.length > 0) ? "Access tasks in:"
+        : "No backends available, see error log for details";
+    backends.forEach(item => {
+      let btn = document.createElement("button");
+      btn.textContent = item.name;
+      btn.associatedBackend = item;
+      btn.onclick = handleBackendAuthorize;
+      document.getElementById('startPage').appendChild(btn);
+    });
+    
+    //Activate current backend if there's any
+    var backendName = window.localStorage.getItem("tasksIg_ui_backend");
+    if (!backendName || !backendInit(backendName))
+      updateSigninStatus(false);
   }
-  function handleAuthorizeLocalClick(event) {
-    log("Authorizing locally");
-    initBackend('BackendLocal');
+  function handleBackendAuthorize(event) {
+    log("Authorizing with "+event.target.associatedBackend);
+    backendInit(event.target.associatedBackend.ctor)
   }
-  
-  function initBackend(backendName) {
-    log("Using backend: "+backendName);
-    var constructor = window[backendName]; //a way to call function by string name
-    if (!constructor) {
-      handleError("Backend not found: "+backendName);
-      return false;
+  function backendInit(backendCtor) {
+    if (typeof backendCtor == string) {
+      let constructor = window[backendCtor]; //a way to call function by string name
+      if (!constructor) {
+        handleError("Backend not found: "+backendCtor);
+        return false;
+      }
+      backendCtor = constructor;
     }
-    backend = new constructor();
+    
+    log("Using backend: "+backendCtor.name);
+    
+    backend = new backendCtor();
     if (!backend) {
-      handleError("Cannot create backend "+backendName);
+      handleError("Cannot create backend "+backendCtor.name);
       return false;
     }
     backend.onSignInStatus.push(updateSigninStatus);
@@ -124,13 +156,11 @@
       }).catch(handleError);
     return true;
   }
-
   function handleSignoutClick(event) {
     backend.signout().catch(handleError);
     backend = null;
     window.localStorage.removeItem("tasksIg_ui_backend");
   }
-
   // Called when the signed in status changes, whether after a button click or automatically
   function updateSigninStatus(isSignedIn) {
     if (isSignedIn) {
