@@ -140,6 +140,10 @@ function editableSetCaret(node, start, end) {
 Misc UI
 */
 
+function element(id) {
+	return document.getElementById(id);
+}
+
 function nodeHasParent(node, parent) {
 	while (node && (node != parent))
 		node = node.parentNode;
@@ -225,7 +229,54 @@ function copyToClipboard(text){
 
 /*
 Dropdown menus
+
+Initializes the dropdown menu in a given HTML element:
+  element
+  string => find element by id
+  null => create a new element
+Returns the created element.
 */
+function dropdownInit(root) {
+	if (typeof root == 'string')
+		root = document.getElementById(root);
+	else if (!root)
+		root = document.createElement("div");
+	root.classList.add("dropdown");
+	
+	var item = document.createElement("span");
+	item.className = "dropbtn";
+	item.addEventListener("click", dropdownClick);
+	root.appendChild(item);
+	root.button = item;
+	
+	item = document.createElement("div");
+	item.className = "dropdown-content";
+	root.appendChild(item);
+	root.menu = item;
+	
+	root.clear = dropdownClear;
+	root.add = dropdownAdd;
+	root.addSeparator = dropdownAddSeparator;
+	return root;
+}
+function dropdownClear() {
+	nodeRemoveAllChildren(this.menu);
+}
+function dropdownAdd(id, onclick, text) {
+	var item = document.createElement('a');
+	item.id = id;
+	item.textContent = text;
+	item.addEventListener("click", onclick);
+	this.menu.appendChild(item);
+	return item;
+}
+function dropdownAddSeparator(id) {
+	var item = document.createElement('span');
+	item.id = id;
+	item.className = "menu-separator";
+	this.menu.appendChild(item);
+	return item;
+}
 function dropdownGetButton(element) {
 	return element.getElementsByClassName("dropbtn")[0];
 }
@@ -243,6 +294,18 @@ window.addEventListener("click", (event) => {
 			dropdowns[i].classList.remove('show');
 	}
 });
+
+/*
+Buttons
+*/
+function buttonNew(id, onclick, title) {
+	var button = document.createElement("a");
+	button.classList.add("button");
+	button.id = id;
+	button.title = title;
+	button.addEventListener("click", onclick);
+	return button;
+}
 
 
 /*
