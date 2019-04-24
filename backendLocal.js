@@ -43,9 +43,11 @@ All must implement _get, _set, _remove and optionally "reset()".
 */
 BackendLocalStorage.prototype._get = function(key) {
 	var data = window.localStorage.getItem(this.STORAGE_PREFIX+key);
+	log("_get: "+key+" -> "+data);
 	return Promise.resolve((data) ? JSON.parse(data) : null);
 }
 BackendLocalStorage.prototype._set = function(key, value) {
+	log("_set: "+key+" := "+JSON.stringify(value));
 	window.localStorage.setItem(this.STORAGE_PREFIX+key, JSON.stringify(value));
 	return Promise.resolve();
 }
@@ -111,7 +113,7 @@ BackendLocal.prototype._setItem = function(id, item) {
 	return this._set("item_"+id, item);
 }
 BackendLocal.prototype._removeItem = function(id) {
-	return this.remove("item_"+id);
+	return this._remove("item_"+id);
 }
 
 
@@ -120,15 +122,22 @@ Task lists
 */
 //Returns an array of TaskList objects (promise)
 BackendLocal.prototype.tasklistList = function() {
-	return Promise.resolve(Object.values(this._getTasklists()));
+	return this._getTasklists().then(results => Object.values(results));
 }
 BackendLocal.prototype.tasklistAdd = function(title) {
+	log("tasklistAdd");
+	log(title);
+	var item = null;
 	return this._getTasklists()
 	.then(lists => {
-		let item = { 'id': this._newId(), 'title': title, };
+		item = { 'id': this._newId(), 'title': title, };
 		lists[item.id] = item;
 		return this._setTasklists(lists);
 	})
+	.then(results => {
+		log(item);
+		return item
+	});
 }
 BackendLocal.prototype.tasklistGet = function(tasklistId) {
 	return this._getTasklists()
@@ -145,7 +154,8 @@ BackendLocal.prototype.tasklistUpdate = function(tasklist) {
 			return Promise.reject("No such task list");
 		lists[tasklist.id] = tasklist;
 		return this._setTasklists(lists);
-	});
+	})
+	.then(results => tasklist);
 }
 //Warning! Deletes the task list with the given id
 BackendLocal.prototype.tasklistDelete = function(tasklistId) {
@@ -166,13 +176,11 @@ Tasks
 */
 BackendLocal.prototype.list = function(tasklistId) {
 	return this._getList(tasklistId)
-	.then(list => {
-		let items = [];
-		for (let i=0; i<list.length; i++) {
-			let item = this._getItem(list[i]);
-			item.position = i;
-			items.push(item);
-		}
+	.then(list => this.getAll(list))
+	.then(items => {
+		items = Object.values(items);
+		for (let i=0; i<items.length; i++)
+			items[i].position = i;
 		log("list(): returning "+JSON.stringify(items));
 		return {'items': items};
 	});
@@ -182,7 +190,7 @@ BackendLocal.prototype.get = function (taskId) {
 	return this._getItem(taskId);
 }
 BackendLocal.prototype.update = function (task) {
-	return this._getList(this.selectedTaskList)
+	var prom = this._getList(this.selectedTaskList)
 	.then(list => {
 		if (!list.includes(task.id)) {
 			log("update(): list="+JSON.stringify(list)+", task="+task.id+", not found.");
@@ -190,12 +198,13 @@ BackendLocal.prototype.update = function (task) {
 		}
 		taskResNormalize(task);
 		taskCache.update(task);
-		return this._setItem(task.id, task)
-			.then(result => return task);
+		return this._setItem(task.id, task);
 	});
+	
+	return prom.then(results => task);
 }
 BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
-	return this._getList(tasklistId)
+	var prom = this._getList(tasklistId)
 	.then(list => {
 		let index = 0;
 		if (previousId) {
@@ -215,9 +224,10 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 		return Promise.all([
 			this._setList(tasklistId, list),
 			this._setItem(task.id, task),
-		])
-		.then(result => return task);
-	};
+		]);
+	});
+	
+	return prom.then(result => task);
 }
 //Deletes the task with the children
 BackendLocal.prototype.deleteAll = function (taskIds, tasklistId) {
@@ -277,7 +287,7 @@ BackendLocal.prototype.move = function (taskId, parentId, previousId) {
 		]);
 	});
 	
-	return prom.then(results => return task);
+	return prom.then(results => task);
 }
 
 //Moves a task with children to a new position in a different task list.
@@ -337,11 +347,11 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId
 		
 		//Push everything
 		return Promise.all([
-			this._setList(newTasklistId, newList);
-			this._setList(oldTasklistId, oldList);
-			this._setItem(taskId, task);
+			this._setList(newTasklistId, newList),
+			this._setList(oldTasklistId, oldList),
+			this._setItem(taskId, task),
 		]);
 	});
-
-	return prom.then(results => return task);;
+	
+	return prom.then(results => task);
 }
