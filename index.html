@@ -188,18 +188,27 @@
   
   //Pass any promises to track their execution + catch errors.
   var jobCount = 0;
+  var jobs = [];
   function pushJob(prom) {
   	jobCount += 1;
+  	jobs.push(prom);
   	//log("job added, count="+jobCount);
   	document.getElementById('activityIndicator').classList.add('working');
   	prom.then(result => {
   	  jobCount -= 1;
+  	  let index = jobs.indexOf(prom);
+  	  if (index >= 0)
+  	    jobs.splice(index, 1);
   	  //log("job completed, count="+jobCount);
   	  if (jobCount <= 0)
   	    document.getElementById('activityIndicator').classList.remove('working');
   	});
   	prom.catch(handleError);
   	return prom;
+  }
+  //Returns a promise that completes when all active operations have completed
+  function waitIdle() {
+    return Promise.all(jobs);
   }
   
   function handleBeforeUnload(event) {
@@ -1226,8 +1235,10 @@
     if (!taskId) return;
     log("Opening editor for task "+taskId);
     
+    //Title edits sometimes are not yet commited even though we've sent the request
+    var job = waitIdle()
     //Load the task data into the editor
-    var job = backend.get(taskId)
+    .then(results => backend.get(taskId))
     .then(task => {
       if (!task) {
         log("Failed to load the requested task for editing");
