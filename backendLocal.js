@@ -74,18 +74,39 @@ BackendLocalStorage.prototype.reset = function() {
 }
 
 BackendBrowserStorage.prototype._get = function(key) {
-	//TODO: Maybe we need to parse the results further
-	return this.storage.get(key);
+	log("get("+JSON.stringify(key)+")");
+	return this.storage.get(key)
+	.then(results => {
+		log("get -> "+JSON.stringify(results));
+		let value = results[key];
+		return value ? JSON.parse(value) : null;
+	});
 }
 BackendBrowserStorage.prototype._set = function(key, value) {
-	//TODO: Maybe we need to JSON.stringify the value after all (if it's not an array)
-	return this.storage.set(key, value);
+	var data = {};
+	data[key] = JSON.stringify(value); //complex objects need to be stringified
+	log("set("+JSON.stringify(key)+","+data[key]+")");
+	return this.storage.set(data)
+	.then(results => {
+		log("set -> "+JSON.stringify(results));
+		return results;
+	});
 }
 BackendBrowserStorage.prototype._remove = function(key) {
-	return this.storage.remove(key);
+	log("remove("+JSON.stringify(key)+")");
+	return this.storage.remove(key)
+	.then(results => {
+		log("remove -> "+JSON.stringify(results));
+		return results;
+	});
 }
 BackendBrowserStorage.prototype.reset = function() {
-	return this.storage.clear();
+	log("remove()");
+	return this.storage.clear()
+	.then(results => {
+		log("reset -> "+JSON.stringify(results));
+		return results;
+	});
 }
 
 
