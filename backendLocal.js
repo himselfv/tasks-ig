@@ -63,10 +63,10 @@ ChromeStorageWrapper.prototype.clear = function(keys) {
 }
 
 function getBrowserStorageSync() {
-	return (chrome) ? new ChromeStorageWrapper(chrome.storage.sync) : (browser) ? browser.storage.sync : null;
+	return (typeof chrome != 'undefined') ? new ChromeStorageWrapper(chrome.storage.sync) : (typeof browser != 'undefined') ? browser.storage.sync : null;
 }
 function getBrowserStorageLocal() {
-	return (chrome) ? new ChromeStorageWrapper(chrome.storage.local) : (browser) ? browser.storage.local : null;
+	return (typeof chrome != 'undefined') ? new ChromeStorageWrapper(chrome.storage.local) : (typeof browser != 'undefined') ? browser.storage.local : null;
 }
 
 function BackendBrowserStorageSync() { BackendBrowserStorage.call(this, getBrowserStorageSync()); }
