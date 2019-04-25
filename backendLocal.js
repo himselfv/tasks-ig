@@ -74,10 +74,10 @@ BackendLocalStorage.prototype.reset = function() {
 }
 
 BackendBrowserStorage.prototype._get = function(key) {
-	log("get("+JSON.stringify(key)+")");
+	//log("get("+JSON.stringify(key)+")");
 	return this.storage.get(key)
 	.then(results => {
-		log("get -> "+JSON.stringify(results));
+		//log("get -> "+JSON.stringify(results));
 		let value = results[key];
 		return value ? JSON.parse(value) : null;
 	});
@@ -85,26 +85,26 @@ BackendBrowserStorage.prototype._get = function(key) {
 BackendBrowserStorage.prototype._set = function(key, value) {
 	var data = {};
 	data[key] = JSON.stringify(value); //complex objects need to be stringified
-	log("set("+JSON.stringify(key)+","+data[key]+")");
+	//log("set("+JSON.stringify(key)+","+data[key]+")");
 	return this.storage.set(data)
 	.then(results => {
-		log("set -> "+JSON.stringify(results));
+		//log("set -> "+JSON.stringify(results));
 		return results;
 	});
 }
 BackendBrowserStorage.prototype._remove = function(key) {
-	log("remove("+JSON.stringify(key)+")");
+	//log("remove("+JSON.stringify(key)+")");
 	return this.storage.remove(key)
 	.then(results => {
-		log("remove -> "+JSON.stringify(results));
+		//log("remove -> "+JSON.stringify(results));
 		return results;
 	});
 }
 BackendBrowserStorage.prototype.reset = function() {
-	log("remove()");
+	//log("remove()");
 	return this.storage.clear()
 	.then(results => {
-		log("reset -> "+JSON.stringify(results));
+		//log("reset -> "+JSON.stringify(results));
 		return results;
 	});
 }
