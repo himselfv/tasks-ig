@@ -12,6 +12,7 @@
 	"background": {
 		"scripts": ["background.js"]
 	},
+	"content_security_policy": "script-src 'self' https://apis.google.com; object-src 'self'",
 	"sidebar_action": {
 		"default_icon": "extension/check2.png",
 		"default_title": "Tasks",
