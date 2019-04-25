@@ -28,18 +28,58 @@ function BackendBrowserStorage(storage) {
 }
 BackendBrowserStorage.prototype = Object.create(BackendLocal.prototype);
 
-function BackendBrowserStorageSync() { BackendBrowserStorage.call(this, (browser || chrome).storage.sync); }
-function BackendBrowserStorageLocal() { BackendBrowserStorage.call(this, (browser || chrome).storage.local); }
+
+//Chrome storage.* APIs do not return promises but instead use callbacks
+function ChromeStorageWrapper(storage) {
+	this.storage = storage;
+}
+ChromeStorageWrapper.prototype.get = function(keys) {
+	return new Promise((resolve, reject) => this.storage.get(keys, (items) => {
+		if (chrome.runtime.lastError)
+			reject(chrome.runtime.lastError);
+		resolve(items);
+	}));
+}
+ChromeStorageWrapper.prototype.set = function(keys) {
+	return new Promise((resolve, reject) => this.storage.set(keys, () => {
+		if (chrome.runtime.lastError)
+			reject(chrome.runtime.lastError);
+		resolve();
+	}));
+}
+ChromeStorageWrapper.prototype.remove = function(keys) {
+	return new Promise((resolve, reject) => this.storage.remove(keys, () => {
+		if (chrome.runtime.lastError)
+			reject(chrome.runtime.lastError);
+		resolve();
+	}));
+}
+ChromeStorageWrapper.prototype.clear = function(keys) {
+	return new Promise((resolve, reject) => this.storage.clear(() => {
+		if (chrome.runtime.lastError)
+			reject(chrome.runtime.lastError);
+		resolve();
+	}));
+}
+
+function getBrowserStorageSync() {
+	return (chrome) ? new ChromeStorageWrapper(chrome.storage.sync) : (browser) ? browser.storage.sync : null;
+}
+function getBrowserStorageLocal() {
+	return (chrome) ? new ChromeStorageWrapper(chrome.storage.local) : (browser) ? browser.storage.local : null;
+}
+
+function BackendBrowserStorageSync() { BackendBrowserStorage.call(this, getBrowserStorageSync()); }
+function BackendBrowserStorageLocal() { BackendBrowserStorage.call(this, getBrowserStorageLocal()); }
 BackendBrowserStorageSync.prototype = Object.create(BackendBrowserStorage.prototype);
 BackendBrowserStorageLocal.prototype = Object.create(BackendBrowserStorage.prototype);
 
 //Self-register
-if ((typeof browser != 'undefined') && (browser.storage)) {
-	if (browser.storage.sync)
-		registerBackend("Browser storage (synced)", BackendBrowserStorageSync);
-	if (browser.storage.local)
-		registerBackend("Browser storage (local)", BackendBrowserStorageLocal);
-} else
+if (getBrowserStorageSync())
+	registerBackend("Browser storage (synced)", BackendBrowserStorageSync);
+if (getBrowserStorageLocal())
+	registerBackend("Browser storage (local)", BackendBrowserStorageLocal);
+else
 	registerBackend("Local storage", BackendLocalStorage);
 
 
