@@ -15,11 +15,13 @@
 	"sidebar_action": {
 		"default_icon": "extension/check2.png",
 		"default_title": "Tasks",
-		"default_panel": "index.html"
+		"default_panel": "index.html",
+		"browser_style": false
 	},
 	"browser_action": {
 		"default_title": "Open Tasks in Sidebar",
-		"default_icon": "extension/check2.png"
+		"default_icon": "extension/check2.png",
+		"browser_style": true
 	},
 	"icons": {
 		"16": "extension/check2.png"
