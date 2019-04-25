@@ -5,9 +5,6 @@ Currently that's the only backend but functions should be neutral enough that it
 Requires globals:
   var GTASKS_CLIENT_ID
   var GTASKS_API_KEY
-
-
-
 */
 function BackendGTasks() {
 	Backend.call(this);
@@ -20,11 +17,21 @@ var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/tasks/v1/res
 // Authorization scopes required by the API; multiple scopes can be included, separated by spaces.
 var SCOPES = "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/tasks";
 
+function isChromeExtension() {
+	return (chrome && chrome.runtime && chrome.runtime.id);
+}
+
 //Self-register
-if ((typeof GTASKS_CLIENT_ID != 'undefined') && (typeof GTASKS_API_KEY != 'undefined'))
+function backendGtSupported() {
+	if (isChromeExtension()) return true;
+	if ((typeof GTASKS_CLIENT_ID != 'undefined') && (typeof GTASKS_API_KEY != 'undefined'))
+		return true;
+	else
+		log("BackendGTasks: ClientId / API key not set");
+	return false;
+}
+if (backendGtSupported())
 	registerBackend("Google Tasks", BackendGTasks);
-else
-	log("BackendGTasks: ClientId / API key not set");
 
 
 /*
@@ -34,6 +41,7 @@ function insertGoogleAPIs() {
 	if (document.getElementById('googleAPIscripts'))
 		return Promise.resolve();
 	return new Promise((resolve, reject) => {
+		log('inserting script');
 		var script = document.createElement('script');
 		script.id = 'googleAPIscripts';
 		script.src = "https://apis.google.com/js/api.js";
@@ -45,13 +53,15 @@ function insertGoogleAPIs() {
 	});
 }
 function gapiLoad() {
+	log('loading gapi');
 	return new Promise((resolve, reject) => {
 		gapi.load('client:auth2', {
 			'callback': () => resolve(),
-			'onerror': () => reject("GAPI client failed to load"),
+			'onerror': () => { log("gapi load fail"); reject("GAPI client failed to load"); },
 		});
 	});
 }
+
 
 /*
 Connection
@@ -61,30 +71,81 @@ BackendGTasks.prototype.connect = function() {
 	//Load the auth2 library and API client library.
 	.then(result => gapiLoad())
 	//Initialize the API client library
-	.then(result => gapi.client.init({
-			apiKey: GTASKS_API_KEY,
-			clientId: GTASKS_CLIENT_ID,
-			discoveryDocs: DISCOVERY_DOCS,
-			scope: SCOPES
-	}))
+	.then(result => this.clientLogin())
 	.then(result => {
 		this._initialized = true;
-		//Listen for sign-in state changes.
-		gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+		if (!isChromeExtension())
+			//Listen for sign-in state changes.
+			gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
 		//Handle the initial sign-in state.
-		this.notifySignInStatus(gapi.auth2.getAuthInstance().isSignedIn.get());
+		this.notifySignInStatus(this.isSignedIn());
 	});
 	return prom;
 }
+BackendGTasks.prototype.clientLogin = function() {
+	if (isChromeExtension()) {
+		return this.chromeClientLogin()
+	} else {
+		return gapi.client.init({
+			apiKey: GTASKS_API_KEY,
+			discoveryDocs: DISCOVERY_DOCS,
+			clientId: GTASKS_CLIENT_ID,
+			scope: SCOPES
+		});
+	};
+}
 BackendGTasks.prototype.signin = function() {
+	if (isChromeExtension())
+		return;
 	return gapi.auth2.getAuthInstance().signIn();
 }
 //Call to disconnect from the backend
 BackendGTasks.prototype.signout = function() {
-	return gapi.auth2.getAuthInstance().signOut();
+	if (isChromeExtension())
+		this.chromeSignOut();
+	else
+		return gapi.auth2.getAuthInstance().signOut();
 }
 Backend.prototype.isSignedIn = function() {
+	if (isChromeExtension())
+		return this.chromeIsSignedIn();
 	return (this._initialized) ? (gapi.auth2.getAuthInstance().isSignedIn.get()) : false;
+}
+
+
+/*
+Chrome extension have to use its OAuth system -- gapi.client.init->gapi.auth2 won't work
+*/
+function chromeGetAuthToken() {
+	return new Promise((resolve, reject) => chrome.identity.getAuthToken({'interactive': true}, function(token) {
+		if (chrome.runtime.lastError)
+			reject(chrome.runtime.lastError);
+		resolve(token);
+	}));
+}
+BackendGTasks.prototype.chromeClientLogin = function() {
+	return chromeGetAuthToken().then(token => {
+		this.chromeAuthToken = token;
+		gapi.client.setToken({access_token: token});
+		//API key is stored in the manifest on chrome
+		let tasks_api_key = chrome.runtime.getManifest().tasks_api_key;
+		return gapi.client.init({
+			apiKey: tasks_api_key,
+			discoveryDocs: DISCOVERY_DOCS,
+		}); //but no scope or clientId
+	});
+}
+BackendGTasks.prototype.chromeSignIn = function() {
+	//Nothing.
+	this.notifySignInStatus(true);
+}
+BackendGTasks.prototype.chromeIsSignedIn = function() {
+	//There's no simple way with Chrome to know when the ID expires so just chill
+	return !!this.chromeAuthToken;
+}
+BackendGTasks.prototype.chromeSignOut = function() {
+	delete this.chromeAuthToken;
+	this.notifySignInStatus(false);
 }
 
 

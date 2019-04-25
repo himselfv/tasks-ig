@@ -1,18 +1,23 @@
 {
 	"manifest_version": 2,
-	"name": "Tasks Panel",
-	"version": "1.0",
+	"name": "Tasks IG",
+	"version": "1.0.1",
 	"author": "me@boku.ru",
-	"description": "Open Tasks panel in sidebar.",
+	"description": "Sidebar-like tasklist for Google Tasks and other backends",
 	"homepage_url": "https://github.com/himselfv/tasks-ig",
+	//Development key:
+	"key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsRKn0d938Z0bnIV6uZvZjKhNxr2XDIc/Pub6bsffdBjj/vwapJOsrSc/SpzFYDvXZCiVGVK5XJRuzGlQqWMGyls/8QrTL0sznGGbfh7L4qR7squjOFuG/oGN/o3j/gF6ZsFIm5e3bWxzJQylbTCmkARQ9LF1neoUqkRy81f/0oKgs4GpLfLLtkup31y95c65+9VCiTQW5HsM4YUpZSg2ThTyBXEj+ULh1FaOfexM6H9NQLJrJEtUSkRpmdh5UGrYy8lP5/YJplk83jWKFL78J5Kf03zaGA9ZsBJ+yLiH6W70mkeSDkMPcS+An82swBQNqH2X+8UF+IQrY8ogEP0MNQIDAQAB",
 	"permissions": [
 		"storage",
-		"clipboardWrite"
+		"clipboardWrite",
+		"identity"
 	],
 	"background": {
 		"scripts": ["background.js"]
 	},
-	"content_security_policy": "script-src 'self' https://apis.google.com; object-src 'self'",
+	"icons": {
+		"16": "extension/check2.png"
+	},
 	"sidebar_action": {
 		"default_icon": "extension/check2.png",
 		"default_title": "Tasks",
@@ -24,7 +29,14 @@
 		"default_icon": "extension/check2.png",
 		"browser_style": true
 	},
-	"icons": {
-		"16": "extension/check2.png"
-	}
+	"content_security_policy": "script-src 'self' https://apis.google.com; object-src 'self'",
+	//This scope and ID only work in a Chrome extension:
+	"oauth2": {
+		"client_id": "37261906208-nas7qsj6d1t09patc9nhi9k38n0dcarf.apps.googleusercontent.com",
+		"scopes": [
+			"https://www.googleapis.com/auth/tasks.readonly",
+			"https://www.googleapis.com/auth/tasks"
+		]
+	},
+	"tasks_api_key": "AIzaSyBSbjYK1pG6OPdOq3cv2OsqCTnKDigGO1s"
 }
