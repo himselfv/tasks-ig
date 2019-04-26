@@ -139,6 +139,7 @@ function TaskEntry(task) {
 	this.node.className = "task";
 	this.node.taskId = task.id;
 	this.node.taskEntry = this; //reverse link
+	this.node.addEventListener("click", (event) => this.onNodeClicked(event));
 
 	var item = null;
 
@@ -525,6 +526,8 @@ TaskEntry.prototype.setCaret = function(start, end) {
 	editableSetCaret(this.titleCtl, start, end);
 }
 TaskList.prototype.onEntryFocus = function(event) {
+	log("entryfocus");
+	log(event);
 	if (this.focusedTaskEntry)
 		this.clearFocus(this.focusedTaskEntry);
 	this.focusedTaskEntry = event.currentTarget.taskEntry;
@@ -576,6 +579,13 @@ TaskEntry.prototype.onChecked = function() {
 	event.type = "checked";
 	event.entry = this;
 	this.dispatchEvent(event);
+}
+TaskEntry.prototype.onNodeClicked = function(event) {
+	//node contains more than the title but if the click is on the empty space (usually the title margins), focus the title
+	if (event.target == event.currentTarget) {
+		var entry = event.target.taskEntry;
+		entry.setCaret();
+	}
 }
 //Called to notify the subscribers of the changes in title caused by user
 TaskEntry.prototype.titleChanged = function() {
