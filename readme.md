@@ -10,19 +10,43 @@ This project reimplements everything in that frontend from scratch. It uses Goog
 
 
 ### Features
-* Runs in the browser -- though still needs to be hosted somewhere to access Google APIs, see below.
-* Self-hosted
+* Runs in the browser, locally or self-hosted (for Google Tasks)
 * Works with Google Tasks
-* Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands. If something is missing, file a bug.
-* Async requests -- fast UI
-* Firefox/Chrome/Opera extension to display your instance (or any page) in a side panel
-* LocalStorage backend as a proof of concept. Though I don't recommend storing anything important in it because it's glorified cookies.
+* Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands. If something is missing, file an issue.
+* Async requests, fast UI with neat activity indicator
+* Export tasks
 
 Once Google shuts down Tasks which they will eventually do because they shut down everything, I might write a CalDAV Tasks backend.
 
+### Runs as a:
 
-### How to run this
+* Chrome extension (on a separate page)
+* Firefox/Opera extension (in a sidebar)
+* Self-hosted &mdash; on your own domain
+* Standalone &mdash; as a local HTML file, or [here on GitHub](https://himselfv.github.io/tasks-ig/)
 
+Different backends are available in each case:
+
+|				| Google Tasks	| Browser (sync)	| Browser (local)	|
+|------				|:----:		|:----:			|:----:			|
+| Chrome extension (page)	| +		| +			| +			|
+| Firefox extension (sidebar)	| 		| +			| +			|
+| Self-hosted			| +		| 			| + (less safe)		|
+| Self-hosted in sidebar	| +		| 			| + (less safe)		|
+| Local file or github		| 		| 			| + (less safe)		|
+
+Browser backends are completely offline. The sync version is synchronized by the browser between your different PCs. The "less safe" versions use Local Storage instead of Extension's Storage and it's easy to reset by cleaning cookies, so I wouldn't store anything important.
+
+
+### The browser extensions
+For now the extensions are only available from here:
+
+**Chrome**: Go to Extensions page and enable "Developer mode". Press "Load unpacked extension" and point it to the folder with Tasks IG.
+
+**Firefox**: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`
+
+
+### Self-hosting
 **Plan A:**
 
 1. You need a domain.
@@ -39,12 +63,9 @@ It would be nice to simply run this from the browser extension or local files, b
 
 **Plan B:** Find someone who hosts it and use their instance (if you trust them).
 
-**Plan C:** Run the [fully local version](https://himselfv.github.io/tasks-ig/) (no Google access)
 
-
-### How to install the browser extension
-
-See [extension/readme.md](extension/readme.md). Adjust the URL in the manifest. You might have to sign it somewhere if your browser requires that.
+### Local file
+Just double-click `index.html` or [access it on Github](https://himselfv.github.io/tasks-ig/).
 
 
 ### Attribution
