@@ -171,11 +171,21 @@ Task lists
 */
 //Returns an array of TaskList objects (promise)
 BackendGTasks.prototype.tasklistList = function() {
+	var items = [];
+	var nextChunk = function(response) {
+		items = items.concat(response.result.items);
+		if (length(response.result.items < 100) || !(response.result.nextPageToken))
+			return items;
+		//Query next page
+		return gapi.client.tasks.tasklists.list({
+			'maxResults': 100,
+			'pageToken': response.result.nextPageToken,
+		}).then(response => nextChunk(response));
+	};
+	//Query first page
 	return gapi.client.tasks.tasklists.list({
 		'maxResults': 100
-	}).then(response => {
-		return response.result.items;
-	});
+	}).then(response => nextChunk(response));
 }
 BackendGTasks.prototype.tasklistAdd = function(title) {
 	var tasklist = {
