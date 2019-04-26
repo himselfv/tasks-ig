@@ -28,7 +28,7 @@
 	},
 	"applications": {
 		"gecko": {
-			"id": "tasks-ig.himselfv@github.com"
+			"id": "webpanel.tasks-ig.himselfv@github.com"
 		}
 	},
 	"default_sidebar_url": "https://himselfv.github.io/tasks-ig/"
