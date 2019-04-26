@@ -23,6 +23,7 @@ Once Google shuts down Tasks which they will eventually do because they shut dow
 * Chrome extension (on a separate page)
 * Firefox/Opera extension (in a sidebar)
 * Self-hosted &mdash; on your own domain
+* Firefox/Opera extension for a self-hosted version (in a sidebar)
 * Standalone &mdash; as a local HTML file, or [here on GitHub](https://himselfv.github.io/tasks-ig/)
 
 Different backends are available in each case:
@@ -62,6 +63,8 @@ For now the extensions are only available from here:
 It would be nice to simply run this from the browser extension or local files, but Google APIs need an origin hostname.
 
 **Plan B:** Find someone who hosts it and use their instance (if you trust them).
+
+You can show your self-hosted extension in a Firefox sidebar. Use the extension in the `webpanel` folder and set the URL in the options. Or simply open your URL in a [AiOS](http://firefox.exxile.net/aios/features.php) Multipanel Sidebar.
 
 
 ### Local file
