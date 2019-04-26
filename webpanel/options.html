@@ -3,25 +3,23 @@
 
 <head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title></title>
-    <meta name="description" content="">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="">
     <style>
         body {
             overflow: none;
         }
     </style>
-    <script src="common.js"></script>
-    <script src="options.js"></script>
 </head>
 
 <body>
-<form>
-	<label>Sidebar URI:<input type="text" id="sidebar_uri"></label>
-	<button type="submit">Save</button>
-</form>
+<div style="display:flex;flex-direction:row;align-items:baseline;font-size:120%;">
+	<label for="sidebar_uri" style="margin-right:1em;">Sidebar URI:</label><input type="text" id="sidebar_uri" style="flex-grow:5;">
+	<button id="sidebar_uri_submit">Update</button>
+</div>
+
+<script src="common.js"></script>
+<script src="options.js"></script>
 </body>
 
 </html>

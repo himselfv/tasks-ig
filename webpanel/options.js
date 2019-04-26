@@ -1,13 +1,15 @@
 function saveOptions(e) {
 	e.preventDefault();
-	setSidebarURI(document.querySelector("#sidebar_uri").value)
+	setSidebarURI(document.getElementById("sidebar_uri").value)
+		.then(() => notifySidebarReload())
+		.catch(error => console.error(error));
 }
 
 function restoreOptions() {
-	getSidebarURI().then(uri => {
-		document.querySelector("#sidebar_uri").value = uri;
+	getResultingSidebarURI().then(uri => {
+		document.querySelector("#sidebar_uri").value = uri || "";
 	}).catch(error => console.error(error));
 }
 
 document.addEventListener("DOMContentLoaded", restoreOptions);
-document.querySelector("form").addEventListener("submit", saveOptions);
+document.getElementById("sidebar_uri_submit").addEventListener("click", saveOptions);

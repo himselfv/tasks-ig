@@ -1,17 +1,16 @@
 
-function injectStyles() {
+function initPage() {
 	var iframe = document.createElement("iframe");
+	iframe.id = "iframe";
 	getResultingSidebarURI().then(uri => { iframe.src = uri; });
 	document.body.appendChild(iframe);
 }
 
-window.addEventListener("load", injectStyles, false);
+window.addEventListener("load", initPage, false);
 
 brome().runtime.onMessage.addListener((request, sender) => {
-	console.log("sidebar: on message");
 	if (request == "sidebarReload") {
-		console.log("asked to reload");
-		Location.reload();
+		getResultingSidebarURI().then(uri => { document.getElementById('iframe').src = uri; });
 		return;
 	}
 });

@@ -1,43 +1,46 @@
 function brome() {
-	if (typeof chrome != 'undefined')
-		return chrome;
-	return browser;
-}
-function isChrome() {
-	return (typeof chrome != 'undefined');
+	//"chrome" is defined both on Chrome and FF but "browser" only on FF
+	//"browser" is more standard-neutral too so prefer that
+	if (typeof browser != 'undefined')
+		return browser;
+	return chrome;
 }
 
+/*
+chrome.storage API is based on callbacks while browser.storage is on promises
+FF provides chrome.storage too but I'm not sure whether on callbacks and not inclined to figure
+*/
+function isFfStorage() {
+	return (typeof browser != 'undefined');
+}
 function storage() {
-	return brome().storage.local;
+	if (isFfStorage())
+		return browser.storage.local; //can also be sync
+	else
+		return chrome.storage.local;
 }
-
-/* Chrome's storage API doesn't use promises */
-function chromeGet(key) {
-	return new Promise((resolve, reject) => storage().get(key, (items) => {
-		if (chrome.runtime.lastError)
-			reject(chrome.runtime.lastError);
-		resolve(items[key]);
-	}));
-}
-function chromeSet(keys) {
-	return new Promise((resolve, reject) => storage().set(keys, () => {
-		if (chrome.runtime.lastError)
-			reject(chrome.runtime.lastError);
-		resolve();
-	}));
-}
-
 //Does not auto-stringify/destringify atm
 function storageGet(key) {
-	if (isChrome())
-		return chromeGet(key);
+	if (isFfStorage())
+		return storage().get(key).then(results => results[key]);
 	else
-		return this.storage.get(key).then(results => results[key]);
+		return new Promise((resolve, reject) => storage().get(key, (items) => {
+			if (chrome.runtime.lastError)
+				reject(chrome.runtime.lastError);
+			resolve(items[key]);
+		}));
 }
 function storageSet(key, value) {
 	var data = {};
 	data[key] = value;
-	return this.storage.set(data);
+	if (isFfStorage())
+		return storage().set(data);
+	else
+		return new Promise((resolve, reject) => storage().set(data, () => {
+			if (chrome.runtime.lastError)
+				reject(chrome.runtime.lastError);
+			resolve();
+		}));
 }
 
 function getSidebarURI() {
@@ -49,11 +52,10 @@ function setSidebarURI(uri) {
 function getResultingSidebarURI() {
 	return getSidebarURI().then(uri => {
 		if (!uri) uri = brome().runtime.getManifest().default_sidebar_url;
-		console.log(uri);
 		return uri;
 	});
 }
 
 function notifySidebarReload() {
-	browser.runtime.sendMessage("sidebarReloadURI");
+	brome().runtime.sendMessage("sidebarReload");
 }

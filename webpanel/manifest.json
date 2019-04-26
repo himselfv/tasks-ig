@@ -3,11 +3,10 @@
 	"name": "Tasks Panel",
 	"version": "1.0",
 	"author": "me@boku.ru",
-	"description": "Open Tasks IG in sidebar.",
+	"description": "Opens a standalone instance of Tasks IG from your address of choice in the sidebar.",
 	"homepage_url": "https://github.com/himselfv/tasks-ig",
 	"permissions": [
-		"storage",
-		"contextMenus"
+		"storage"
 	],
 	"background": {
 		"scripts": ["common.js", "background.js"]
@@ -29,7 +28,7 @@
 	},
 	"applications": {
 		"gecko": {
-			"id": "tasks-ig@github.com/himselfv"
+			"id": "tasks-ig.himselfv@github.com"
 		}
 	},
 	"default_sidebar_url": "https://himselfv.github.io/tasks-ig/"
