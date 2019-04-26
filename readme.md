@@ -60,11 +60,11 @@ For now the extensions are only available from here:
 
 5. Access the URL and press "Authorize with Google". (The local storage version should work from step 2).
 
-It would be nice to simply run this from the browser extension or local files, but Google APIs need an origin hostname.
+Why all these complications? Google Tasks backend requires having an origin hostname.
 
 **Plan B:** Find someone who hosts it and use their instance (if you trust them).
 
-You can show your self-hosted extension in a Firefox sidebar. Use the extension in the `webpanel` folder and set the URL in the options. Or simply open your URL in a [AiOS](http://firefox.exxile.net/aios/features.php) Multipanel Sidebar.
+You can put your self-hosted extension in a Firefox sidebar. Use the extension in the `webpanel` folder and set the URL in the options.
 
 
 ### Local file
