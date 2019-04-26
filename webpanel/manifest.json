@@ -1,0 +1,36 @@
+{
+	"manifest_version": 2,
+	"name": "Tasks Panel",
+	"version": "1.0",
+	"author": "me@boku.ru",
+	"description": "Open Tasks IG in sidebar.",
+	"homepage_url": "https://github.com/himselfv/tasks-ig",
+	"permissions": [
+		"storage",
+		"contextMenus"
+	],
+	"background": {
+		"scripts": ["common.js", "background.js"]
+	},
+	"icons": {
+		"16": "check2.png"
+	},
+	"sidebar_action": {
+		"default_icon": "check2.png",
+		"default_title": "Tasks IG",
+		"default_panel": "sidebar.html"
+	},
+	"browser_action": {
+		"default_title": "Open Tasks IG in Sidebar",
+		"default_icon": "check2.png"
+	},
+	"options_ui": {
+		"page": "options.html"
+	},
+	"applications": {
+		"gecko": {
+			"id": "tasks-ig@github.com/himselfv"
+		}
+	},
+	"default_sidebar_url": "https://himselfv.github.io/tasks-ig/"
+}
