@@ -18,6 +18,7 @@ var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/tasks/v1/res
 var SCOPES = "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/tasks";
 
 function isChromeExtension() {
+	//Note that FF has chrome and chrome.runtime too
 	return ((typeof chrome != 'undefined') && chrome.runtime && chrome.runtime.id);
 }
 
@@ -106,7 +107,7 @@ BackendGTasks.prototype.signout = function() {
 	else
 		return gapi.auth2.getAuthInstance().signOut();
 }
-Backend.prototype.isSignedIn = function() {
+BackendGTasks.prototype.isSignedIn = function() {
 	if (isChromeExtension())
 		return this.chromeIsSignedIn();
 	return (this._initialized) ? (gapi.auth2.getAuthInstance().isSignedIn.get()) : false;
