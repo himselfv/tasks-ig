@@ -38,5 +38,10 @@
 			"https://www.googleapis.com/auth/tasks"
 		]
 	},
+	"applications": {
+		"gecko": {
+			"id": "ext.tasks-ig.himselfv@github.com"
+		}
+	},
 	"tasks_api_key": "AIzaSyBSbjYK1pG6OPdOq3cv2OsqCTnKDigGO1s"
 }
