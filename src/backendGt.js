@@ -171,21 +171,9 @@ Task lists
 */
 //Returns an array of TaskList objects (promise)
 BackendGTasks.prototype.tasklistList = function() {
-	var items = [];
-	var nextChunk = function(response) {
-		items = items.concat(response.result.items);
-		if (length(response.result.items < 100) || !(response.result.nextPageToken))
-			return items;
-		//Query next page
-		return gapi.client.tasks.tasklists.list({
-			'maxResults': 100,
-			'pageToken': response.result.nextPageToken,
-		}).then(response => nextChunk(response));
-	};
-	//Query first page
 	return gapi.client.tasks.tasklists.list({
 		'maxResults': 100
-	}).then(response => nextChunk(response));
+	}).then(response => response.result.items);
 }
 BackendGTasks.prototype.tasklistAdd = function(title) {
 	var tasklist = {
@@ -223,14 +211,32 @@ BackendGTasks.prototype.tasklistDelete = function(tasklistId) {
 /*
 Tasks
 */
-BackendGTasks.prototype.list = function(tasklistId) {
-	return gapi.client.tasks.tasks.list({
+BackendGTasks.prototype._listQuery = function(tasklistId, pageToken) {
+	var params = {
 		'tasklist': tasklistId,
 		'maxResults': 100,
 		'showCompleted': true,
 		'showHidden': false,
 		'fields': 'items(id,title,parent,position,notes,status,due,completed)',
-	}).then(response => response.result);
+	};
+	if (pageToken)
+		params.pageToken = pageToken;
+	return gapi.client.tasks.tasks.list(params)
+}
+BackendGTasks.prototype.list = function(tasklistId) {
+	var items = [];
+	var nextPage = function(response) {
+		log(response.result.items.length);
+		items = items.concat(response.result.items);
+		if ((response.result.items.length < 100) || !(response.result.nextPageToken)) {
+			return {'items': items};
+		}
+		//Query next page
+		return this._listQuery(tasklistId, response.result.nextPageToken)
+			.then(response => nextPage(response));
+	};
+	//Query first page
+	return this._listQuery(tasklistId, null).then(response => nextPage(response));
 }
 
 //Returns a promise for the given task content
