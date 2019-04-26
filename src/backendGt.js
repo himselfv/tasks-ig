@@ -164,6 +164,25 @@ BackendGTasks.prototype.batchResponseCheck = function (response) {
 		this.responseCheck(response.result[id]);
 	});
 }
+//Runs the same query again and again, substituting `nextPageToken` from results as a `pageToken` for the next query.
+//Concatenates the `results.items` and returns that. Compatible with `tasklists.list` and `tasks.list`.
+BackendGTasks.prototype._listPaged = function(query, params, resultsOnPage) {
+	var items = [];
+	var nextPage = function(response) {
+		//log("got"+JSON.stringify(response));
+		items = items.concat(response.result.items);
+		if ((response.result.items.length < resultsOnPage) || !(response.result.nextPageToken))
+			return items;
+		//Query next page
+		params.pageToken = response.result.nextPageToken;
+		//log ("running query with "+JSON.stringify(params));
+		return query(params).then(response => nextPage(response));
+	};
+	//Query first page
+	query.maxResults = resultsOnPage;
+	//log ("running query with "+JSON.stringify(params));
+	return query(params).then(response => nextPage(response));
+}
 
 
 /*
@@ -171,9 +190,9 @@ Task lists
 */
 //Returns an array of TaskList objects (promise)
 BackendGTasks.prototype.tasklistList = function() {
-	return gapi.client.tasks.tasklists.list({
+	return this._listPaged(gapi.client.tasks.tasklists.list, {
 		'maxResults': 100
-	}).then(response => response.result.items);
+	});
 }
 BackendGTasks.prototype.tasklistAdd = function(title) {
 	var tasklist = {
@@ -211,32 +230,14 @@ BackendGTasks.prototype.tasklistDelete = function(tasklistId) {
 /*
 Tasks
 */
-BackendGTasks.prototype._listQuery = function(tasklistId, pageToken) {
-	var params = {
+BackendGTasks.prototype.list = function(tasklistId) {
+	return this._listPaged(gapi.client.tasks.tasks.list, {
 		'tasklist': tasklistId,
 		'maxResults': 100,
 		'showCompleted': true,
 		'showHidden': false,
 		'fields': 'items(id,title,parent,position,notes,status,due,completed)',
-	};
-	if (pageToken)
-		params.pageToken = pageToken;
-	return gapi.client.tasks.tasks.list(params)
-}
-BackendGTasks.prototype.list = function(tasklistId) {
-	var items = [];
-	var nextPage = function(response) {
-		log(response.result.items.length);
-		items = items.concat(response.result.items);
-		if ((response.result.items.length < 100) || !(response.result.nextPageToken)) {
-			return {'items': items};
-		}
-		//Query next page
-		return this._listQuery(tasklistId, response.result.nextPageToken)
-			.then(response => nextPage(response));
-	};
-	//Query first page
-	return this._listQuery(tasklistId, null).then(response => nextPage(response));
+	}).then(items => {return {'items': items};});
 }
 
 //Returns a promise for the given task content
