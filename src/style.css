@@ -201,10 +201,10 @@ Bottom panel buttons
 #taskmenu .button {
   background-image: url("res/items3.png");
 }
-#taskAddBtn, #taskDeleteBtn, #taskmenu .button {
+#taskAddBtn, #taskDeleteBtn, #taskmenu .button, #mainmenu > .dropbtn {
   filter: invert(41%) sepia(37%) saturate(581%) hue-rotate(176deg) brightness(91%) contrast(87%); /* black -> 4D6C98 */
 }
-#taskAddBtn:hover, #taskDeleteBtn:hover, #taskmenu .button:hover {
+#taskAddBtn:hover, #taskDeleteBtn:hover, #taskmenu .button:hover, #mainmenu > .dropbtn:hover {
   background-color: white; /* will be filtered per above */
 }
 

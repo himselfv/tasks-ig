@@ -1,0 +1,27 @@
+
+The following resources in this repository are used under the following licenses:
+
+check2.png:
+An icon by FatCow Web Hosting, http://www.fatcow.com/
+Licensed under Creative Commons (Attribution 3.0 United States), http://creativecommons.org/licenses/by/3.0/us/
+https://www.iconfinder.com/icons/64880/tick_icon
+
+plus2.png:
+An icon by Timothy Miller, https://www.iconfinder.com/tmthymllr
+Licensed under Creative Commons (Attribution-Share Alike 3.0-Unported), http://creativecommons.org/licenses/by-sa/3.0/
+https://www.iconfinder.com/icons/126583/add_plus_icon
+
+trash2.png:
+An icon by Andrian Valeanu, https://www.iconfinder.com/designmodo
+Licensed under Creative Commons (Attribution 3.0 Unported), http://creativecommons.org/licenses/by/3.0/
+https://www.iconfinder.com/icons/115789/trash_icon
+
+items3.png:
+An icon by jxnblk, http://jxnblk.github.io/
+Licensed under MIT License, https://opensource.org/licenses/MIT
+https://www.iconfinder.com/icons/293685/list_icon
+
+menu-20.png:
+An icon by Design Revision, https://www.iconfinder.com/DesignRevision
+Licensed as "Free for commercial use".
+https://www.iconfinder.com/icons/383106/menu_icon

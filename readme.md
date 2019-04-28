@@ -75,5 +75,6 @@ You can put your self-hosted extension in a Firefox sidebar. Use the extension i
 Just double-click `index.html` or [access it on Github](https://himselfv.github.io/tasks-ig/).
 
 
-### Attribution
-This project uses free icons from various sources. Please see res/readme.txt for attributions.
+### License and attribution
+This project uses icons and other resources which might have their separate licenses. Please see [LICENSE.txt](LICENSE.txt) for licenses and attribution.
+ 

@@ -3,6 +3,3 @@ Sidebar extension for Firefox/Opera which displays your standalone Tasks IG inst
 Note:
 * The extension is set to github's Tasks IG address by default, change the URL in options.
 * For Chrome, it's better to just install the standalone Chrome extension. You still get Google Tasks access, but also Browser storage (synced and local).
-
-Icon credits:
-check2: https://www.flaticon.com/free-icon/check_391175
