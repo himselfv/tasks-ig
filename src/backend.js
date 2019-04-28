@@ -99,7 +99,8 @@ update : function (task) {
 //Updates given fields in the cached task entry. Same semantics as backend.patch
 patch : function (patch) {
 	var task = this.items[patch.id];
-	resourcePatch(task, patch);
+	if (task)
+		resourcePatch(task, patch);
 },
 }
 
