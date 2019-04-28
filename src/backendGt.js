@@ -449,7 +449,7 @@ BackendGTasks.prototype.copyToList = function (oldTask, newTasklistId, newParent
 	var prom = this.insert(newTask, newPrevId, newTasklistId)
 		.then(response => {
 			//insert returns the final form of the task
-			let pairs = [{'from': oldTask, 'to': response.result}];
+			let pairs = [{'from': oldTask, 'to': response}];
 			return this.batchCopyChildren(pairs, newTasklistId);
 		});
 	return prom;
