@@ -18,8 +18,8 @@ var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/tasks/v1/res
 var SCOPES = "https://www.googleapis.com/auth/tasks.readonly https://www.googleapis.com/auth/tasks";
 
 function isChromeExtension() {
-	//Note that FF has chrome and chrome.runtime too
-	return ((typeof chrome != 'undefined') && chrome.runtime && chrome.runtime.id);
+	//Note that FF has chrome and chrome.runtime too, and even chrome.runtime.id
+	return ((typeof chrome != 'undefined') && chrome.runtime && chrome.runtime.id && (typeof browser == 'undefined'));
 }
 
 //Self-register

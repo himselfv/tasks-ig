@@ -1,7 +1,7 @@
 {
 	"manifest_version": 2,
 	"name": "Tasks IG",
-	"version": "1.0.5",
+	"version": "1.0.6",
 	"author": "me@boku.ru",
 	"description": "Sidebar-like tasklist for Google Tasks and other backends",
 	"homepage_url": "https://github.com/himselfv/tasks-ig",
