@@ -44,9 +44,11 @@ For now the extensions are only available from here:
 
 **Chrome**: Go to Extensions page and enable "Developer mode". Press "Load unpacked extension" and point it to the folder with Tasks IG.
 
-**Firefox**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig/) or: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`
+**Firefox**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig/)
 
 **Firefox Sidebar for Standalone version**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig-webpanel/)
+
+(To load from sources in Firefox: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`)
 
 
 ### Self-hosting
