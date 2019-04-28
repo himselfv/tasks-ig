@@ -1,9 +1,9 @@
 {
 	"manifest_version": 2,
-	"name": "Tasks Panel",
+	"name": "Tasks IG Sidebar for a standalone version",
 	"version": "1.0",
 	"author": "me@boku.ru",
-	"description": "Opens a standalone instance of Tasks IG from your address of choice in the sidebar.",
+	"description": "Opens a standalone instance of Tasks IG task list manager from your address of choice in the sidebar.",
 	"homepage_url": "https://github.com/himselfv/tasks-ig",
 	"permissions": [
 		"storage"
@@ -16,7 +16,7 @@
 	},
 	"sidebar_action": {
 		"default_icon": "check2.png",
-		"default_title": "Tasks IG",
+		"default_title": "Tasks",
 		"default_panel": "sidebar.html"
 	},
 	"browser_action": {
@@ -28,7 +28,7 @@
 	},
 	"applications": {
 		"gecko": {
-			"id": "webpanel.tasks-ig.himselfv@github.com"
+			"id": "{1aab8d17-cdbe-4f60-98a3-7ac942b57876}"
 		}
 	},
 	"default_sidebar_url": "https://himselfv.github.io/tasks-ig/"

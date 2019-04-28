@@ -42,7 +42,7 @@
 	//Application ID is required for Firefox browser.storage.sync
 	"applications": {
 		"gecko": {
-			"id": "ext.tasks-ig.himselfv@github.com"
+			"id": "{4e494c38-202d-45f8-a450-90d8679dc278}"
 		}
 	}
 }
