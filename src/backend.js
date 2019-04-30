@@ -104,6 +104,26 @@ patch : function (patch) {
 },
 }
 
+/*
+Callback class for
+*/
+function Observable() {
+	this.observers = [];
+}
+Observable.prototype.subscribe = function(f) {
+	this.observers.push(f);
+}
+Observable.prototype.push = function(f) {
+	this.observers.push(f);
+}
+Observable.prototype.unsubscribe = function(f) {
+	this.observers = this.observers.filter(subscriber => subscriber !== f);
+}
+Observable.prototype.notify = function(data) {
+	this.observers.forEach(observer => observer(data));
+}
+
+
 
 /*
 Backend base class.
@@ -114,6 +134,21 @@ Most functions:
 */
 function Backend() {
 	this.onSignInStatus = [];
+	/*
+	Notifications.
+	Types of notifications the backends can deliver:
+	1. TaskList added/renamed/deleted.
+	2. Task edited (params unrelated to its position in the list)
+	3. Task added/deleted
+	4. Task moved to list A, parent B, after entry C.
+	*/
+	this.onTasklistAdded = new Observable();
+	this.onTasklistEdited = new Observable();
+	this.onTasklistDeleted = new Observable();
+	this.onTaskAdded = new Observable();
+	this.onTaskEdited = new Observable();
+	this.onTaskMoved = new Observable();
+	this.onTaskDeleted = new Observable();
 }
 
 /*

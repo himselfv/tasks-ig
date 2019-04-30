@@ -17,17 +17,34 @@ BackendLocal.prototype = Object.create(Backend.prototype);
 function BackendLocalStorage() {
 	log("BackendLocalStorage");
 	BackendLocal.call(this);
+	window.addEventListener('storage', (event) => this.localStorageChanged(event));
 }
 BackendLocalStorage.prototype = Object.create(BackendLocal.prototype);
 
+
 //Pass browser.storage.sync or browser.storage.local
-function BackendBrowserStorage(storage) {
+function BackendBrowserStorage(areaName) {
 	log("BackendBrowserStorage")
 	BackendLocal.call(this);
-	this.storage = storage;
+	this.areaName = areaName;
+	if (areaName == "sync")
+		this.storage = getBrowserStorageSync();
+	else if (areaName == "local")
+		this.storage = getBrowserStorageLocal();
+	getBrowserStorage().addListener((changes, areaName_) => this.backendStorageChanged(changes, areaName_));
 }
 BackendBrowserStorage.prototype = Object.create(BackendLocal.prototype);
 
+function getBrowserStorage() {
+	return (typeof browser != 'undefined') ? browser.storage : (typeof chrome != 'undefined') ? chrome.storage : null;
+}
+function getBrowserStorageSync() {
+	//Prefer "browser" as it's more standardized and less available (FF provides "chrome" too)
+	return (typeof browser != 'undefined') ? browser.storage.sync : (typeof chrome != 'undefined') ? new ChromeStorageWrapper(chrome.storage.sync) : null;
+}
+function getBrowserStorageLocal() {
+	return (typeof browser != 'undefined') ? browser.storage.local : (typeof chrome != 'undefined') ? new ChromeStorageWrapper(chrome.storage.local) : null;
+}
 
 //Chrome storage.* APIs do not return promises but instead use callbacks
 function ChromeStorageWrapper(storage) {
@@ -62,16 +79,8 @@ ChromeStorageWrapper.prototype.clear = function(keys) {
 	}));
 }
 
-function getBrowserStorageSync() {
-	//Prefer "browser" as it's more standardized and less available (FF provides "chrome" too)
-	return (typeof browser != 'undefined') ? browser.storage.sync : (typeof chrome != 'undefined') ? new ChromeStorageWrapper(chrome.storage.sync) : null;
-}
-function getBrowserStorageLocal() {
-	return (typeof browser != 'undefined') ? browser.storage.local : (typeof chrome != 'undefined') ? new ChromeStorageWrapper(chrome.storage.local) : null;
-}
-
-function BackendBrowserStorageSync() { BackendBrowserStorage.call(this, getBrowserStorageSync()); }
-function BackendBrowserStorageLocal() { BackendBrowserStorage.call(this, getBrowserStorageLocal()); }
+function BackendBrowserStorageSync() { BackendBrowserStorage.call(this, "sync"); }
+function BackendBrowserStorageLocal() { BackendBrowserStorage.call(this, "local"); }
 BackendBrowserStorageSync.prototype = Object.create(BackendBrowserStorage.prototype);
 BackendBrowserStorageLocal.prototype = Object.create(BackendBrowserStorage.prototype);
 
@@ -113,6 +122,18 @@ BackendLocalStorage.prototype.reset = function() {
 	}
 	return Promise.resolve();
 }
+//Fired when the localStorage contents changes
+//https://developer.mozilla.org/en-US/docs/Web/API/StorageEvent
+BackendLocalStorage.prototype.localStorageChanged = function(event) {
+	if (event.storageArea != window.localStorage)
+		return;
+	log(event);
+	var key = event.key;
+	if (!key.startsWith(this.STORAGE_PREFIX))
+		return;
+	key = key.slice(this.STORAGE_PREFIX.length);
+	this.storageChanged(key, event.oldValue, event.newValue);
+}
 
 BackendBrowserStorage.prototype._get = function(key) {
 	//log("get("+JSON.stringify(key)+")");
@@ -149,6 +170,16 @@ BackendBrowserStorage.prototype.reset = function() {
 		return results;
 	});
 }
+BackendBrowserStorage.prototype.backendStorageChanged = function(changes, areaName) {
+	if (areaName != this.areaName)
+		return;
+	//log(changes);
+	Object.keys(changes).forEach(key => {
+		let change = changes[key];
+		this.storageChanged(key, change.oldValue, change.newValue);
+	});
+}
+
 
 
 /*
@@ -185,6 +216,71 @@ BackendLocal.prototype._setItem = function(id, item) {
 }
 BackendLocal.prototype._removeItem = function(id) {
 	return this._remove("item_"+id);
+}
+
+
+/*
+Change tracking
+LocalStorage and browser.storage versions both forward here.
+  !oldValue => created
+  !newValue => deleted
+*/
+BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
+	log("storageChanged: "+key);
+	log(oldValue);
+	log(newValue);
+	/*
+	To avoid duplicates, track changes like this:
+	1. Changes to "tasklists" => List added/removed/edited.
+	2. Add/remove "list_*" => Ignore (doesn't have list title)
+	3. Changes to "list_*" => ?
+	4. Add/remove "item_*" => ?
+	5. Changes to "item_*" => item edited/moved
+	*/
+	
+	if (key == "tasklists") {
+		//Find changes
+		let changes = diffDict(JSON.parse(oldValue), JSON.parse(newValue), (a, b) => (a.id==b.id)&&(a.title==b.title));
+		log(changes);
+	}
+/*
+	if (key.startsWith("list_")) {
+		key = key.slice("list_".length);
+		if (!event.oldValue)
+			this.onTasklistAdded.notify({id: key)
+	}
+*/
+}
+//Returns a dict of key => {oldValue, newValue} pairs.
+function diffDict(oldDict, newDict, comparer) {
+	//Clone the arrays since we're going to edit them
+	oldDict = oldDict ? Object.assign({}, oldDict) : {};
+	newDict = newDict ? Object.assign({}, newDict) : {};
+	log ("comparing:");
+	log(oldDict);
+	log(newDict);
+	var res = {};
+	Object.keys(oldDict).forEach(key => {
+		log("old key: "+key);
+		let oldValue = oldDict[key];
+		let newValue = newDict[key]; //undefined if not present
+		dump(oldValue, "oldValue");
+		dump(newValue, "newValue");
+		if (!newValue || !comparer(oldValue, newValue)) {
+			res[key] = { 'oldValue': oldValue, 'newValue': newValue };
+			log("added old");
+		}
+	});
+	Object.keys(newDict).forEach(key => {
+		log("new key: "+key);
+		let oldValue = oldDict[key];
+		if (!oldValue) {
+			res[key] = { 'oldValue': null, 'newValue': newDict[key] };
+			log("added new");
+		}
+	});
+	log(res);
+	return res;
 }
 
 

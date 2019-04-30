@@ -97,6 +97,13 @@ function backendInit(backendCtor) {
 		return false;
 	}
 	backend.onSignInStatus.push(updateSigninStatus);
+	backend.onTasklistAdded.push((tasklist) => dump(tasklist, "Tasklist added"));
+	backend.onTasklistEdited.push((tasklist) => dump(tasklist, "Tasklist edited"));
+	backend.onTasklistDeleted.push((tasklist) => dump(tasklist, "Tasklist deleted"));
+	backend.onTaskAdded.push((task) => dump(task, "Task added"));
+	backend.onTaskEdited.push((task) => dump(task, "Task edited"));
+	backend.onTaskDeleted.push((task) => dump(task, "Task deleted"));
+	backend.onTaskMoved.push((task) => dump(task, "Task moved"));
 	backend.connect().then(() => {
 		if (!backend.isSignedIn())
 			return backend.signin();

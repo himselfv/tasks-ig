@@ -314,3 +314,9 @@ Debug
 function log(message) {
 	console.log(message);
 }
+function dump(value, name) {
+	if (name)
+		console.log(name+': '+JSON.stringify(value));
+	else
+		log(name);
+}
