@@ -26,7 +26,7 @@ function BackendBrowserStorage(areaName) {
 		this.storage = getBrowserStorageSync();
 	else if (areaName == "local")
 		this.storage = getBrowserStorageLocal();
-	getBrowserStorage().addListener((changes, areaName_) => this.backendStorageChanged(changes, areaName_));
+	getBrowserStorage().onChanged.addListener((changes, areaName_) => this.backendStorageChanged(changes, areaName_));
 }
 BackendBrowserStorage.prototype = Object.create(BackendLocal.prototype);
 
