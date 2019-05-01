@@ -20,8 +20,3 @@ items3.png:
 An icon by jxnblk, http://jxnblk.github.io/
 Licensed under MIT License, https://opensource.org/licenses/MIT
 https://www.iconfinder.com/icons/293685/list_icon
-
-menu-20.png:
-An icon by Design Revision, https://www.iconfinder.com/DesignRevision
-Licensed as "Free for commercial use".
-https://www.iconfinder.com/icons/383106/menu_icon
