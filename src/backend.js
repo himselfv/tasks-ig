@@ -120,7 +120,7 @@ Callback.prototype.unsubscribe = function(f) {
 	this.observers = this.observers.filter(subscriber => subscriber !== f);
 }
 Callback.prototype.notify = function(param1, param2, param3) {
-	this.observers.forEach(observer => observer(data));
+	this.observers.forEach(observer => observer(param1, param2, param3));
 }
 
 

@@ -230,13 +230,13 @@ BackendLocal.prototype._removeItem = function(id) {
 
 //Converts tasklist contents into "id -> parentId, prevId" dict (calculates prevIds)
 function _tasklistToParentPrev(list) {
-	var parents = {};
+	var lastChild = {};
 	var results = {};
 	if (!list)
 		return results;
 	list.forEach(item => {
-		let prevId = parents[item.parent]; //null is okay
-		parents[item.parent] = item.id;
+		let prevId = lastChild[item.parentId]; //null is okay
+		lastChild[item.parentId] = item.id;
 		results[item.id] = {
 			parentId: item.parentId,
 			prevId: prevId
@@ -385,19 +385,25 @@ BackendLocal.prototype.move = function (taskId, parentId, previousId) {
 	.then(results => {
 		let list = results[0];
 		task = results[1];
+		log(list);
+		log(task);
 		
 		//Update list
 		let thisIndex = list.findIndex(item => item.id == taskId);
 		if (thisIndex < 0)
 			return Promise.reject("move(): No such task in the given list");
-		let prevIndex = 0;
+		let newIndex = 0;
 		if (previousId) {
-			prevIndex = list.findIndex(item => item.id == previousId);
-			if (prevIndex < 0)
+			newIndex = list.findIndex(item => item.id == previousId);
+			if (newIndex < 0)
 				return Promise.reject("move(): No given previous task in the given list");
+			newIndex += 1;
 		}
+		log(thisIndex+" -> "+newIndex);
 		list.splice(thisIndex, 1);
-		list.splice(prevIndex, 0, new TasklistEntry(taskId, parentId));
+		if (thisIndex <= newIndex)
+			newIndex--;
+		list.splice(newIndex, 0, new TasklistEntry(taskId, parentId));
 		
 		//Update task
 		task.parent = parentId;
@@ -490,8 +496,8 @@ LocalStorage and browser.storage versions both end up here.
 */
 BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
 	log("storageChanged: "+key);
-	log(oldValue);
-	log(newValue);
+	//log(oldValue);
+	//log(newValue);
 	
 	//To avoid duplicates, make sure each notification is only tracked in one way
 
@@ -502,12 +508,12 @@ BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
 		Object.keys(changes).forEach(tasklistId => {
 			let change = changes[tasklistId];
 			if (!change.oldValue)
-				this.onTasklistAdded(change.newValue);
+				this.onTasklistAdded.notify(change.newValue);
 			else
 			if (!change.newValue)
-				this.onTasklistDeleted(tasklistId);
+				this.onTasklistDeleted.notify(tasklistId);
 			else
-				this.onTasklistEdited(change.newValue);
+				this.onTasklistEdited.notify(change.newValue);
 		});
 	} else
 	
@@ -517,13 +523,13 @@ BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
 		key = key.slice("list_".length);
 		let oldList = _tasklistToParentPrev(JSON.parse(oldValue)); //id->parentId,prevId
 		let newList = _tasklistToParentPrev(JSON.parse(newValue));
-		let changes = diffDict(oldList, newList, (a,b) => (a.parentId != b.parentId) || (a.prevId != b.prevId));
+		let changes = diffDict(oldList, newList, (a,b) => (a.parentId == b.parentId) && (a.prevId == b.prevId));
 		log(changes);
 		Object.keys(changes).forEach(taskId => {
 			//The only change we track here is same-list move
 			let change = changes[taskId];
 			if ((change.oldValue) && (change.newValue))
-				this.onTaskMoved(taskId, {tasklistId: key, parentId: change.newValue.parentId, prevId: change.newValue.prevId });
+				this.onTaskMoved.notify(taskId, {tasklistId: key, parentId: change.newValue.parentId, prevId: change.newValue.prevId });
 		});
 	} else
 	
@@ -532,16 +538,16 @@ BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
 	if (key.startsWith("item_")) {
 		key = key.slice("item_".length);
 		if (!newValue)
-			this.onTaskDeleted(key);
+			this.onTaskDeleted.notify(key);
 		else
 		if (!oldValue) {
 			//We have to find the tasklist and that's a promise
 			this.taskFindTasklist(key).then(tasklistId => {
-				this.onTaskAdded(JSON.parse(newValue), tasklistId);
+				this.onTaskAdded.notify(JSON.parse(newValue), tasklistId);
 			});
 		} else
 			//Maybe only parent has changed but we don't care to check
-			this.onTaskEdited(JSON.parse(newValue));
+			this.onTaskEdited.notify(JSON.parse(newValue));
 	}
 }
 //Detects additions, deletions and edits between two dictionaries
@@ -572,7 +578,7 @@ BackendLocal.prototype.taskFindTasklist = function(taskId) {
 		keys = Object.keys(tasklists);
 		prom = [];
 		keys.forEach(key =>
-			prom.push(this._getList(id)));
+			prom.push(this._getList(key)));
 		return Promise.all(prom);
 	})
 	.then(tasklists => {

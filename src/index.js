@@ -103,7 +103,7 @@ function backendInit(backendCtor) {
 	backend.onTaskAdded.push((task) => dump(task, "Task added"));
 	backend.onTaskEdited.push((task) => dump(task, "Task edited"));
 	backend.onTaskDeleted.push((task) => dump(task, "Task deleted"));
-	backend.onTaskMoved.push((task) => dump(task, "Task moved"));
+	backend.onTaskMoved.push((task, where) => {dump(task, "Task moved");log(where)});
 	backend.connect().then(() => {
 		if (!backend.isSignedIn())
 			return backend.signin();
