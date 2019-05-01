@@ -97,13 +97,7 @@ function backendInit(backendCtor) {
 		return false;
 	}
 	backend.onSignInStatus.push(updateSigninStatus);
-	backend.onTasklistAdded.push((tasklist) => dump(tasklist, "Tasklist added"));
-	backend.onTasklistEdited.push((tasklist) => dump(tasklist, "Tasklist edited"));
-	backend.onTasklistDeleted.push((tasklist) => dump(tasklist, "Tasklist deleted"));
-	backend.onTaskAdded.push((task) => dump(task, "Task added"));
-	backend.onTaskEdited.push((task) => dump(task, "Task edited"));
-	backend.onTaskDeleted.push((task) => dump(task, "Task deleted"));
-	backend.onTaskMoved.push((task, where) => {dump(task, "Task moved");log(where)});
+	registerChangeNotifications(backend);
 	backend.connect().then(() => {
 		if (!backend.isSignedIn())
 			return backend.signin();
@@ -175,15 +169,34 @@ function updateSigninStatus(isSignedIn) {
   	  if (index >= 0)
   	    jobs.splice(index, 1);
   	  //log("job completed, count="+jobCount);
-  	  if (jobCount <= 0)
+  	  if (jobCount <= 0) {
   	    document.getElementById('activityIndicator').classList.remove('working');
+  	    processIdleJobs();
+  	  }
   	});
   	prom.catch(handleError);
   	return prom;
   }
   //Returns a promise that completes when all active operations have completed
-  function waitIdle() {
+  //NOTE: This is not neccessarily when NO jobs are scheduled. New ones can be scheduled until then.
+  function waitCurrentJobsCompleted() {
     return Promise.all(jobs);
+  }
+  
+  //Some jobs need to be run when all delayed jobs have completed AND there's no interaction from the user.
+  //If they simply waited on "current jobs completed", by the time they run there could've been more actions after them.
+  var idleJobs = [];
+  function addIdleJob(job) {
+    if (jobCount <= 0)
+      job(); //call right now
+    else
+      idleJobs.push(job);
+  }
+  function processIdleJobs() {
+    while (idleJobs.length > 0) {
+      let job = idleJobs.splice(0, 1);
+      job();
+    }
   }
   
   function handleBeforeUnload(event) {
@@ -199,6 +212,46 @@ function updateSigninStatus(isSignedIn) {
       event.returnValue = message;
     }
     return message;
+  }
+  
+  
+  /*
+  Change notifications
+  Due to the way we first update the UI and then the backend, we cannot react to the backend changes
+  while there are still outstanding backend requests.
+  Therefore when notified of changes, we mark those items as dirty and reload when fully idle.
+  */
+  function registerChangeNotifications(backend) {
+	backend.onTasklistAdded.push((tasklist) => {
+		dump(tasklist, "Tasklist added");
+		reportedChanges.tasklists = true;
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTasklistEdited.push((tasklist) => {
+		dump(tasklist, "Tasklist edited");
+		reportedChanges.tasklists = true;
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTasklistDeleted.push((tasklist) => {
+		dump(tasklist, "Tasklist deleted");
+		reportedChanges.tasklists = true;
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTaskAdded.push((task) => dump(task, "Task added"));
+	backend.onTaskEdited.push((task) => dump(task, "Task edited"));
+	backend.onTaskDeleted.push((task) => dump(task, "Task deleted"));
+	backend.onTaskMoved.push((task, where) => {dump(task, "Task moved");log(where)});
+  }
+  var reportedChanges = {
+    tasklists: false,
+    tasks: []
+  }
+  function processReportedChanges() {
+  	if (jobCount != 0)
+  		return;
+    if (reportedChanges.tasklists)
+    	tasklistBoxesReload();
+    
   }
 
 
@@ -261,8 +314,10 @@ function updateSigninStatus(isSignedIn) {
       }
       
       listSelectBox.value = oldSelection;
-      if ((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0))
+      if ((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0)) {
         listSelectBox.selectedIndex = 0;
+        selectedTaskListChanged(); //in this case we have to
+      }
     }).catch(handleError);
   }
 
@@ -1211,7 +1266,7 @@ function updateSigninStatus(isSignedIn) {
     log("Opening editor for task "+taskId);
     
     //Title edits sometimes are not yet commited even though we've sent the request
-    var job = waitIdle()
+    var job = waitCurrentJobsCompleted()
     //Load the task data into the editor
     .then(results => backend.get(taskId))
     .then(task => {
