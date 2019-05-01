@@ -122,7 +122,7 @@ BackendLocalStorage.prototype.reset = function() {
 BackendLocalStorage.prototype.localStorageChanged = function(event) {
 	if (event.storageArea != window.localStorage)
 		return;
-	log(event);
+	//log(event);
 	var key = event.key;
 	if (!key.startsWith(this.STORAGE_PREFIX))
 		return;
@@ -242,7 +242,7 @@ function _tasklistToParentPrev(list) {
 			prevId: prevId
 		};
 	});
-	log(results);
+	//log(results);
 	return results;
 }
 
@@ -318,7 +318,7 @@ BackendLocal.prototype.update = function (task) {
 	var prom = this._getListIds(this.selectedTaskList)
 	.then(list => {
 		if (!list.includes(task.id)) {
-			log("update(): list="+JSON.stringify(list)+", task="+task.id+", not found.");
+			//log("update(): list="+JSON.stringify(list)+", task="+task.id+", not found.");
 			return Promise.reject("update(): No such task in the current list");
 		}
 		taskResNormalize(task);
@@ -385,8 +385,6 @@ BackendLocal.prototype.move = function (taskId, parentId, previousId) {
 	.then(results => {
 		let list = results[0];
 		task = results[1];
-		log(list);
-		log(task);
 		
 		//Update list
 		let thisIndex = list.findIndex(item => item.id == taskId);
@@ -399,7 +397,6 @@ BackendLocal.prototype.move = function (taskId, parentId, previousId) {
 				return Promise.reject("move(): No given previous task in the given list");
 			newIndex += 1;
 		}
-		log(thisIndex+" -> "+newIndex);
 		list.splice(thisIndex, 1);
 		if (thisIndex <= newIndex)
 			newIndex--;
@@ -430,7 +427,7 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId
 	if (taskId && taskId.id) taskId = taskId.id;
 	var oldTasklistId = this.selectedTaskList;
 
-	log("backend.moveToList: taskId	="+taskId+", newTasklist="+newTasklistId);
+	//log("backend.moveToList: taskId	="+taskId+", newTasklist="+newTasklistId);
 
 	//Collect all children
 	var ids = [taskId];
@@ -495,7 +492,7 @@ LocalStorage and browser.storage versions both end up here.
   !newValue => deleted
 */
 BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
-	log("storageChanged: "+key);
+	//log("storageChanged: "+key);
 	//log(oldValue);
 	//log(newValue);
 	
@@ -504,7 +501,6 @@ BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
 	//1. Changes to "tasklists" => List added/removed/edited.
 	if (key == "tasklists") {
 		let changes = diffDict(JSON.parse(oldValue), JSON.parse(newValue), (a, b) => (a.id==b.id)&&(a.title==b.title));
-		log(changes);
 		Object.keys(changes).forEach(tasklistId => {
 			let change = changes[tasklistId];
 			if (!change.oldValue)
@@ -524,7 +520,6 @@ BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
 		let oldList = _tasklistToParentPrev(JSON.parse(oldValue)); //id->parentId,prevId
 		let newList = _tasklistToParentPrev(JSON.parse(newValue));
 		let changes = diffDict(oldList, newList, (a,b) => (a.parentId == b.parentId) && (a.prevId == b.prevId));
-		log(changes);
 		Object.keys(changes).forEach(taskId => {
 			//The only change we track here is same-list move
 			let change = changes[taskId];
@@ -550,26 +545,7 @@ BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
 			this.onTaskEdited.notify(JSON.parse(newValue));
 	}
 }
-//Detects additions, deletions and edits between two dictionaries
-//Returns a dict of key => {oldValue, newValue} pairs.
-function diffDict(oldDict, newDict, comparer) {
-	oldDict = oldDict ? oldDict : {};
-	newDict = newDict ? newDict : {};
-	var res = {};
-	Object.keys(oldDict).forEach(key => {
-		let oldValue = oldDict[key];
-		let newValue = newDict[key]; //undefined if not present
-		if (!newValue || !comparer(oldValue, newValue))
-			res[key] = { 'oldValue': oldValue, 'newValue': newValue };
-	});
-	Object.keys(newDict).forEach(key => {
-		let oldValue = oldDict[key];
-		if (!oldValue)
-			res[key] = { 'oldValue': null, 'newValue': newDict[key] };
-	});
-	log(res);
-	return res;
-}
+
 //Locates the tasklist the task is in. Returns a promise.
 BackendLocal.prototype.taskFindTasklist = function(taskId) {
 	var keys = [];

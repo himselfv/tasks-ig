@@ -79,7 +79,9 @@ function editableGetSelection(editableNode) {
 //Retrieves the caret position in a given editable element, or null.
 //Assumes the node only has one child of type Text (typical for editable elements)
 function editableGetCaret(node) {
-	var range = editableGetSelection(node)
+	var range = editableGetSelection(node);
+	if (!range)
+		return null;
 	if (range.endContainer.nodeType == Node.TEXT_NODE) {
 		//Simple case: we're in the text
 		//log("editableGetCaret => "+range.endOffset);

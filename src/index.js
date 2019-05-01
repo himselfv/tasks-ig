@@ -127,132 +127,149 @@ function updateSigninStatus(isSignedIn) {
 }
 
 
+/*
+Common activity and error handling.
+*/
+var hadErrors = false;
+function printError(msg) {
+	log(msg);
+	if (typeof msg != 'string')
+		msg = JSON.stringify(msg);
+	var popup = document.getElementById('errorPopup');
+	var popupText = popup.innerText;
+	if (popupText != '') popupText = popupText + '\r\n';
+	popup.innerText = (popupText+msg);
+	popup.classList.remove("hidden");
+	document.getElementById('activityIndicator').classList.add('error');
+	hadErrors = true;
+}
+function handleError(reason) {
+	if (reason.result) {
+		if (reason.result.error)
+			printError('Error: ' + reason.result.error.message);
+		else
+			printError(reason.result);
+	}
+	else
+		printError(reason);
+}
 
-  /*
-  Common activity and error handling.
-  */
-  var hadErrors = false;
-  function printError(msg) {
-    log(msg);
-    if (typeof msg != 'string')
-      msg = JSON.stringify(msg);
-    var popup = document.getElementById('errorPopup');
-    var popupText = popup.innerText;
-    if (popupText != '') popupText = popupText + '\r\n';
-    popup.innerText = (popupText+msg);
-    popup.classList.remove("hidden");
-    document.getElementById('activityIndicator').classList.add('error');
-    hadErrors = true;
-  }
-  function handleError(reason) {
-    if (reason.result) {
-      if (reason.result.error)
-        printError('Error: ' + reason.result.error.message);
-      else
-        printError(reason.result);
-    }
-    else
-      printError(reason);
-  }
-  
-  //Pass any promises to track their execution + catch errors.
-  var jobCount = 0;
-  var jobs = [];
-  function pushJob(prom) {
-  	jobCount += 1;
-  	jobs.push(prom);
-  	//log("job added, count="+jobCount);
-  	document.getElementById('activityIndicator').classList.add('working');
-  	prom.then(result => {
-  	  jobCount -= 1;
-  	  let index = jobs.indexOf(prom);
-  	  if (index >= 0)
-  	    jobs.splice(index, 1);
-  	  //log("job completed, count="+jobCount);
-  	  if (jobCount <= 0) {
-  	    document.getElementById('activityIndicator').classList.remove('working');
-  	    processIdleJobs();
-  	  }
-  	});
-  	prom.catch(handleError);
-  	return prom;
-  }
-  //Returns a promise that completes when all active operations have completed
-  //NOTE: This is not neccessarily when NO jobs are scheduled. New ones can be scheduled until then.
-  function waitCurrentJobsCompleted() {
-    return Promise.all(jobs);
-  }
-  
-  //Some jobs need to be run when all delayed jobs have completed AND there's no interaction from the user.
-  //If they simply waited on "current jobs completed", by the time they run there could've been more actions after them.
-  var idleJobs = [];
-  function addIdleJob(job) {
-    if (jobCount <= 0)
-      job(); //call right now
-    else
-      idleJobs.push(job);
-  }
-  function processIdleJobs() {
-    while (idleJobs.length > 0) {
-      let job = idleJobs.splice(0, 1);
-      job();
-    }
-  }
-  
-  function handleBeforeUnload(event) {
-    //Show the confirmation popup if the changes are still pending
-    //These days most browsers ignore the message contents + only show the popup if you have interacted with the page
-    var message = ""; //empty string! not null!
-    if (hadErrors)
-      message = "Some changes to your tasks might have failed.";
-    else if (jobCount >= 1)
-      message = "Some changes to your tasks are still pending. If you close the page now they may be lost";
-    if (message) { //two ways of requesting confirmation:
-      event.preventDefault();
-      event.returnValue = message;
-    }
-    return message;
-  }
-  
-  
-  /*
-  Change notifications
-  Due to the way we first update the UI and then the backend, we cannot react to the backend changes
-  while there are still outstanding backend requests.
-  Therefore when notified of changes, we mark those items as dirty and reload when fully idle.
-  */
-  function registerChangeNotifications(backend) {
+//Pass any promises to track their execution + catch errors.
+var jobCount = 0;
+var jobs = [];
+var idlePromises = [];
+function pushJob(prom) {
+	jobCount += 1;
+	jobs.push(prom);
+	//log("job added, count="+jobCount);
+	document.getElementById('activityIndicator').classList.add('working');
+	prom.then(result => {
+		jobCount -= 1;
+		let index = jobs.indexOf(prom);
+		if (index >= 0)
+			jobs.splice(index, 1);
+		//log("job completed, count="+jobCount);
+		if (jobCount <= 0) {
+			document.getElementById('activityIndicator').classList.remove('working');
+			while ((idlePromises.length > 0) && (jobCount <= 0))
+				idlePromises.splice(0, 1)();
+		}
+	});
+	prom.catch(handleError);
+	return prom;
+}
+//Returns a promise that fires only when NO jobs are remaining in the queue
+//=> all queued actions have completed AND no new actions are pending.
+function waitIdle() {
+	if (jobCount <= 0)
+		return Promise.resolve();
+	else
+		return new Promise((resolve, reject) => { idlePromises.push(resolve); })
+}
+//Same but recevies a function pointer
+function addIdleJob(job) {
+	if (jobCount <= 0) {
+		job(); //synchronously
+		return Promise.resolve(); //if anyone expects us to
+	}
+	waitIdle().then(() => job());
+}
+//Returns a promise that fires when all operations queued AT THE MOMENT OF THE REQUEST have completed.
+//New operations may be queued by the time it fires.
+function waitCurrentJobsCompleted() {
+	return Promise.all(jobs);
+}
+
+function handleBeforeUnload(event) {
+	//Show the confirmation popup if the changes are still pending
+	//These days most browsers ignore the message contents + only show the popup if you have interacted with the page
+	var message = ""; //empty string! not null!
+	if (hadErrors)
+		message = "Some changes to your tasks might have failed.";
+	else if ((jobCount >= 1) || (idlePromises.length > 0))
+		message = "Some changes to your tasks are still pending. If you close the page now they may be lost";
+	if (message) { //two ways of requesting confirmation:
+		event.preventDefault();
+		event.returnValue = message;
+	}
+	return message;
+}
+
+
+/*
+Change notifications
+We update the UI immediately after user actions so we cannot react to the backend changes
+until all outstanding backend request have completed.
+We mark those items as dirty and reload their data when fully idle.
+*/
+function registerChangeNotifications(backend) {
 	backend.onTasklistAdded.push((tasklist) => {
-		dump(tasklist, "Tasklist added");
 		reportedChanges.tasklists = true;
 		addIdleJob(processReportedChanges);
 	});
 	backend.onTasklistEdited.push((tasklist) => {
-		dump(tasklist, "Tasklist edited");
 		reportedChanges.tasklists = true;
 		addIdleJob(processReportedChanges);
 	});
 	backend.onTasklistDeleted.push((tasklist) => {
-		dump(tasklist, "Tasklist deleted");
 		reportedChanges.tasklists = true;
 		addIdleJob(processReportedChanges);
 	});
-	backend.onTaskAdded.push((task) => dump(task, "Task added"));
-	backend.onTaskEdited.push((task) => dump(task, "Task edited"));
-	backend.onTaskDeleted.push((task) => dump(task, "Task deleted"));
-	backend.onTaskMoved.push((task, where) => {dump(task, "Task moved");log(where)});
-  }
-  var reportedChanges = {
-    tasklists: false,
-    tasks: []
-  }
-  function processReportedChanges() {
-  	if (jobCount != 0)
-  		return;
-    if (reportedChanges.tasklists)
-    	tasklistBoxesReload();
-    
-  }
+	backend.onTaskAdded.push((task, tasklistId) => {
+		reportedChanges.tasks.push(task.id);
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTaskEdited.push((task) => {
+		reportedChanges.tasks.push(task.id);
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTaskDeleted.push((taskId) => {
+		reportedChanges.tasks.push(taskId);
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTaskMoved.push((taskId, where) => {
+		reportedChanges.tasks.push(taskId);
+		addIdleJob(processReportedChanges);
+	});
+}
+var reportedChanges = {
+	tasklists: false,
+	tasks: []
+}
+function processReportedChanges() {
+	var prom = Promise.resolve();
+	if (reportedChanges.tasklists)
+		prom = prom.then(results => tasklistBoxesReload()); //TODO: Does not return a promise!
+	let selectedList = selectedTaskList();
+	if (!selectedList)
+		reportedChanges.tasks = []; //no list active, we don't care
+	if (reportedChanges.tasks.length > 0) {
+		//We should requery the current list and scan for the differences in task positions
+		//But for now do it the dumb way: Just reload everything
+		prom = prom.then(results => tasklistReloadSelected());
+	}
+	pushJob(prom);
+}
 
 
   /*
@@ -283,7 +300,7 @@ function updateSigninStatus(isSignedIn) {
     document.getElementById('listDeleteBtn').classList.toggle("hidden", !taskList);
   	document.getElementById("taskAddBtn").classList.toggle("hidden", !taskList);
   	document.getElementById("tasksExportAllToFile").classList.toggle("hidden", !taskList);
-   	tasklistReloadSelected();
+   	return tasklistReloadSelected();
   }
   
   //Reloads the contents of the task list boxes without reacting to possible
@@ -316,7 +333,7 @@ function updateSigninStatus(isSignedIn) {
       listSelectBox.value = oldSelection;
       if ((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0)) {
         listSelectBox.selectedIndex = 0;
-        selectedTaskListChanged(); //in this case we have to
+        return selectedTaskListChanged(); //in this case we have to
       }
     }).catch(handleError);
   }
@@ -361,22 +378,31 @@ function updateSigninStatus(isSignedIn) {
     tasks.clear();
   }
   
+  //Reloads the currently selected task list. Tries to preserve focus. Returns a promise.
   function tasklistReloadSelected() {
+  	var oldFocus = tasks.getFocusedEntry();
+  	if (oldFocus)
+      oldFocus = { id: oldFocus.getId(), pos: oldFocus.getCaret() };
+  	
     backend.selectTaskList(null); //clear the cache
     var selectedValue = selectedTaskList();
     if (!selectedValue) {
       tasks.clear();
       tasksFocusChanged();
-      return;
+      return Promise.resolve();
     }
+    
     log('Loading list: '+selectedValue);
-      
-    backend.selectTaskList(null);
-    backend.selectTaskList(selectedValue).then(response => {
+    return backend.selectTaskList(selectedValue).then(response => {
       //Publish from cache
       tasks.clear();
       tasks.appendTaskChildren(null, 0);
-      tasksFocusChanged();
+      if (oldFocus) {
+      	  let focusTask = tasks.find(oldFocus.id);
+      	  if (focusTask)
+      	  	  focusTask.setCaret(oldFocus.pos);
+      } else
+      	tasksFocusChanged();
     });
   }
   

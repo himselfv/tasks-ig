@@ -105,6 +105,29 @@ patch : function (patch) {
 }
 
 /*
+Detects additions, deletions and edits between two dictionaries
+Returns a dict of key => {oldValue, newValue} pairs.
+*/
+function diffDict(oldDict, newDict, comparer) {
+	oldDict = oldDict ? oldDict : {};
+	newDict = newDict ? newDict : {};
+	var res = {};
+	Object.keys(oldDict).forEach(key => {
+		let oldValue = oldDict[key];
+		let newValue = newDict[key]; //undefined if not present
+		if (!newValue || !comparer(oldValue, newValue))
+			res[key] = { 'oldValue': oldValue, 'newValue': newValue };
+	});
+	Object.keys(newDict).forEach(key => {
+		let oldValue = oldDict[key];
+		if (!oldValue)
+			res[key] = { 'oldValue': null, 'newValue': newDict[key] };
+	});
+	return res;
+}
+
+
+/*
 Callback class
 */
 function Callback() {
@@ -122,7 +145,6 @@ Callback.prototype.unsubscribe = function(f) {
 Callback.prototype.notify = function(param1, param2, param3) {
 	this.observers.forEach(observer => observer(param1, param2, param3));
 }
-
 
 
 /*
