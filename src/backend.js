@@ -148,7 +148,7 @@ function Backend() {
 	this.onTasklistDeleted = new Callback(); // tasklist id
 	this.onTaskAdded = new Callback(); // task info, tasklistId
 	this.onTaskEdited = new Callback(); // new task info
-	this.onTaskMoved = new Callback(); // new task info, tasklistId
+	this.onTaskMoved = new Callback(); // task id, {tasklistId, parentId, prevId}
 	this.onTaskDeleted = new Callback(); // task id
 }
 
