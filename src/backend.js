@@ -105,21 +105,21 @@ patch : function (patch) {
 }
 
 /*
-Callback class for
+Callback class
 */
-function Observable() {
+function Callback() {
 	this.observers = [];
 }
-Observable.prototype.subscribe = function(f) {
+Callback.prototype.subscribe = function(f) {
 	this.observers.push(f);
 }
-Observable.prototype.push = function(f) {
+Callback.prototype.push = function(f) {
 	this.observers.push(f);
 }
-Observable.prototype.unsubscribe = function(f) {
+Callback.prototype.unsubscribe = function(f) {
 	this.observers = this.observers.filter(subscriber => subscriber !== f);
 }
-Observable.prototype.notify = function(data) {
+Callback.prototype.notify = function(param1, param2, param3) {
 	this.observers.forEach(observer => observer(data));
 }
 
@@ -133,7 +133,8 @@ Most functions:
  - accept both taskIds and task objects
 */
 function Backend() {
-	this.onSignInStatus = [];
+	this.onSignInStatus = new Callback();
+
 	/*
 	Notifications.
 	Types of notifications the backends can deliver:
@@ -142,13 +143,13 @@ function Backend() {
 	3. Task added/deleted
 	4. Task moved to list A, parent B, after entry C.
 	*/
-	this.onTasklistAdded = new Observable();
-	this.onTasklistEdited = new Observable();
-	this.onTasklistDeleted = new Observable();
-	this.onTaskAdded = new Observable();
-	this.onTaskEdited = new Observable();
-	this.onTaskMoved = new Observable();
-	this.onTaskDeleted = new Observable();
+	this.onTasklistAdded = new Callback(); // tasklist info
+	this.onTasklistEdited = new Callback(); // new tasklist info
+	this.onTasklistDeleted = new Callback(); // tasklist id
+	this.onTaskAdded = new Callback(); // task info, tasklistId
+	this.onTaskEdited = new Callback(); // new task info
+	this.onTaskMoved = new Callback(); // new task info, tasklistId
+	this.onTaskDeleted = new Callback(); // task id
 }
 
 /*
@@ -181,7 +182,7 @@ Backend.prototype.isSignedIn = function() {
 }
 //Notifies the subscribers about the signin change
 Backend.prototype.notifySignInStatus = function(status) {
-	this.onSignInStatus.forEach(handler => handler(status));
+	this.onSignInStatus.notify(status);
 }
 
 

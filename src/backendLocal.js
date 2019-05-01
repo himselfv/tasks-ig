@@ -233,54 +233,83 @@ BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
 	To avoid duplicates, track changes like this:
 	1. Changes to "tasklists" => List added/removed/edited.
 	2. Add/remove "list_*" => Ignore (doesn't have list title)
-	3. Changes to "list_*" => ?
-	4. Add/remove "item_*" => ?
-	5. Changes to "item_*" => item edited/moved
+	3. Changes to "list_*" => item moved
+	4. Add/remove "item_*" => item added/removed
+	5. Changes to "item_*" => item edited
 	*/
 	
 	if (key == "tasklists") {
 		//Find changes
 		let changes = diffDict(JSON.parse(oldValue), JSON.parse(newValue), (a, b) => (a.id==b.id)&&(a.title==b.title));
 		log(changes);
-	}
-/*
+		Object.keys(changes).forEach(key => {
+			let change = changes[key];
+			if (!change.oldValue)
+				this.onTasklistAdded(change.newValue);
+			else
+			if (!change.newValue)
+				this.onTasklistDeleted(key);
+			else
+				this.onTasklistEdited(change.newValue);
+		});
+	} else
 	if (key.startsWith("list_")) {
 		key = key.slice("list_".length);
-		if (!event.oldValue)
-			this.onTasklistAdded.notify({id: key)
+		//The only change we track here is same-list move
+		//TODO: Locate element in the list that moved (also removed/added and ignore these)
+		//That's not a trivial task. Maybe it's better to store this in some other way...
+	} else
+	if (key.startsWith("item_")) {
+		key = key.slice("item_".length);
+		if (!newValue)
+			this.onTaskDeleted(key);
+		else
+		if (!oldValue) {
+			//We have to find the tasklist and that's a promise
+			this.taskFindTasklist(key).then(tasklistId => {
+				this.onTaskAdded(JSON.parse(newValue), tasklistId);
+			});
+		} else
+			//Maybe only parent has changed but we don't care to check
+			this.onTaskEdited(JSON.parse(newValue));
 	}
-*/
 }
 //Returns a dict of key => {oldValue, newValue} pairs.
 function diffDict(oldDict, newDict, comparer) {
-	//Clone the arrays since we're going to edit them
-	oldDict = oldDict ? Object.assign({}, oldDict) : {};
-	newDict = newDict ? Object.assign({}, newDict) : {};
-	log ("comparing:");
-	log(oldDict);
-	log(newDict);
+	oldDict = oldDict ? oldDict : {};
+	newDict = newDict ? newDict : {};
 	var res = {};
 	Object.keys(oldDict).forEach(key => {
-		log("old key: "+key);
 		let oldValue = oldDict[key];
 		let newValue = newDict[key]; //undefined if not present
-		dump(oldValue, "oldValue");
-		dump(newValue, "newValue");
-		if (!newValue || !comparer(oldValue, newValue)) {
+		if (!newValue || !comparer(oldValue, newValue))
 			res[key] = { 'oldValue': oldValue, 'newValue': newValue };
-			log("added old");
-		}
 	});
 	Object.keys(newDict).forEach(key => {
-		log("new key: "+key);
 		let oldValue = oldDict[key];
-		if (!oldValue) {
+		if (!oldValue)
 			res[key] = { 'oldValue': null, 'newValue': newDict[key] };
-			log("added new");
-		}
 	});
 	log(res);
 	return res;
+}
+//Locates the tasklist the task is in
+BackendLocal.prototype.taskFindTasklist(taskId) {
+	var keys = [];
+	return this._getTasklists()
+	.then(tasklists => {
+		keys = Object.keys(tasklists);
+		prom = [];
+		keys.forEach(key =>
+			prom.push(this._getList(id)));
+		return Promise.all(prom);
+	})
+	.then(tasklists => {
+		for (let i=0; i<keys.length; i++)
+			if (tasklists[i].find(item => item.id==taskId))
+				return keys[i];
+		return null;
+	});
 }
 
 
