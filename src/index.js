@@ -218,9 +218,16 @@ function handleBeforeUnload(event) {
 
 /*
 Change notifications
-We update the UI immediately after user actions so we cannot react to the backend changes
-until all outstanding backend request have completed.
-We mark those items as dirty and reload their data when fully idle.
+Since we update the UI without waiting for the backend to confirm changes,
+we cannot react to change notifications immediately.
+1. That might be callbacks for our own actions (backends should not send them but they may)
+2. Local state of things might be ahead of the server:
+      Locally:  A->B-> [currently transmitting] ->C->D-> [visible in UI]
+      Server notifies: B->F  [can't and shouldn't react!]
+
+Therefore we only mark changed items for review and update them when our state fully
+catches up with the server.
+By that time things might've changed further so we'll need to requery everything then.
 */
 function registerChangeNotifications(backend) {
 	backend.onTasklistAdded.push((tasklist) => {
@@ -264,8 +271,13 @@ function processReportedChanges() {
 	if (!selectedList)
 		reportedChanges.tasks = []; //no list active, we don't care
 	if (reportedChanges.tasks.length > 0) {
-		//We should requery the current list and scan for the differences in task positions
-		//But for now do it the dumb way: Just reload everything
+		/*
+		We have to requery the current list to see
+		1. Which tasks now go after which
+		2. Which tasks have been moved elsewhere
+		But comparing two task trees is cumbersome so do it the dumb way for now:
+		  Just reload everything + try to preserve focus.
+		*/
 		prom = prom.then(results => tasklistReloadSelected());
 	}
 	pushJob(prom);
