@@ -40,15 +40,18 @@ Browser backends are completely offline. The sync version is synchronized by the
 
 
 ### The browser extensions
-For now the extensions are only available from here:
 
-**Chrome**: Go to Extensions page and enable "Developer mode". Press "Load unpacked extension" and point it to the folder with Tasks IG.
+**Chrome**: [Extension page](https://chrome.google.com/webstore/detail/tasks-ig/nemjdegnmkepopaeifiolicbkgldjokn)
 
 **Firefox**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig/)
 
 **Firefox Sidebar for Standalone version**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig-webpanel/)
 
-(To load from sources in Firefox: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`)
+To load from sources here:
+
+Chrome: Go to Extensions page and enable "Developer mode". Press "Load unpacked extension" and point it to the folder with Tasks IG.
+
+Firefox: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`.
 
 
 ### Self-hosting
