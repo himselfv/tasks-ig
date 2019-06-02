@@ -166,12 +166,12 @@ BackendGTasks.prototype.batchResponseCheck = function (response) {
 }
 //Runs the same query again and again, substituting `nextPageToken` from results as a `pageToken` for the next query.
 //Concatenates the `results.items` and returns that. Compatible with `tasklists.list` and `tasks.list`.
-BackendGTasks.prototype._listPaged = function(query, params, resultsOnPage) {
+BackendGTasks.prototype._listPaged = function(query, params) {
 	var items = [];
 	var nextPage = function(response) {
 		//log("got"+JSON.stringify(response));
 		items = items.concat(response.result.items);
-		if ((response.result.items.length < resultsOnPage) || !(response.result.nextPageToken))
+		if ((response.result.items.length < params.maxResults) || !(response.result.nextPageToken))
 			return items;
 		//Query next page
 		params.pageToken = response.result.nextPageToken;
@@ -179,7 +179,6 @@ BackendGTasks.prototype._listPaged = function(query, params, resultsOnPage) {
 		return query(params).then(response => nextPage(response));
 	};
 	//Query first page
-	query.maxResults = resultsOnPage;
 	//log ("running query with "+JSON.stringify(params));
 	return query(params).then(response => nextPage(response));
 }
@@ -236,7 +235,7 @@ BackendGTasks.prototype.list = function(tasklistId) {
 		'maxResults': 100,
 		'showCompleted': true,
 		'showHidden': false,
-		'fields': 'items(id,title,parent,position,notes,status,due,completed)',
+		'fields': 'items(id,title,parent,position,notes,status,due,completed),nextPageToken',
 	}).then(items => {return {'items': items};});
 }
 
