@@ -170,6 +170,8 @@ BackendGTasks.prototype._listPaged = function(query, params) {
 	var items = [];
 	var nextPage = function(response) {
 		//log("got"+JSON.stringify(response));
+		if (!response.result.items) //GTasks may omit items on no results
+			return items;
 		items = items.concat(response.result.items);
 		if ((response.result.items.length < params.maxResults) || !(response.result.nextPageToken))
 			return items;
