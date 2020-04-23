@@ -220,6 +220,15 @@ Common
 /*
 Task lists
 */
+//Backend.prototype.tasklistList = function()
+//Required. Returns an array of TaskList objects (promise).
+
+//Backend.prototype.tasklistGet = function(tasklistId)
+//Required. Retrieves tasklist details.
+
+//Backend.prototype.tasklistAdd = function(title)
+//Implement to enable new tasklists creation.
+
 Backend.prototype.tasklistPatch = function(tasklist) {
 	//Default: query + update
 	return this.tasklistGet(tasklist.id).then(result => {
@@ -228,10 +237,25 @@ Backend.prototype.tasklistPatch = function(tasklist) {
 	});
 }
 
+//Backend.prototype.tasklistUpdate = function(tasklist)
+//Implement to enable editing task list titles.
+
+//Backend.prototype.tasklistDelete = function(tasklistId)
+//Caution! Deletes the task list with the given id
+//Implement to enable task list deletion.
+
+
 
 /*
 Tasks
 */
+
+//Backend.prototype.list = function(tasklistId)
+//Required. Returns a list of all tasks in a taskslist. See BackendGt for more details.
+
+//Backend.prototype.get/getAll
+//At least one is required.
+
 Backend.prototype.get = function(taskId) {
 	if (this.getAll == Backend.prototype.getAll)
 		throw "Not implemented";
@@ -254,6 +278,9 @@ Backend.prototype.getAll = function(taskIds) {
 	});
 }
 
+//Backend.prototype.update = function (task)
+//Required for all intents and purposes, or your tasklist is read-only.
+
 //Updates only the fields mentioned in "task". Fields set to none will be deleted. ID must be set.
 //Returns a task-update or task-patch request
 Backend.prototype.patch = function (task, allChildrenIds) {
@@ -267,14 +294,17 @@ Backend.prototype.patch = function (task, allChildrenIds) {
 		return result;
 	});
 }
+
+//BackendGTasks.prototype.insert = function (task, previousId, tasklistId)
+//Required, or you cannot add new tasks.
+
 //Insert, but assumes the current task list
 Backend.prototype.insertToCurrentList = function (task, previousId) {
 	return this.insert(task, previousId, this.selectedTaskList);
 }
 
-/*
-Deletes the task with all children. If tasklistId is not given, assumes current task list.
-*/
+
+//Deletes the task with all children. If tasklistId is not given, assumes current task list.
 Backend.prototype.delete = function (taskId, tasklistId) {
 	if (taskId && taskId.id) taskId = taskId.id;
 	if (!tasklistId) tasklistId = this.selectedTaskList;
@@ -290,6 +320,12 @@ Backend.prototype.delete = function (taskId, tasklistId) {
 	return this.deleteAll(ids, tasklistId);
 }
 
+//Deletes multiple tasks at once, without traversing their children.
+//BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId).
+//Required for task deletion.
+
+
+//Backend.prototype.move / moveAll: At least one is required
 
 //Moves a task to a new position in the same task list (currently selected one)
 // parentId: null == top level
@@ -329,6 +365,11 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId) {
 	//log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
 	return this.moveAll(childIds, newParentId, newPrevId);
 }
+
+//Moves a task with children to a new position in a different task list.
+//May change task id.
+//BackendGTasks.prototype.moveToList = function (oldTask, newTasklistId, newParentId, newPrevId)
+//Implement to allow moving tasks between lists.
 
 
 

@@ -1,5 +1,36 @@
 
 /*
+Load additional JS
+*/
+//Returns a promise that's fulfilled when the JS is loaded
+function loadScript(scriptId, scriptSrc) {
+	return new Promise((resolve, reject) => {
+		if (document.getElementById(scriptId))
+			return Promise.resolve();
+		log('inserting script '+scriptSrc);
+		var script = document.createElement('script');
+		script.id = scriptId;
+		script.src = scriptSrc;
+		script.async = true;
+		script.defer = true;
+		script.addEventListener("load", () => resolve());
+		script.addEventListener("readystatechange", () => { if (script.readyState == 'complete') script.onload() });
+		document.body.append(script);
+	});
+}
+
+//Accepts a dictionary ID->src
+//Returns a promise that's fulfilled when ALL the given JSs are loaded
+function loadScripts(scripts) {
+	promises = [];
+	Object.keys(scripts).forEach(key => {
+		promises.push(loadScript(key, scripts[key]))
+	});
+	return Promise.all(promises);
+}
+
+
+/*
 Focus, caret and selection
 https://developer.mozilla.org/en-US/docs/Web/API/Selection
 
@@ -64,6 +95,36 @@ function editableGetTextNode(node) {
 	//We expect node to have exactly one TextNode child but try to handle the case where it's forgotten too
 	return node; //fallback
 }
+function editableSetCaret(node, start, end) {
+	//log("editableSetCaret(start="+start+", end="+end+")");
+	var range = document.createRange();
+    
+	var target = editableGetTextNode(node);
+	
+	//Try to perform the closest selection to what had been asked
+	var content = target.textContent; //geared towards text nodes
+	if (start && (start > content.length))
+		start = content.length;
+	if (end && (end > content.length))
+		end = content.length;
+	//(start or end < 0) || (end < start) == your own damn fault
+	
+	range.setStart(target, start);
+	if (end)
+		range.setEnd(target, end);
+	else
+		range.collapse(true); //set end == start
+   
+	var sel = window.getSelection();
+	sel.removeAllRanges();
+	sel.addRange(range);
+}
+
+
+/*
+Misc UI
+*/
+
 function editableGetLength(node) {
 	return editableGetText(node).length;
 }
@@ -112,36 +173,6 @@ function editableGetCaret(node) {
 
 //Sets focus AND caret position/selection to a given editable element with a text content.
 //Assumes the node only has one child of type Text (typical for editable elements)
-function editableSetCaret(node, start, end) {
-	//log("editableSetCaret(start="+start+", end="+end+")");
-	var range = document.createRange();
-    
-	var target = editableGetTextNode(node);
-	
-	//Try to perform the closest selection to what had been asked
-	var content = target.textContent; //geared towards text nodes
-	if (start && (start > content.length))
-		start = content.length;
-	if (end && (end > content.length))
-		end = content.length;
-	//(start or end < 0) || (end < start) == your own damn fault
-	
-	range.setStart(target, start);
-	if (end)
-		range.setEnd(target, end);
-	else
-		range.collapse(true); //set end == start
-   
-	var sel = window.getSelection();
-	sel.removeAllRanges();
-	sel.addRange(range);
-}
-
-
-/*
-Misc UI
-*/
-
 function element(id) {
 	return document.getElementById(id);
 }

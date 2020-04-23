@@ -39,19 +39,7 @@ if (backendGtSupported())
 Google API initialization
 */
 function insertGoogleAPIs() {
-	if (document.getElementById('googleAPIscripts'))
-		return Promise.resolve();
-	return new Promise((resolve, reject) => {
-		log('inserting script');
-		var script = document.createElement('script');
-		script.id = 'googleAPIscripts';
-		script.src = "https://apis.google.com/js/api.js";
-		script.async = true;
-		script.defer = true;
-		script.addEventListener("load", () => resolve());
-		script.addEventListener("readystatechange", () => { if (script.readyState == 'complete') script.onload() });
-		document.body.append(script);
-	});
+	return loadScript('googleAPIscripts', "https://apis.google.com/js/api.js");
 }
 function gapiLoad() {
 	log('loading gapi');
