@@ -147,6 +147,60 @@ BackendDav.prototype.vTodoToTask = function(vtodo) {
 	};
 }
 
+
+//Makes a filtered query to a given tasklist (calendar)
+//Returns a list of Task objects returned
+BackendDav.prototype.queryTasklist = function(tasklistId, filters) {
+	let calendar = this.findCalendar(tasklistId);
+	if (!calendar)
+		return Promise.reject("Task list not found: "+tasklistId);
+	return dav.listCalendarObjects(calendar, { xhr: this.xhr, filters: filters })
+		.then(objects => {
+			let tasks = [];
+			for (var i=0; i<objects.length; i++) {
+				console.log('Object['+i+']');
+				console.log(objects[i].calendarData);
+				let comp = new ICAL.Component(ICAL.parse(objects[i].calendarData));
+				let vtodos = comp.getAllSubcomponents("vtodo");
+				for (var j=0; j<vtodos.length; j++) {
+					let task = this.vTodoToTask(vtodos[j]);
+					//Our task will additionally store icsId to simplify finding it later
+					task.icsUrl = comp.url;
+					tasks.push(task);
+				}
+			}
+			return tasks;
+		});
+}
+
+//Returns a set of prop-filters which uniquely identify a task with a given taskId
+//Returns null if taskId is invalid
+BackendDav.prototype.taskIdFilter = function(taskId) {
+	taskIdParts = taskId.split('\\');
+	console.log(taskIdParts);
+	if (taskIdParts.length != 2)
+		return null;
+	return [/*{
+			type: 'prop-filter',
+			attrs: { name: 'UID' },
+			children: [{
+				type: 'text-match',
+				attrs: { collation: 'i;octet' },
+				value: taskIdParts[0],
+			}],
+		},*/
+		{
+			type: 'prop-filter',
+			attrs: { name: 'created' },
+			children: [{
+				type: 'text-match',
+				/*attrs: { collation: 'i;octet' }*/
+				value: taskIdParts[1],
+			}],
+		}];
+}
+
+
 /*
 Tasks
 */
@@ -159,34 +213,34 @@ BackendDav.prototype.list = function(tasklistId) {
 			attrs: { name: 'VTODO' }
 		}]
 	}];
-	let calendar = this.findCalendar(tasklistId);
-	if (!calendar)
-		return Promise.reject("Task list not found: "+tasklistId);
-	let prom = dav.listCalendarObjects(calendar, { xhr: this.xhr, filters: filters })
-		.then((objects) => {
-			let vtodos = [];
-			for (var i=0; i<objects.length; i++) {
-				console.log('Object['+i+']');
-				console.log(objects[i].calendarData);
-				let jcal = ICAL.parse(objects[i].calendarData);
-				console.log(jcal);
-				let comp = new ICAL.Component(jcal);
-				console.log(comp);
-				vtodos = vtodos.concat(comp.getAllSubcomponents("vtodo"));
-			}
-			console.log(vtodos);
-			let tasks = [];
-			for (var i=0; i<vtodos.length; i++)
-				tasks.push(this.vTodoToTask(vtodos[i]));
-			console.log(tasks);
+	return this.queryTasklist(tasklistId, filters)
+		.then(tasks => {
+			//This function's return is a bit more complicated
 			return {'items': tasks};
 		});
-	return prom;
 }
 
 BackendDav.prototype.get = function (taskId) {
-	return gapi.client.tasks.tasks.get({
-		'tasklist': this.selectedTaskList,
-		'task': taskId,
-	}).then(response => response.result);
+	//Split the id
+	taskIdFilter = this.taskIdFilter(taskId);
+	if (!taskIdFilter)
+		return Promise.reject("Invalid taskId");
+	let filters = [{
+		type: 'comp-filter',
+		attrs: { name: 'VCALENDAR' },
+		children: [{
+			type: 'comp-filter',
+			attrs: { name: 'VTODO' },
+			children: taskIdFilter,
+		}]
+	}];
+
+	return this.queryTasklist(this.selectedTaskList, filters)
+		.then(tasks => {
+			if (tasks.length < 1)
+				return Promise.reject("Task not found");
+			if (tasks.length > 1)
+				return Promise.reject("Multiple tasks match the given taskId!");
+			return tasks[0];
+		});
 }
