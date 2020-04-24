@@ -148,6 +148,36 @@ Callback.prototype.notify = function(param1, param2, param3) {
 
 
 /*
+Minimal Task and Tasklist structures.
+You may use simple dicts but keep these in mind.
+*/
+class Tasklist {
+	constructor(args) {
+		this.id = id;			//Unique for this backend
+		this.title = title;
+		for (var key in args)
+			this[key] = args[key];
+	}
+}
+class Task {
+	constructor(args) {
+		this.id = undefined;				//Unique for this backend
+		this.title = undefined;
+		this.parent = undefined;			//Parent task ID or null/undefined
+		this.position = undefined;		//Sort order key for items of this parent
+		this.notes = undefined;
+		this.status = undefined;
+		this.due = undefined;
+		this.completed = undefined;		//True or false/null/undefined
+		for (var key in args)
+			this[key] = args[key];
+	}
+}
+
+
+
+
+/*
 Backend base class.
 Implements some functions in the default way in case you don't have more performant overrides
 Most functions:

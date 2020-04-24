@@ -22,11 +22,11 @@ function loadScript(scriptId, scriptSrc) {
 //Accepts a dictionary ID->src
 //Returns a promise that's fulfilled when ALL the given JSs are loaded
 function loadScripts(scripts) {
-	promises = [];
+	batch = [];
 	Object.keys(scripts).forEach(key => {
-		promises.push(loadScript(key, scripts[key]))
+		batch.push(loadScript(key, scripts[key]))
 	});
-	return Promise.all(promises);
+	return Promise.all(batch);
 }
 
 
