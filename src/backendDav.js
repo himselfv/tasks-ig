@@ -229,7 +229,8 @@ BackendDav.prototype.list = function(tasklistId) {
 		});
 }
 
-BackendDav.prototype.get = function (taskId) {
+//TODO: Remove this once I'm sure getAll() works stably
+BackendDav.prototype.getOne = function (taskId) {
 	//Split the id
 	taskIdFilter = this.taskIdFilter(taskId);
 	if (!taskIdFilter)
@@ -252,4 +253,54 @@ BackendDav.prototype.get = function (taskId) {
 				return Promise.reject("Multiple tasks match the given taskId!");
 			return tasks[0];
 		});
+}
+
+BackendDav.prototype.getAll = function(taskIds) {
+	/*
+	Uses OR queries:
+	  https://tools.ietf.org/id/draft-daboo-caldav-extensions-01.txt
+	To query multiple events at the same time.
+	
+	If ORs are not supported, one alternative is to just request everything
+	if the # of todos needed is high enough, otherwise default to one-by-one.
+	*/
+	
+	//Compile the set of TODO filters (each is internally AND)
+	let vtodos = [];
+	for (let i=0; i<taskIds.length; i++) {
+		let taskIdFilter = this.taskIdFilter(taskIds[i]);
+		if (!taskIdFilter)
+			return Promise.Reject('Invalid taskId: '+taskId);
+		vtodos.push({
+			type: 'comp-filter',
+			attrs: { name: 'VTODO' },
+			children: taskIdFilter,
+		});
+	}
+	
+	//OR the set of filters
+	let filters = [{
+		type: 'comp-filter',
+		attrs: { name: 'VCALENDAR', test: 'anyof' },
+		children: vtodos,
+	}];
+	
+	return this.queryTasklist(this.selectedTaskList, filters)
+	.then(tasks => {
+		//Unpack the response
+		let results = {};
+		
+		//The query may return less results than needed so check the requested set one by one
+		for (let i=0; i<taskIds.length; i++) {
+			let j = 0;
+			for (; j<tasks.length; j++)
+				if (tasks[j].id==taskIds[i]) {
+					results[taskIds[i]] = tasks[j];
+					break;
+				}
+			if (j >= tasks.length)
+				throw "Task not found: "+taskId;
+		}
+		return results;
+	});
 }
