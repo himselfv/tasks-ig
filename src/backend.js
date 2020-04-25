@@ -288,15 +288,17 @@ Tasks
 
 Backend.prototype.get = function(taskId) {
 	if (this.getAll == Backend.prototype.getAll)
-		throw "Not implemented";
+		throw "Backend: Querying tasks is not implemented";
 	//Default: forward to getAll
-	return this.getAll([taskId]).then(results => results[0]);
+	return this.getAll([taskId]).then(results =>
+		results[Object.keys(results)[0]]
+	);
 }
 
 //Retrieves multiple tasks in a single request. Returns a promise for a taskId -> task map.
 Backend.prototype.getAll = function(taskIds) {
 	if (this.get == Backend.prototype.get)
-		throw "Not implemented";
+		throw "Backend: Querying tasks is not implemented";
 	//Default: forward to get() one by one
 	var proms = [];
 	for (let i=0; i<taskIds.length; i++)
@@ -362,7 +364,7 @@ Backend.prototype.delete = function (taskId, tasklistId) {
 // previousId: null == first position
 Backend.prototype.move = function (taskId, parentId, previousId) {
 	if (this.moveAll == Backend.prototype.moveAll)
-		throw "Not implemented";
+		throw "Backend: Moving tasks is not implemented";
 	//Default: forward to moveAll()
 	if (taskId && taskId.id) taskId = taskId.id;
 	return this.moveAll([taskId], parentId, previousId).then(results => results[0]);
@@ -371,7 +373,7 @@ Backend.prototype.move = function (taskId, parentId, previousId) {
 // inserting them in the given order after a given task (null = at the top).
 Backend.prototype.moveAll = function (taskIds, newParentId, newPrevId) {
 	if (this.move == Backend.prototype.move)
-		throw "Not implemented";
+		throw "Backend: Moving tasks is not implemented";
 	//Default: forward to move() one by one
 	var proms = [];
 	taskIds.reverse().forEach(id => {
