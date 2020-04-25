@@ -134,9 +134,17 @@ BackendDav.prototype.findCalendar = function(tasklistId) {
 /*
 Tasks service functions
 */
+BackendDav.prototype.makeTaskId = function(vtodo) {
+	//There could be multiple revisions of the same task UID so add creation time
+	//Use ICAL format to let CalDAV filter by it later
+	return vtodo.getFirstPropertyValue('uid')
+		+'\\'
+		+vtodo.getFirstPropertyValue('created').toICALString()
+}
+
 BackendDav.prototype.vTodoToTask = function(vtodo) {
 	return {
-		id: vtodo.getFirstPropertyValue('uid')+'\\'+vtodo.getFirstPropertyValue('created'),
+		id: this.makeTaskId(vtodo),
 		title: vtodo.getFirstPropertyValue('summary'),
 		parent: undefined,		//TODO
 		position: undefined,	//TODO
@@ -173,6 +181,7 @@ BackendDav.prototype.queryTasklist = function(tasklistId, filters) {
 		});
 }
 
+
 //Returns a set of prop-filters which uniquely identify a task with a given taskId
 //Returns null if taskId is invalid
 BackendDav.prototype.taskIdFilter = function(taskId) {
@@ -180,7 +189,7 @@ BackendDav.prototype.taskIdFilter = function(taskId) {
 	console.log(taskIdParts);
 	if (taskIdParts.length != 2)
 		return null;
-	return [/*{
+	return [{
 			type: 'prop-filter',
 			attrs: { name: 'UID' },
 			children: [{
@@ -188,7 +197,7 @@ BackendDav.prototype.taskIdFilter = function(taskId) {
 				attrs: { collation: 'i;octet' },
 				value: taskIdParts[0],
 			}],
-		},*/
+		},
 		{
 			type: 'prop-filter',
 			attrs: { name: 'created' },
