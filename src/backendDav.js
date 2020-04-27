@@ -233,8 +233,48 @@ BackendDav.prototype.parseTodoObject = function(object) {
 			task.status='completed'
 		else
 			task.status='needsAction';
-		task.due = undefined;			//TODO
-		task.completed = undefined;		//TODO
+		
+		/*
+		Datetime field and what they mean:
+		  DTSTART   = Event starts
+		  DURATION  = From start until end
+		  DTEND     = Event ends (should be == START+DURATION), only for VEVENTs
+		  DUE       = TODO due (should be == START+DURATION), only for VTODOs
+		  COMPLETED = In fact completed.
+		Any may be omitted.
+		 => due        = 1. DUE?, 2. DTSTART + DURATION?, 3. DTSTART?, 4. not set.
+		*/
+		task.due = task.baseEntry.getFirstPropertyValue('due');
+		if (!task.due) {
+			task.due = task.baseEntry.getFirstPropertyValue('dtstart');
+			if (task.due) {
+				let duration = task.baseEntry.getFirstPropertyValue('duration');
+				if (duration)
+					task.due.addDuration(duration);
+				
+			}
+		}
+		if (task.due)
+			task.due = task.due.toJSDate();
+
+		/*
+		STATUS==completed, but COMPLETED not set? The time of completion is not known. We want to preserve this in updates.
+		But we need some guesswork for recurrences. We'll use DUE as COMPLETED there.
+		*/
+		task.completed = task.baseEntry.getFirstPropertyValue('completed');
+		if (task.completed)
+			task.completed = task.completed.toJSDate();
+		
+		/*
+		We also want a special logic for recurring TODOs:
+		1. Locate last completed event.
+		2. If there are implicit or explicit recurrences after that, the event is DUE on "due" for the FIRST of those.
+		E.g.:
+		   BASE 12.01 COMPLETED, RECUR monthly.
+		   INST 12.03 COMPLETED
+		   Today: 14.03.  The TODO is due @ 12.04
+		   Today: 15.06.  The TODO is due @ 12.04
+		*/
 	}
 	
 	console.log(task);
@@ -426,12 +466,13 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 			//Not sure what to do, maybe we should just edit what's there?
 			return Promise.reject("Task has been changed on the server, please reload and try again");
 		
+		
 		//Update the tasks's main entry
-		//Patch: Only properties that are defined (maybe null)
 		this.updateProperty(task2.baseEntry, 'summary', task.title, patch);
+		this.updateProperty(task2.baseEntry, 'description', task.notes, patch);
 		//this.updateProperty(task2.baseEntry, '?', task.parent, patch); //TODO
 		//this.updateProperty(task2.baseEntry, '?', task.position, patch); //TODO
-		this.updateProperty(task2.baseEntry, 'description', task.notes, patch);
+		
 		if (!patch || (typeof task.status != "undefined")) {
 			//Status is complicated -- see the loader
 			if (task.status == null) //status removed
@@ -447,12 +488,37 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 			else
 				task2.baseEntry.updatePropertyWithValue('status', 'NEEDS-ACTION');
 		}
-		//this.updateProperty(task2.baseEntry, '?', task.due, patch); //TODO
-		//this.updateProperty(task2.baseEntry, '?', task.completed, patch); //TODO
+		
+		//There can be a bunch of time properties -- see the loader
+		if (!patch || (typeof task.due != "undefined")) {
+			if (task.due == null) {
+				//Any of these serves as due
+				task2.baseEntry.removeProperty('due');
+				task2.baseEntry.removeProperty('dtstart');
+				//Leave DURATION because it may be useful by itself
+			} else {
+				//Set all ways of expressing "due" together
+				let due = ICAL.Time.fromJSDate(task.due);
+				task2.baseEntry.updatePropertyWithValue('due', due);
+				let duration = task2.baseEntry.getFirstPropertyValue('duration');
+				if (duration) {
+					duration.isNegative = true;
+					due.addDuration(duration);
+				}
+				task2.baseEntry.updatePropertyWithValue('dtstart', due);
+			}
+		}
+		this.updateProperty(task2.baseEntry, 'completed', task.completed, patch);
+		
 		task2.maxsequence += 1;
 		task2.maxsequenceEntry = task2.baseEntry;
 		task2.basesequence = task2.maxSequence;
 		task2.baseEntry.updatePropertyWithValue('sequence', task2.maxsequence);
+		var currentDt = ICAL.Time.now();
+		task2.baseEntry.updatePropertyWithValue('last-modified', currentDt);
+		//There's also a DTSTAMP which is equal to LAST-MODIFIED unless the server compiles data from source,
+		//in which case it's the timestamp of the compilation (as opposed to timestamp of the data changes).
+		//TODO: When creating a new object, also set CREATED
 
 		//Pack everything back
 		log(task2.comp);
@@ -475,8 +541,11 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 BackendDav.prototype.updateProperty = function(todoEntry, name, value, patch) {
 	if (patch && (typeof value == "undefined"))
 		return;
-	if (value != null)
+	if (value != null) {
+		//Adjust types
+		if (value instanceof Date)
+			value = ICAL.Time.fromJSDate(value);
 		todoEntry.updatePropertyWithValue(name, value);
-	else
+	} else
 		todoEntry.removeProperty(name);
 }
