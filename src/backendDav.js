@@ -191,6 +191,7 @@ Our rules:
 BackendDav.prototype.parseTodoObject = function(object) {
 	let task = {};
 	task.comp = new ICAL.Component(ICAL.parse(object.calendarData));
+	task.obj = object;
 	task.url = object.url; //to simplify locating it later
 	
 	let vtodos = task.comp.getAllSubcomponents("vtodo");
@@ -455,16 +456,16 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 
 		//Pack everything back
 		log(task2.comp);
-		newText = task2.comp.toString();
-		console.log(newText)
+		task2.obj.calendarData = task2.comp.toString();
+		console.log(task2.obj.calendarData);
 		
-		//5. DISABLED FOR NOW: update on server //TODO
-		return Promise.resolve(newText);
-		
-		//TODO: What to do with the task we've been given? Should we update that to match task2
+		//Update on server
+		dav.updateCalendarObject(task2.obj, { xhr: this.xhr, });
 	})
 	.then(response => {
+		log('Calendar updated');
 		taskCache.update(task2); //update cached version
+		//TODO: What to do with the task we've been given? Should we update that to match task2
 		//TODO: What should this return? Have to define this.
 		return response;
 	});
