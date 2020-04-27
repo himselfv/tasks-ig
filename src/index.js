@@ -713,15 +713,17 @@ function processReportedChanges() {
 
   //Starts the drag
   function taskEntryDragStart(event) {
+  	if (!backend || !backend.hasMove()) return;
+	
     //Cancel any text selection that might be going on due to not capturing that initial mouse click
     document.activeElement.blur();
     resetSelection();
-        
+    
     //Configure node for dragging
     var dragEntry = event.entry;
     var dragNode = event.entry.node;
     dragNode.classList.add("dragging");
-        
+    
     //To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
     //we need to shield the page while dragging
     dragContext.shield = document.createElement("div");
@@ -750,6 +752,8 @@ function processReportedChanges() {
   
   //Ends the drag and commits the move
   function taskEntryDragEnd(event) {
+  	if (!backend || !backend.hasMove()) return;
+  	
     var dragEntry = event.entry;
     var dragNode = event.entry.node;
     var cancelDrag = event.cancelDrag;
@@ -789,6 +793,8 @@ function processReportedChanges() {
   
   //Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
   function taskEntryDragMove(event) {
+  	if (!backend || !backend.hasMove()) return;
+  	
     //Move the node to a new place in the same parent list, tentatively
     var pos = event.pos;
     var dragEntry = event.entry;
@@ -836,6 +842,7 @@ function processReportedChanges() {
   */
   function taskEntryTab(entry) {
     //log("taskEntryTab");
+    if (!backend || !backend.hasMove()) return;
     taskEntryTitleCommitNow(entry); //commit any pending changes
     
     //Find immediate previous sibling on the same task level
@@ -863,7 +870,8 @@ function processReportedChanges() {
     Make following siblings into children of this entry.
   */
   function taskEntryShiftTab(entry) {
-   //log("taskEntryShiftTab");
+    //log("taskEntryShiftTab");
+   	if (!backend || !backend.hasMove()) return;
     taskEntryTitleCommitNow(entry); //commit any pending changes
     
     if (entry.getLevel() <= 0) {
@@ -910,6 +918,7 @@ function processReportedChanges() {
 
   //Moves the entry to before the entry above it, on the same level as the entry above it.
   function taskMoveEntryUp(entry) {
+  	if (!backend || !backend.hasMove()) return;
     //Find the entry_above
     var entry_above = entry.getPrev();
     if (!entry_above) return; //nowhere to move
@@ -933,6 +942,7 @@ function processReportedChanges() {
 
   //Moves the entry to after the entry below it, on the same level as the entry below it.
   function taskMoveEntryDown(entry) {
+  	if (!backend || !backend.hasMove()) return;
     /*
       No, it's more complicated.
         A         B         B
@@ -977,6 +987,7 @@ function processReportedChanges() {
   */
   function taskMerge(entry_to, entry_what) {
     //log("taskMerge");
+    if (!backend || !backend.update || !backend.hasMove() || !backend.hasDelete()) return;
     if (!entry_to || !entry_what) return;
     
     var mergePos = entry_to.getTitle().length;
@@ -1063,6 +1074,7 @@ function processReportedChanges() {
   //Adds a new task to the current list, after and with the same parent as the given task.
   //Creates a taskEntry representation for it.
   function taskNewInCurrentList(newTask, parentEntry, prevEntry) {
+  	if (!backend || !backend.insert) return;
     //if no parent is given the node will be added by default to the end of the list
     if (!prevEntry)
       prevEntry = tasks.last();
@@ -1086,6 +1098,8 @@ function processReportedChanges() {
   
   //Create new entry on the same level and after a given one, splitting the part of the title after the caret into it
   function taskNewSplit(prevEntry, caretPos) {
+  	if (!backend || !backend.update || !backend.hasMove())
+  	  return Promise.reject("Not implemented");
     taskEntryTitleCommitNow(); //commit any pending changes
     
     let prevTitle = prevEntry.getTitle();
@@ -1134,6 +1148,8 @@ function processReportedChanges() {
   Makes the first child their new parent.
   */
   function taskLiberateChildren(entry) {
+  	if (!backend || !backend.hasMove())
+  	  return Promise.reject("Not implemented");
     //log("taskLiberateChildren:");
     //log(entry);
     var children = entry.getChildren();
@@ -1168,6 +1184,8 @@ function processReportedChanges() {
   recursive: Kill the children too
   */
   function taskDelete(entry, recursive) {
+  	if (!backend || !backend.hasDelete())
+  	  return Promise.reject("Not implemented");
     taskEntryTitleCommitNow(); //commit any pending changes
     
     var job = null;
@@ -1241,6 +1259,7 @@ function processReportedChanges() {
   */
   
   function tasklistAdd() {
+  	if (!backend || !backend.tasklistAdd) return;
     var title = prompt("Enter a name for the new task list:", "");
     if (!title)
       return;
@@ -1257,6 +1276,7 @@ function processReportedChanges() {
   }
   
   function tasklistRename() {
+  	if (!backend || !backend.tasklistUpdate) return;
     var oldTitle = selectedTaskListTitle();
     var title = prompt("Enter new name for this task list:", oldTitle);
     if (!title || (title == oldTitle))
@@ -1271,6 +1291,7 @@ function processReportedChanges() {
   }
   
   function tasklistDelete() {
+  	if (!backend || !backend.tasklistDelete) return;
     if (tasks.first() != null) {
       window.alert("This task list is not empty. Please delete all tasks before deleting the task list.");
       return;
@@ -1286,6 +1307,7 @@ function processReportedChanges() {
   }
   
   function accountReset() {
+  	if (!backend || !backend.reset) return;
     if (!confirm('WARNING. This will delete all your tasks and task lists and RESET your account. Do you want to continue?'))
       return;
     if (!confirm('Are you SURE you want to delete ALL your task lists and tasks?'))
