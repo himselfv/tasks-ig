@@ -98,6 +98,7 @@ function backendInit(backendCtor) {
 	}
 	backend.onSignInStatus.push(updateSigninStatus);
 	registerChangeNotifications(backend);
+	backendActionsUpdate();
 	backend.connect().then(() => {
 		if (!backend.isSignedIn())
 			return backend.signin();
@@ -116,7 +117,6 @@ function updateSigninStatus(isSignedIn) {
 	if (isSignedIn) {
 		startPage.classList.add("hidden");
 		listPage.classList.remove("hidden");
-		element("accountResetBtn").classList.toggle("hidden", !backend.reset);
 		reloadTaskLists();
 	} else {
 		editorCancel();
@@ -125,6 +125,11 @@ function updateSigninStatus(isSignedIn) {
 		listPage.classList.add("hidden");
 	}
 }
+function backendActionsUpdate() {
+	element("accountResetBtn").classList.toggle("hidden", !backend.reset);
+	tasklistActionsUpdate();
+}
+
 
 
 /*
@@ -307,13 +312,19 @@ function processReportedChanges() {
     selectedTaskListChanged(); //Won't get called automatically
   }
   function selectedTaskListChanged() {
-    var taskList = selectedTaskList();
-    document.getElementById('listRenameBtn').classList.toggle("hidden", !taskList);
-    document.getElementById('listDeleteBtn').classList.toggle("hidden", !taskList);
-  	document.getElementById("taskAddBtn").classList.toggle("hidden", !taskList);
-  	document.getElementById("tasksExportAllToFile").classList.toggle("hidden", !taskList);
+	tasklistActionsUpdate();
    	return tasklistReloadSelected();
   }
+  //Update available tasklist actions depending on the selected tasklist and available backend functions
+  function tasklistActionsUpdate() {
+	var taskList = selectedTaskList();
+  	element("listAddBtn").classList.toggle("hidden",    !backend || !backend.tasklistAdd);
+	element("listRenameBtn").classList.toggle("hidden", !backend || !backend.tasklistUpdate || !tasklist);
+	element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
+  	element("tasksExportAllToFile").classList.toggle("hidden", !taskList);
+  	tasksActionsUpdate();
+  }
+  
   
   //Reloads the contents of the task list boxes without reacting to possible
   //changes of the currently selected list
@@ -420,14 +431,20 @@ function processReportedChanges() {
   
   //Called when the focused task changes
   function tasksFocusChanged() {
+	tasksActionsUpdate();
+  }
+  //Updates available task actions depending on the selected task and backend functionality
+  function tasksActionsUpdate() {
   	var entry = tasks.getFocusedEntry();
-  	document.getElementById("taskTabBtn").classList.toggle("hidden", !entry);
-  	document.getElementById("taskShiftTabBtn").classList.toggle("hidden", !entry);
-  	document.getElementById("taskDeleteBtn").classList.toggle("hidden", !entry);
-  	document.getElementById("taskCopyJSON").classList.toggle("hidden", !entry);
-  	document.getElementById("taskExportToFile").classList.toggle("hidden", !entry);
-  	document.getElementById("taskEditFocused").classList.toggle("hidden", !entry);
-  	document.getElementById("taskDeleteRecursive").classList.toggle("hidden", !entry);
+  	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert || !entry);
+  	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.deleteAll || !entry);
+  	element("taskTabBtn").classList.toggle("hidden", !backend || !backend.hasMove() || !entry);
+  	element("taskShiftTabBtn").classList.toggle("hidden", !backend || !backend.hasMove() ||!entry);
+  	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.deleteAll || !entry);
+  	element("taskCopyJSON").classList.toggle("hidden", !entry);
+  	element("taskExportToFile").classList.toggle("hidden", !entry);
+  	element("taskEditFocused").classList.toggle("hidden", !backend || !backend.update || !entry);
+  	element("taskDeleteRecursive").classList.toggle("hidden", !backend || !backend.hasMove() ||!entry);
   }
 
 

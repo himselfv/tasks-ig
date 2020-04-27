@@ -175,8 +175,6 @@ class Task {
 }
 
 
-
-
 /*
 Backend base class.
 Implements some functions in the default way in case you don't have more performant overrides
@@ -356,6 +354,11 @@ Backend.prototype.delete = function (taskId, tasklistId) {
 //BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId).
 //Required for task deletion.
 
+//True if this backend supports task deletion. Same as checking for deleteAll.
+Backend.prototype.hasDelete = function() {
+	return (Backend.prototype.deleteAll);
+}
+
 
 //Backend.prototype.move / moveAll: At least one is required
 
@@ -380,6 +383,11 @@ Backend.prototype.moveAll = function (taskIds, newParentId, newPrevId) {
 		proms.push(this.move(id, newParentId, newPrevId));
 	});
 	return Promise.all(proms);
+}
+//True if this backend implements move() in one of the ways. Works automatically.
+Backend.prototype.hasMove = function() {
+	return (this.moveAll != Backend.prototype.moveAll)
+			|| (this.move != Backend.prototype.move);
 }
 // Moves all children of a given task under a new parent in the same task list,
 // inserting them in the existing order after a given task (null = at the top).
