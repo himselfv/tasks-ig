@@ -394,9 +394,6 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 	6. Compile everything back.
 	7. Update the ICS object on the server
 	*/
-	console.log('updateTaskObject');
-	console.log(task);
-	
 	let calendar = this.findCalendar(tasklistId);
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
@@ -436,7 +433,6 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		this.updateProperty(task2.baseEntry, 'description', task.notes, patch);
 		if (!patch || (typeof task.status != "undefined")) {
 			//Status is complicated -- see the loader
-			console.log(task.status);
 			if (task.status == null) //status removed
 				task2.baseEntry.removeProperty('status');
 			else
@@ -462,7 +458,7 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		newText = task2.comp.toString();
 		console.log(newText)
 		
-		//5. DISABLE FOR NOW: update on server //TODO
+		//5. DISABLED FOR NOW: update on server //TODO
 		return Promise.resolve(newText);
 		
 		//TODO: What to do with the task we've been given? Should we update that to match task2
