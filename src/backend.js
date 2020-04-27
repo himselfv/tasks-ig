@@ -161,12 +161,12 @@ class Tasklist {
 }
 class Task {
 	constructor(args) {
-		this.id = undefined;				//Unique for this backend
+		this.id = undefined;			//Unique for this backend
 		this.title = undefined;
-		this.parent = undefined;			//Parent task ID or null/undefined
+		this.parent = undefined;		//Parent task ID or null/undefined
 		this.position = undefined;		//Sort order key for items of this parent
 		this.notes = undefined;
-		this.status = undefined;
+		this.status = undefined;		//Only "completed" or "needsAction". Other DAV-style statuses potentially supported in the future.
 		this.due = undefined;
 		this.completed = undefined;		//True or false/null/undefined
 		for (var key in args)

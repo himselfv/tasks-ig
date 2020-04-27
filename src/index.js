@@ -312,15 +312,15 @@ function processReportedChanges() {
     selectedTaskListChanged(); //Won't get called automatically
   }
   function selectedTaskListChanged() {
-	tasklistActionsUpdate();
+    tasklistActionsUpdate();
    	return tasklistReloadSelected();
   }
   //Update available tasklist actions depending on the selected tasklist and available backend functions
   function tasklistActionsUpdate() {
-	var taskList = selectedTaskList();
+    var taskList = selectedTaskList();
   	element("listAddBtn").classList.toggle("hidden",    !backend || !backend.tasklistAdd);
-	element("listRenameBtn").classList.toggle("hidden", !backend || !backend.tasklistUpdate || !tasklist);
-	element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
+    element("listRenameBtn").classList.toggle("hidden", !backend || !backend.tasklistUpdate || !tasklist);
+    element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
   	element("tasksExportAllToFile").classList.toggle("hidden", !taskList);
   	tasksActionsUpdate();
   }
@@ -403,6 +403,7 @@ function processReportedChanges() {
   
   //Reloads the currently selected task list. Tries to preserve focus. Returns a promise.
   function tasklistReloadSelected() {
+	console.log('tasklistReloadSelected');
   	var oldFocus = tasks.getFocusedEntry();
   	if (oldFocus)
       oldFocus = { id: oldFocus.getId(), pos: oldFocus.getCaret() };
@@ -417,6 +418,7 @@ function processReportedChanges() {
     
     log('Loading list: '+selectedValue);
     return backend.selectTaskList(selectedValue).then(response => {
+      log('publishing from cache');
       //Publish from cache
       tasks.clear();
       tasks.appendTaskChildren(null, 0);
@@ -431,7 +433,7 @@ function processReportedChanges() {
   
   //Called when the focused task changes
   function tasksFocusChanged() {
-	tasksActionsUpdate();
+    tasksActionsUpdate();
   }
   //Updates available task actions depending on the selected task and backend functionality
   function tasksActionsUpdate() {
