@@ -133,9 +133,12 @@ BackendDav.prototype.findCalendar = function(tasklistId) {
 
 /*
 VEVENT/VTODO is identified by its UID.
-VTODO entries with the same UID can be present:
-* for older revisions of the task, with lower SEQUENCE numbers
-* for explicitly written out recurrence occasions, with unique RECURRENCE-IDs.
+
+RFC4791 4.1:
+A calendar(==tasklist) is a collection of "objects" (ICS files).
+Each ICS file contains ONE task or event ENTIRELY, including maybe multiple entries (same UID):
+* older versions of the task 	=> lower SEQUENCE#
+* explicit recurrence instances => unique RECURRENCE-IDs
 
 Recurrence rules:
 1. Each entry with RRULE/RDATE defines a series of recurrences.
@@ -184,65 +187,70 @@ Our rules:
 */
 
 
-//Parses a list of calendar objects (ICS files), each containing multiple VTODO entris
-//Returns a map of taskId->Tasks
-BackendDav.prototype.parseTodoObjects = function(objects) {
-	let tasks = {};
-	for (var i=0; i<objects.length; i++) {
-		console.log('Object['+i+']');
-		console.log(objects[i].calendarData);
-		let comp = new ICAL.Component(ICAL.parse(objects[i].calendarData));
-		let vtodos = comp.getAllSubcomponents("vtodo");
-		for (var j=0; j<vtodos.length; j++) {
-			let vtodo = vtodos[j];
-			let taskId = vtodo.getFirstPropertyValue('uid');
-			let task = tasks[taskId] || (tasks[taskId] = { id: taskId, });
-
-			task.entries = task.entries || [];
-			task.entries.push(vtodo);
-
-			vtodo.icsUrl = comp.url; //to simplify locating it later
-			
-			//Find max sequence# in the series
-			vtodo.sequence = vtodo.getFirstPropertyValue('sequence') || 0;
-			if ((task.maxsequence === undefined) || (vtodo.sequence > task.maxsequence)) {
-				task.maxsequence = vtodo.sequence;
-				task.maxsequenceEntry = vtodo;
-			}
-			
-			//Find the recurrence rules with the highest sequence# (may be <max due to quirks)
-			vtodo.hasRecur = vtodo.hasProperty('rrule') || vtodo.hasProperty('rdate');
-			if (vtodo.hasRecur && (vtodo.sequence > (task.basesequence || 0))) {
-				task.basesequence = vtodo.sequence;
-				task.baseEntry = vtodo;
-			}
+//Parses one calendar "object" (ICS file) into one Task object
+BackendDav.prototype.parseTodoObject = function(object) {
+	let task = {};
+	task.comp = new ICAL.Component(ICAL.parse(object.calendarData));
+	task.url = object.url; //to simplify locating it later
+	
+	let vtodos = task.comp.getAllSubcomponents("vtodo");
+	for (var i in vtodos) {
+		let vtodo = vtodos[i];
+		task.id = task.id || vtodo.getFirstPropertyValue('uid');
+		
+		//Find max sequence# in the series
+		vtodo.sequence = vtodo.getFirstPropertyValue('sequence') || 0;
+		if ((task.maxsequence === undefined) || (vtodo.sequence > task.maxsequence)) {
+			task.maxsequence = vtodo.sequence;
+			task.maxsequenceEntry = vtodo;
+		}
+		
+		//Find the recurrence rules with the highest sequence# (may be <max due to quirks)
+		vtodo.hasRecur = vtodo.hasProperty('rrule') || vtodo.hasProperty('rdate');
+		if (vtodo.hasRecur && (vtodo.sequence > (task.basesequence || 0))) {
+			task.basesequence = vtodo.sequence;
+			task.baseEntry = vtodo;
 		}
 	}
 	
-	//Finalize tasks:
-	//For each, find the most appropriate "main entry" and read its params
-	for (let key in tasks) {
-		let task = tasks[key];
-		
-		//If there are no entries with recurrence rules, choose max sequence# as the base
-		if (!task.baseEntry) {
-			task.basesequence = task.maxsequence;
-			task.baseEntry = task.maxsequenceEntry;
-		}
-		
-		//If there's still no base, skip the task -- nothing to parse
-		if (!task.baseEntry)
-			continue;
-		
+	//If there are no entries with recurrence rules, choose max sequence# as the base
+	if (!task.baseEntry) {
+		task.basesequence = task.maxsequence;
+		task.baseEntry = task.maxsequenceEntry;
+	}
+
+	//If there's still no base, skip the task data -- nothing to parse
+	if (task.baseEntry) {
 		task.title = task.baseEntry.getFirstPropertyValue('summary');
 		task.parent = undefined;		//TODO
 		task.position = undefined;		//TODO
 		task.notes = task.baseEntry.getFirstPropertyValue('description');
-		task.status = task.baseEntry.getFirstPropertyValue('status');
+		//Status is complicated. RFC5545, 3.8.1.11: NEEDS-ACTION, COMPLETED, IN-PROCESS, CANCELLED or property missing.
+		//Task() only supports "completed" and "needsAction", but we remember "true status" for updates.
+		task.statusCode = task.baseEntry.getFirstPropertyValue('status');
+		if (task.statusCode=='COMPLETED')
+			task.status='completed'
+		else
+			task.status='needsAction';
 		task.due = undefined;			//TODO
 		task.completed = undefined;		//TODO
 	}
 	
+	console.log(task);
+	if (!task.id)
+		log('Warning: Task has no ID');
+	return task;
+}
+
+//Parses a list of calendar objects (ICS files), each containing multiple VTODO entris
+//Returns a map of taskId->Tasks
+BackendDav.prototype.parseTodoObjects = function(objects) {
+	let tasks = [];
+	for (var i=0; i<objects.length; i++) {
+		console.log('Object['+i+']');
+		console.log(objects[i].calendarData);
+		tasks.push(this.parseTodoObject(objects[i]));
+	}
 	return tasks;
 }
 
@@ -256,10 +264,9 @@ BackendDav.prototype.queryTasklist = function(tasklistId, filters) {
 		.then(objects => this.parseTodoObjects(objects));
 }
 
-
 //Returns a set of prop-filters which uniquely identify a task with a given taskId
 //Returns null if taskId is invalid
-BackendDav.prototype.taskIdFilter = function(taskId) {
+BackendDav.prototype.taskIdSubfilter = function(taskId) {
 	return [{
 			type: 'prop-filter',
 			attrs: { name: 'UID' },
@@ -269,6 +276,30 @@ BackendDav.prototype.taskIdFilter = function(taskId) {
 				value: taskId,
 			}],
 		}];
+}
+//Same but for multiple task IDs and returns a complete filter
+BackendDav.prototype.taskIdsFilter = function(taskIds) {
+	//Compile the set of TODO filters (each is internally AND)
+	let vtodos = [];
+	for (let i=0; i<taskIds.length; i++) {
+		let taskIdFilter = this.taskIdSubfilter(taskIds[i]);
+		if (!taskIdFilter)
+			return Promise.Reject('Invalid taskId: '+taskId);
+		vtodos.push({
+			type: 'comp-filter',
+			attrs: { name: 'VTODO' },
+			children: taskIdFilter,
+		});
+	}
+	
+	attrs = {name: 'VCALENDAR'};
+	if (vtodos.length > 1)
+		attrs.test = 'anyof'; //OR the set of filters
+	return [{
+		type: 'comp-filter',
+		attrs: attrs,
+		children: vtodos,
+	}];
 }
 
 
@@ -287,26 +318,13 @@ BackendDav.prototype.list = function(tasklistId) {
 	return this.queryTasklist(tasklistId, filters)
 		.then(tasks => {
 			//This function's return is a bit more complicated
-			return {'items': Object.values(tasks)};
+			return {'items': tasks};
 		});
 }
 
 //TODO: Remove this once I'm sure getAll() works stably
 BackendDav.prototype.getOne = function (taskId) {
-	//Split the id
-	taskIdFilter = this.taskIdFilter(taskId);
-	if (!taskIdFilter)
-		return Promise.reject("Invalid taskId");
-	let filters = [{
-		type: 'comp-filter',
-		attrs: { name: 'VCALENDAR' },
-		children: [{
-			type: 'comp-filter',
-			attrs: { name: 'VTODO' },
-			children: taskIdFilter,
-		}]
-	}];
-
+	let filters = this.taskIdsFilter([taskId]);
 	return this.queryTasklist(this.selectedTaskList, filters)
 		.then(tasks => {
 			if (tasks.length < 1)
@@ -327,25 +345,7 @@ BackendDav.prototype.getAll = function(taskIds) {
 	if the # of todos needed is high enough, otherwise default to one-by-one.
 	*/
 	
-	//Compile the set of TODO filters (each is internally AND)
-	let vtodos = [];
-	for (let i=0; i<taskIds.length; i++) {
-		let taskIdFilter = this.taskIdFilter(taskIds[i]);
-		if (!taskIdFilter)
-			return Promise.Reject('Invalid taskId: '+taskId);
-		vtodos.push({
-			type: 'comp-filter',
-			attrs: { name: 'VTODO' },
-			children: taskIdFilter,
-		});
-	}
-	
-	//OR the set of filters
-	let filters = [{
-		type: 'comp-filter',
-		attrs: { name: 'VCALENDAR', test: 'anyof' },
-		children: vtodos,
-	}];
+	let filters = this.taskIdsFilter(taskIds);
 	
 	return this.queryTasklist(this.selectedTaskList, filters)
 	.then(tasks => {
@@ -365,4 +365,121 @@ BackendDav.prototype.getAll = function(taskIds) {
 		}
 		return results;
 	});
+}
+
+
+BackendDav.prototype.update = function (task) {
+	return this.updateTaskObject(this.selectedTaskList, task, false);
+}
+//Since we're re-querying the task and patching it on update anyway, makes sense to reimplement patch() directly
+BackendDav.prototype.patch = function (task) {
+	return this.updateTaskObject(this.selectedTaskList, task, true);
+}
+/*
+Handles both update() and patch()
+patch==true:
+  The task must only contain .id and the changed fields.
+  We'll update it anyway, even if the base entry has changed on the server.
+patch==false:
+  The task contains the entire task, the server version must not have changed.
+*/
+BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
+	/*
+	1. Find the ICS object which hosts this task's "main entry"
+	2. Download it entirely
+	   It may host other unrelated tasks - in theory
+	3. Parse it.
+	4. Verify that the entry hasn't been changed.
+	5. Adjust the entry
+	6. Compile everything back.
+	7. Update the ICS object on the server
+	*/
+	console.log('updateTaskObject');
+	console.log(task);
+	
+	let calendar = this.findCalendar(tasklistId);
+	if (!calendar)
+		return Promise.reject("Task list not found: "+tasklistId);
+	
+	//Verify that baseEntry is defined, or we cannot check that it's still the same on the server
+	if (!patch && !task.baseEntry) //Weird
+		return Promise.reject("Task has no VTODO entry associated with it");
+	
+	let filters = this.taskIdsFilter([task.id]);
+	let task2 = null;
+	
+	return dav.listCalendarObjects(calendar, { xhr: this.xhr, filters: filters })
+	.then(objects => {
+		if (objects.length < 0)
+			return Promise.reject("Task not found: "+task.id);
+		if (objects.length > 1)
+			return Promise.reject("Task "+task.id+" stored across multiple ICS files on server"); //Prohibited by RFC!
+		
+		task2 = this.parseTodoObject(objects[0]);
+		
+		//We need baseEntry to edit
+		if (!task2.baseEntry) //Weird
+			return Promise.reject("Task is missing VTODO entries on the server");
+		
+		//Verify that the tasks' main entry is still the same on the server
+		//  We could also check recurrence-id because who knows, this could now be a different recurrence from the same generation
+		//  But in practice you cannot EDIT a different recurrence into main-ness without changing its SEQUENCE. So phew.
+		if (!patch && (task2.basesequence != task.basesequence))
+			//Not sure what to do, maybe we should just edit what's there?
+			return Promise.reject("Task has been changed on the server, please reload and try again");
+		
+		//Update the tasks's main entry
+		//Patch: Only properties that are defined (maybe null)
+		this.updateProperty(task2.baseEntry, 'summary', task.title, patch);
+		//this.updateProperty(task2.baseEntry, '?', task.parent, patch); //TODO
+		//this.updateProperty(task2.baseEntry, '?', task.position, patch); //TODO
+		this.updateProperty(task2.baseEntry, 'description', task.notes, patch);
+		if (!patch || (typeof task.status != "undefined")) {
+			//Status is complicated -- see the loader
+			console.log(task.status);
+			if (task.status == null) //status removed
+				task2.baseEntry.removeProperty('status');
+			else
+			//Completed status is the same in both systems
+			if (task.status == 'completed')
+				task2.baseEntry.updatePropertyWithValue('status', 'COMPLETED')
+			else
+			//IF we have a secret "true status" AND it doesn't contradict us, keep the true one
+			if (task.statusCode && (task.statusCode != "COMPLETED"))
+				task2.baseEntry.updatePropertyWithValue('status', task.statusCode);
+			else
+				task2.baseEntry.updatePropertyWithValue('status', 'NEEDS-ACTION');
+		}
+		//this.updateProperty(task2.baseEntry, '?', task.due, patch); //TODO
+		//this.updateProperty(task2.baseEntry, '?', task.completed, patch); //TODO
+		task2.maxsequence += 1;
+		task2.maxsequenceEntry = task2.baseEntry;
+		task2.basesequence = task2.maxSequence;
+		task2.baseEntry.updatePropertyWithValue('sequence', task2.maxsequence);
+
+		//Pack everything back
+		log(task2.comp);
+		newText = task2.comp.toString();
+		console.log(newText)
+		
+		//5. DISABLE FOR NOW: update on server //TODO
+		return Promise.resolve(newText);
+		
+		//TODO: What to do with the task we've been given? Should we update that to match task2
+	})
+	.then(response => {
+		taskCache.update(task2); //update cached version
+		//TODO: What should this return? Have to define this.
+		return response;
+	});
+}
+//Sets or deletes a property on a given todo entry, depending on the property value.
+//In patch mode, skips properties which are not declared
+BackendDav.prototype.updateProperty = function(todoEntry, name, value, patch) {
+	if (patch && (typeof value == "undefined"))
+		return;
+	if (value != null)
+		todoEntry.updatePropertyWithValue(name, value);
+	else
+		todoEntry.removeProperty(name);
 }
