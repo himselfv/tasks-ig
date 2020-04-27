@@ -132,79 +132,141 @@ BackendDav.prototype.findCalendar = function(tasklistId) {
 
 
 /*
-Tasks service functions
+VEVENT/VTODO is identified by its UID.
+VTODO entries with the same UID can be present:
+* for older revisions of the task, with lower SEQUENCE numbers
+* for explicitly written out recurrence occasions, with unique RECURRENCE-IDs.
+
+Recurrence rules:
+1. Each entry with RRULE/RDATE defines a series of recurrences.
+2. Recurrences are implicit.
+3. Recurrences inherit SEQUENCE of their creator.
+4. Changing RRULE/RDATE increases SEQUENCE, generating a new implicit chain of recurrences.
+5. Each recurrence is identified by:
+   - It's recurrence chain (base UID + revision SEQUENCE#/rules)
+   - It's projected datetime in this chain (RECURRENCE-ID)
+
+6. Recurrences can be INSTANTIATED by uniquely specifying their UID, SEQUENCE and RECURRENCE-ID.
+7. Instances can be edited, including their datetime. But:
+   - they remain associated with their original recurrence datetime
+   - their SEQUENCE cannot be increased or they'll be moved into a new chain
+
+After a chain of recurrences is obsoleted by producing a new base (SEQUENCE++):
+8. Instantiated recurrence entries remain.
+9. Historical ones remain for history purposes.
+10. Future instances are ACTIVE and must produce their effects until manually deleted.
+
+11. Generally you only need to instantiate a recurrence to edit it, or to mark completion.
+12. Recurrent TODOs should be considered settled (for the time being) if the LAST recurrence is settled.
+  Not all the previous recurrences. That's not an event, so it shouldn't be treated as "multuple instances".
+
+Quirks:
+1. Thunderbird increments instance SEQUENCE when editing. Thus producing things like:
+     VTODO RRULE=..., SEQUENCE=2
+     VTODO RECURRENCE-ID=..., SEQUENCE=4
+   We must still consider the first line to be the main one, but when increasing its SEQUENCE,
+   we should set it to 5 to avoid recurrence chain clashes.
+2. In theory a client can produce several recurrence chains:
+     VTODO RRULE=..., SEQUENCE=2                          <-- datetime is now here
+     VTODO RECURRENCE-ID=..., SEQUENCE=2                  <-- this is definitely active
+                                                          <-- are other implicit SEQUENCE=2 recurrences active?
+     VTODO RECURRENCE-ID=... RRULE=..., SEQUENCE=3        <-- once we reach this point, a new sequence starts
+   But this is more suited for full-blown calendar events, not TODOs. We don't support this.
+3. Like above, the recurrence base can have RECURRENCE-ID itself, we don't care.
+
+
+Our rules:
+1. Only one entry is considered to be "the main one".
+2. Only the main entry's recurrence rules (RRULE/RDATE) are in effect.
+3. The highest-SEQUENCE entry with recurrence rules is considered "the main one".
+4. The highest available SEQUENCE is considered "max-SEQUENCE".
+5. All recurrences between base-SEQUENCE and max-SEQUENCE are considered to be base-SEQUENCE-related.
 */
-BackendDav.prototype.makeTaskId = function(vtodo) {
-	//There could be multiple revisions of the same task UID so add creation time
-	//Use ICAL format to let CalDAV filter by it later
-	return vtodo.getFirstPropertyValue('uid')
-		+'\\'
-		+vtodo.getFirstPropertyValue('created').toICALString()
-}
 
-BackendDav.prototype.vTodoToTask = function(vtodo) {
-	return {
-		id: this.makeTaskId(vtodo),
-		title: vtodo.getFirstPropertyValue('summary'),
-		parent: undefined,		//TODO
-		position: undefined,	//TODO
-		notes: vtodo.getFirstPropertyValue('description'),
-		status: vtodo.getFirstPropertyValue('status'),
-		due: undefined,			//TODO
-		completed: undefined,	//TODO
-	};
-}
 
+//Parses a list of calendar objects (ICS files), each containing multiple VTODO entris
+//Returns a map of taskId->Tasks
+BackendDav.prototype.parseTodoObjects = function(objects) {
+	let tasks = {};
+	for (var i=0; i<objects.length; i++) {
+		console.log('Object['+i+']');
+		console.log(objects[i].calendarData);
+		let comp = new ICAL.Component(ICAL.parse(objects[i].calendarData));
+		let vtodos = comp.getAllSubcomponents("vtodo");
+		for (var j=0; j<vtodos.length; j++) {
+			let vtodo = vtodos[j];
+			let taskId = vtodo.getFirstPropertyValue('uid');
+			let task = tasks[taskId] || (tasks[taskId] = { id: taskId, });
+
+			task.entries = task.entries || [];
+			task.entries.push(vtodo);
+
+			vtodo.icsUrl = comp.url; //to simplify locating it later
+			
+			//Find max sequence# in the series
+			vtodo.sequence = vtodo.getFirstPropertyValue('sequence') || 0;
+			if ((task.maxsequence === undefined) || (vtodo.sequence > task.maxsequence)) {
+				task.maxsequence = vtodo.sequence;
+				task.maxsequenceEntry = vtodo;
+			}
+			
+			//Find the recurrence rules with the highest sequence# (may be <max due to quirks)
+			vtodo.hasRecur = vtodo.hasProperty('rrule') || vtodo.hasProperty('rdate');
+			if (vtodo.hasRecur && (vtodo.sequence > (task.basesequence || 0))) {
+				task.basesequence = vtodo.sequence;
+				task.baseEntry = vtodo;
+			}
+		}
+	}
+	
+	//Finalize tasks:
+	//For each, find the most appropriate "main entry" and read its params
+	for (let key in tasks) {
+		let task = tasks[key];
+		
+		//If there are no entries with recurrence rules, choose max sequence# as the base
+		if (!task.baseEntry) {
+			task.basesequence = task.maxsequence;
+			task.baseEntry = task.maxsequenceEntry;
+		}
+		
+		//If there's still no base, skip the task -- nothing to parse
+		if (!task.baseEntry)
+			continue;
+		
+		task.title = task.baseEntry.getFirstPropertyValue('summary');
+		task.parent = undefined;		//TODO
+		task.position = undefined;		//TODO
+		task.notes = task.baseEntry.getFirstPropertyValue('description');
+		task.status = task.baseEntry.getFirstPropertyValue('status');
+		task.due = undefined;			//TODO
+		task.completed = undefined;		//TODO
+	}
+	
+	return tasks;
+}
 
 //Makes a filtered query to a given tasklist (calendar)
-//Returns a list of Task objects returned
+//Returns a map of taskId->Tasks returned
 BackendDav.prototype.queryTasklist = function(tasklistId, filters) {
 	let calendar = this.findCalendar(tasklistId);
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
 	return dav.listCalendarObjects(calendar, { xhr: this.xhr, filters: filters })
-		.then(objects => {
-			let tasks = [];
-			for (var i=0; i<objects.length; i++) {
-				console.log('Object['+i+']');
-				console.log(objects[i].calendarData);
-				let comp = new ICAL.Component(ICAL.parse(objects[i].calendarData));
-				let vtodos = comp.getAllSubcomponents("vtodo");
-				for (var j=0; j<vtodos.length; j++) {
-					let task = this.vTodoToTask(vtodos[j]);
-					//Our task will additionally store icsId to simplify finding it later
-					task.icsUrl = comp.url;
-					tasks.push(task);
-				}
-			}
-			return tasks;
-		});
+		.then(objects => this.parseTodoObjects(objects));
 }
 
 
 //Returns a set of prop-filters which uniquely identify a task with a given taskId
 //Returns null if taskId is invalid
 BackendDav.prototype.taskIdFilter = function(taskId) {
-	taskIdParts = taskId.split('\\');
-	console.log(taskIdParts);
-	if (taskIdParts.length != 2)
-		return null;
 	return [{
 			type: 'prop-filter',
 			attrs: { name: 'UID' },
 			children: [{
 				type: 'text-match',
 				attrs: { collation: 'i;octet' },
-				value: taskIdParts[0],
-			}],
-		},
-		{
-			type: 'prop-filter',
-			attrs: { name: 'created' },
-			children: [{
-				type: 'text-match',
-				/*attrs: { collation: 'i;octet' }*/
-				value: taskIdParts[1],
+				value: taskId,
 			}],
 		}];
 }
@@ -225,7 +287,7 @@ BackendDav.prototype.list = function(tasklistId) {
 	return this.queryTasklist(tasklistId, filters)
 		.then(tasks => {
 			//This function's return is a bit more complicated
-			return {'items': tasks};
+			return {'items': Object.values(tasks)};
 		});
 }
 
