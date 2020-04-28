@@ -438,7 +438,7 @@ function processReportedChanges() {
   //Updates available task actions depending on the selected task and backend functionality
   function tasksActionsUpdate() {
   	var entry = tasks.getFocusedEntry();
-  	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert || !entry);
+  	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert);
   	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.deleteAll || !entry);
   	element("taskTabBtn").classList.toggle("hidden", !backend || !backend.hasMove() || !entry);
   	element("taskShiftTabBtn").classList.toggle("hidden", !backend || !backend.hasMove() ||!entry);
