@@ -119,14 +119,11 @@ BackendDav.prototype.tasklistGet = function(tasklistId) {
 }
 
 BackendDav.prototype.findCalendar = function(tasklistId) {
-	console.log("looking for "+tasklistId);
 	for (var i=0; i< this.account.calendars.length; i++) {
 		let calendar = this.account.calendars[i];
-		console.log("trying "+calendar.url);
 		if (calendar.url==tasklistId)
 			return calendar;
 	}
-	console.log("nothing found");
 	return null;
 }
 
@@ -233,12 +230,13 @@ BackendDav.prototype.parseTodoObject = function(object) {
 			task.status='needsAction';
 		
 		//Parent is defined by RELATED-TO[;RELTYPE=PARENT]
+		//This is standard-compliant and supported by most clients who implement any parenting
 		let relations = task.baseEntry.getAllProperties('related-to');
 		for (let i=0; i<relations.length; i++) {
 			let reltype = relations[i].getParameter('reltype');
 			if (reltype && (reltype != 'PARENT'))
 				continue; //We only support setting relations via RELTYPE=PARENT
-			this.parent = relations[i].getFirstValue(); //No multi-parenting supported
+			task.parent = relations[i].getFirstValue(); //No multi-parenting supported
 			break;
 		}
 		
@@ -287,7 +285,7 @@ BackendDav.prototype.parseTodoObject = function(object) {
 		*/
 	}
 	
-	console.log(task);
+	console.log('parsedTodoObject:', task);
 	if (!task.id)
 		log('Warning: Task has no ID');
 	return task;
@@ -298,8 +296,7 @@ BackendDav.prototype.parseTodoObject = function(object) {
 BackendDav.prototype.parseTodoObjects = function(objects) {
 	let tasks = [];
 	for (var i=0; i<objects.length; i++) {
-		console.log('Object['+i+']');
-		console.log(objects[i].calendarData);
+		console.log('Object['+i+']', objects[i].calendarData);
 		tasks.push(this.parseTodoObject(objects[i]));
 	}
 	return tasks;
@@ -361,9 +358,9 @@ BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
 	//this.updateProperty(entry, '?', task.position, patch); //TODO
 	
 	//Preserve all the related-tos except for the one with reltype=parent
-	this.updateProperty(entry, 'related-to', task.parent, patch, (prop) = {
+	this.updateProperty(entry, 'related-to', task.parent, patch, (prop) => {
 		//We only support setting relations via RELTYPE=PARENT
-		let reltype = relations[i].getParameter('reltype');
+		let reltype = prop.getParameter('reltype');
 		return (!reltype || (reltype == 'PARENT'))
 	});
 	
@@ -431,7 +428,7 @@ BackendDav.prototype.updateProperty = function(icsEntry, name, value, patch, fil
 	//Find the first matching property
 	let props = icsEntry.getAllProperties(name);
 	let prop = null;
-	for (let i=0; i<properties.length; i++) {
+	for (let i=0; i<props.length; i++) {
 		if (filter && !filter(props[i]))
 			continue;
 		prop = props[i];
@@ -566,7 +563,7 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
 	
-	console.log(task);
+	console.log('updateTaskObject:', task);
 	
 	//Verify that baseEntry is defined, or we cannot check that it's still the same on the server
 	if (!patch && !task.baseEntry) //Weird
@@ -582,7 +579,7 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		if (objects.length > 1)
 			return Promise.reject("Task "+task.id+" stored across multiple ICS files on server"); //Prohibited by RFC!
 		
-		console.log(objects);
+		console.log('updateTaskObject: preloaded objects=', objects);
 		task2 = this.parseTodoObject(objects[0]);
 		
 		//We need baseEntry to edit
@@ -604,15 +601,15 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		task2.baseEntry.updatePropertyWithValue('sequence', task2.maxsequence);
 		
 		//Pack everything back
-		log(task2.comp);
+		console.log('updatet:', task2.comp);
 		task2.obj.calendarData = task2.comp.toString();
-		console.log(task2.obj.calendarData);
+		console.log('update.data:', task2.obj.calendarData);
 		
 		//Update on server
 		dav.updateCalendarObject(task2.obj, { xhr: this.xhr, });
 	})
 	.then(response => {
-		log('Calendar updated');
+		console.log('Calendar updated');
 		taskCache.update(task2); //update cached version
 		//TODO: What to do with the task we've been given? Should we update that to match task2
 		//TODO: What should this return? Have to define this.
@@ -652,9 +649,9 @@ BackendDav.prototype.insert = function (task, previousId, tasklistId) {
 	vtodo.updatePropertyWithValue('sequence', 1);
 	
 	//Compile
-	console.log(vtodo);
+	console.log('insert:', vtodo);
 	let calendarData = comp.toString();
-	console.log(calendarData);
+	console.log('insert.data: ', calendarData);
 	
 	//Publish
 	return dav.createCalendarObject(calendar, { data: calendarData, filename: uid+'.ics', xhr: this.xhr })
@@ -683,4 +680,10 @@ BackendDav.prototype.deleteAll = function (taskIds, tasklistId) {
 	}).then(results => {
 		//console.log('delete completed');
 	});
+}
+
+BackendDav.prototype.move = function (taskId, parentId, previousId) {
+	//TODO: Implement position
+	task = { id: taskId, parent: parentId };
+	return this.patch(task);
 }
