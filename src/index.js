@@ -1100,8 +1100,11 @@ function processReportedChanges() {
   
   //Create new entry on the same level and after a given one, splitting the part of the title after the caret into it
   function taskNewSplit(prevEntry, caretPos) {
-  	if (!backend || !backend.update || !backend.hasMove())
+  	if (!backend || !backend.update)
   	  return Promise.reject("Not implemented");
+  	let children = prevEntry.getChildren();
+  	if (children && (children.length > 0) && !backend.hasMove())
+  		return Promise.reject("Not implemented");
     taskEntryTitleCommitNow(); //commit any pending changes
     
     let prevTitle = prevEntry.getTitle();
@@ -1150,13 +1153,14 @@ function processReportedChanges() {
   Makes the first child their new parent.
   */
   function taskLiberateChildren(entry) {
-  	if (!backend || !backend.hasMove())
-  	  return Promise.reject("Not implemented");
     //log("taskLiberateChildren:");
     //log(entry);
     var children = entry.getChildren();
     if (!children || (children.length <= 0))
       return Promise.resolve();
+    
+  	if (!backend || !backend.hasMove())
+  	  return Promise.reject("Not implemented");
     
     var entryParent = entry.getParent();
     

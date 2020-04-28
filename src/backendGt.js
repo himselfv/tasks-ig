@@ -230,19 +230,21 @@ BackendGTasks.prototype.list = function(tasklistId) {
 }
 
 //Returns a promise for the given task content
-BackendGTasks.prototype.get = function (taskId) {
+BackendGTasks.prototype.get = function (taskId, tasklistId) {
+	if (!tasklistId) tasklistId = this.selectedTaskList;
 	return gapi.client.tasks.tasks.get({
-		'tasklist': this.selectedTaskList,
+		'tasklist': tasklistId,
 		'task': taskId,
 	}).then(response => response.result);
 }
 
 //Retrieves multiple tasks in a single request.
 //Returns a promise for a taskId -> task map.
-BackendGTasks.prototype.getAll = function(taskIds) {
+BackendGTasks.prototype.getAll = function(taskIds, tasklistId) {
+	if (!tasklistId) tasklistId = this.selectedTaskList;
 	var batch = gapi.client.newBatch();
 	taskIds.forEach(taskId => batch.add(gapi.client.tasks.tasks.get({
-		'tasklist': this.selectedTaskList,
+		'tasklist': tasklistId,
 		'task': taskId,
 	})));
 	return batch.then(response => {
@@ -271,9 +273,7 @@ BackendGTasks.prototype.update = function (task) {
 	});
 }
 
-//Creates a new task on the given tasklist. Inserts it after the given previous task.
-//Inserts it under a given parent (in the task object).
-//Returns a task resource.
+//Inserts a new task and returns its new Task object
 BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
 	//log("backend.insert: tasklist="+tasklistId+", parent="+task.parent+", prev="+previousId);
 	//log(task);
@@ -289,7 +289,7 @@ BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
 	});
 }
 
-//Deletes multiple tasks from a single task list, non-recursively.
+//Deletes multiple tasks at once, without traversing their children.
 BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId) {
 	var batch = gapi.client.newBatch();
 	taskIds.forEach(id => {

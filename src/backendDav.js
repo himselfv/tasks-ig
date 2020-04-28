@@ -363,20 +363,7 @@ BackendDav.prototype.list = function(tasklistId) {
 		});
 }
 
-//TODO: Remove this once I'm sure getAll() works stably
-BackendDav.prototype.getOne = function (taskId) {
-	let filters = this.taskIdsFilter([taskId]);
-	return this.queryTasklist(this.selectedTaskList, filters)
-		.then(tasks => {
-			if (tasks.length < 1)
-				return Promise.reject("Task not found");
-			if (tasks.length > 1)
-				return Promise.reject("Multiple tasks match the given taskId!");
-			return tasks[0];
-		});
-}
-
-BackendDav.prototype.getAll = function(taskIds) {
+BackendDav.prototype.getAll = function(taskIds, tasklistId) {
 	/*
 	Uses OR queries:
 	  https://tools.ietf.org/id/draft-daboo-caldav-extensions-01.txt
@@ -385,10 +372,10 @@ BackendDav.prototype.getAll = function(taskIds) {
 	If ORs are not supported, one alternative is to just request everything
 	if the # of todos needed is high enough, otherwise default to one-by-one.
 	*/
-	
+	if (!tasklistId) tasklistId = this.selectedTaskList;
 	let filters = this.taskIdsFilter(taskIds);
 	
-	return this.queryTasklist(this.selectedTaskList, filters)
+	return this.queryTasklist(tasklistId, filters)
 	.then(tasks => {
 		//Unpack the response
 		let results = {};
@@ -402,8 +389,39 @@ BackendDav.prototype.getAll = function(taskIds) {
 					break;
 				}
 			if (j >= tasks.length)
-				throw "Task not found: "+taskId;
+				throw "Task not found: "+taskIds[j];
 		}
+		return results;
+	});
+}
+//Same but looks in cache first
+BackendDav.prototype.getMaybeCached = function(taskIds, tasklistId) {
+	let results = {};
+	let queryTaskIds = [];
+	
+	//If this is a selected list we can optimize a bit by looking up in cache
+	if (!tasklistId || (tasklistId == this.selectedTaskList)) {
+		for (let i=0; i<taskIds.length; i++) {
+			let task = taskCache.get(taskIds[i]);
+			if (task)
+				results[taskIds[i]] = task;
+			else
+				queryTaskIds.push(taskIds[i]);
+		}
+		if (queryTaskIds.length > 0)
+			console.log('Not all taskIds found in cache, strange; querying');
+	} else
+		queryTaskIds = taskIds;
+	
+	if (queryTaskIds.length <= 0)
+		return Promise.resolve(results);
+	
+	//Maybe we should just query everything at this point? It's a single request anyway.
+	
+	return this.getAll(queryTaskIds, tasklistId)
+	.then(tasks => {
+		for (let taskId in tasks)
+			results[taskId] = tasks[taskId];
 		return results;
 	});
 }
@@ -439,6 +457,8 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
 	
+	console.log(task);
+	
 	//Verify that baseEntry is defined, or we cannot check that it's still the same on the server
 	if (!patch && !task.baseEntry) //Weird
 		return Promise.reject("Task has no VTODO entry associated with it");
@@ -448,11 +468,12 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 	
 	return dav.listCalendarObjects(calendar, { xhr: this.xhr, filters: filters })
 	.then(objects => {
-		if (objects.length < 0)
+		if (objects.length <= 0)
 			return Promise.reject("Task not found: "+task.id);
 		if (objects.length > 1)
 			return Promise.reject("Task "+task.id+" stored across multiple ICS files on server"); //Prohibited by RFC!
 		
+		console.log(objects);
 		task2 = this.parseTodoObject(objects[0]);
 		
 		//We need baseEntry to edit
@@ -466,60 +487,13 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 			//Not sure what to do, maybe we should just edit what's there?
 			return Promise.reject("Task has been changed on the server, please reload and try again");
 		
-		
-		//Update the tasks's main entry
-		this.updateProperty(task2.baseEntry, 'summary', task.title, patch);
-		this.updateProperty(task2.baseEntry, 'description', task.notes, patch);
-		//this.updateProperty(task2.baseEntry, '?', task.parent, patch); //TODO
-		//this.updateProperty(task2.baseEntry, '?', task.position, patch); //TODO
-		
-		if (!patch || (typeof task.status != "undefined")) {
-			//Status is complicated -- see the loader
-			if (task.status == null) //status removed
-				task2.baseEntry.removeProperty('status');
-			else
-			//Completed status is the same in both systems
-			if (task.status == 'completed')
-				task2.baseEntry.updatePropertyWithValue('status', 'COMPLETED')
-			else
-			//IF we have a secret "true status" AND it doesn't contradict us, keep the true one
-			if (task.statusCode && (task.statusCode != "COMPLETED"))
-				task2.baseEntry.updatePropertyWithValue('status', task.statusCode);
-			else
-				task2.baseEntry.updatePropertyWithValue('status', 'NEEDS-ACTION');
-		}
-		
-		//There can be a bunch of time properties -- see the loader
-		if (!patch || (typeof task.due != "undefined")) {
-			if (task.due == null) {
-				//Any of these serves as due
-				task2.baseEntry.removeProperty('due');
-				task2.baseEntry.removeProperty('dtstart');
-				//Leave DURATION because it may be useful by itself
-			} else {
-				//Set all ways of expressing "due" together
-				let due = ICAL.Time.fromJSDate(task.due);
-				task2.baseEntry.updatePropertyWithValue('due', due);
-				let duration = task2.baseEntry.getFirstPropertyValue('duration');
-				if (duration) {
-					duration.isNegative = true;
-					due.addDuration(duration);
-				}
-				task2.baseEntry.updatePropertyWithValue('dtstart', due);
-			}
-		}
-		this.updateProperty(task2.baseEntry, 'completed', task.completed, patch);
-		
+		//Update the tasks's main entry with task contents
+		this.updateTodoObject(task2.baseEntry, task, patch);
 		task2.maxsequence += 1;
 		task2.maxsequenceEntry = task2.baseEntry;
 		task2.basesequence = task2.maxSequence;
 		task2.baseEntry.updatePropertyWithValue('sequence', task2.maxsequence);
-		var currentDt = ICAL.Time.now();
-		task2.baseEntry.updatePropertyWithValue('last-modified', currentDt);
-		//There's also a DTSTAMP which is equal to LAST-MODIFIED unless the server compiles data from source,
-		//in which case it's the timestamp of the compilation (as opposed to timestamp of the data changes).
-		//TODO: When creating a new object, also set CREATED
-
+		
 		//Pack everything back
 		log(task2.comp);
 		task2.obj.calendarData = task2.comp.toString();
@@ -536,6 +510,65 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		return response;
 	});
 }
+
+
+
+//Populates/updates VTODO object fields based on the given task contents
+//If "patch" is set, only updates fields that are present (otherwise considers missing fields deleted).
+BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
+	this.updateProperty(entry, 'summary', task.title, patch);
+	this.updateProperty(entry, 'description', task.notes, patch);
+	//this.updateProperty(entry, '?', task.parent, patch); //TODO
+	//this.updateProperty(entry, '?', task.position, patch); //TODO
+	
+	if (!patch || (typeof task.status != "undefined")) {
+		//Status is complicated -- see the loader
+		if (task.status == null) //status removed
+			entry.removeProperty('status');
+		else
+		//Completed status is the same in both systems
+		if (task.status == 'completed')
+			entry.updatePropertyWithValue('status', 'COMPLETED')
+		else
+		//IF we have a secret "true status" AND it doesn't contradict us, keep the true one
+		if (task.statusCode && (task.statusCode != "COMPLETED"))
+			entry.updatePropertyWithValue('status', task.statusCode);
+		else
+			entry.updatePropertyWithValue('status', 'NEEDS-ACTION');
+	}
+	
+	//There can be a bunch of time properties -- see the loader
+	if (!patch || (typeof task.due != "undefined")) {
+		if (task.due == null) {
+			//Any of these serves as due
+			entry.removeProperty('due');
+			entry.removeProperty('dtstart');
+			//Leave DURATION because it may be useful by itself
+		} else {
+			//Set all ways of expressing "due" together
+			let due = ICAL.Time.fromJSDate(task.due);
+			entry.updatePropertyWithValue('due', due);
+			let duration = entry.getFirstPropertyValue('duration');
+			if (duration) {
+				duration.isNegative = true;
+				due.addDuration(duration);
+			}
+			entry.updatePropertyWithValue('dtstart', due);
+		}
+	}
+	this.updateProperty(entry, 'completed', task.completed, patch);
+	
+	//Update LAST-MODIFIED
+	var currentDt = ICAL.Time.now();
+	entry.updatePropertyWithValue('last-modified', currentDt);
+	//There's also CREATED to be set when creating a new object
+	
+	//There's also DTSTAMP which is equal to LAST-MODIFIED unless the server compiles data from source,
+	//in which case it's the timestamp of the compilation (as opposed to timestamp of the data changes).
+	//We don't care about that one. Maybe the server will set it by itself?
+	
+	//There's also SEQUENCE which you'll have to set by yourself (its mechanics is complicated)
+}
 //Sets or deletes a property on a given todo entry, depending on the property value.
 //In patch mode, skips properties which are not declared
 BackendDav.prototype.updateProperty = function(todoEntry, name, value, patch) {
@@ -548,4 +581,69 @@ BackendDav.prototype.updateProperty = function(todoEntry, name, value, patch) {
 		todoEntry.updatePropertyWithValue(name, value);
 	} else
 		todoEntry.removeProperty(name);
+}
+
+
+BackendDav.prototype.newUid = function() {
+	//Not perfect but whatever
+	//https://stackoverflow.com/a/21963136
+    var u='',m='xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx',i=0,rb=Math.random()*0xffffffff|0;
+    while(i++<36) {
+        var c=m[i-1],r=rb&0xf,v=c=='x'?r:(r&0x3|0x8);
+        u+=(c=='-'||c=='4')?c:v.toString(16);rb=i%8==0?Math.random()*0xffffffff|0:rb>>4;
+    }
+    return u;
+}
+
+BackendDav.prototype.insert = function (task, previousId, tasklistId) {
+	let calendar = this.findCalendar(tasklistId);
+	if (!calendar)
+		return Promise.reject("Task list not found: "+tasklistId);
+	
+	//Init a new VCALENDAR
+	let comp = new ICAL.Component('vcalendar');
+	comp.updatePropertyWithValue('version', '2.0');
+	comp.updatePropertyWithValue('prodid', 'github.com/himselfv/tasks-ig');
+	let uid = this.newUid();
+	let vtodo = new ICAL.Component('vtodo', comp);
+	vtodo.updatePropertyWithValue('uid', uid);
+	comp.addSubcomponent(vtodo);
+	
+	//Fill the normal properties from the task
+	this.updateTodoObject(vtodo, task);
+	vtodo.updatePropertyWithValue('created', vtodo.getFirstPropertyValue('last-modified'));
+	vtodo.updatePropertyWithValue('sequence', 1);
+	
+	//Compile
+	console.log(vtodo);
+	let calendarData = comp.toString();
+	console.log(calendarData);
+	
+	//Publish
+	return dav.createCalendarObject(calendar, { data: calendarData, filename: uid+'.ics', xhr: this.xhr })
+	.then(response => {
+		//We need to return a fully functional resulting Task object (with .comp .obj etag etc)
+		//We could TRY to add all fields that the standard loader does, but we have nowhere to get dav.Object() and especially its etag.
+		//So just requery:
+		return this.get(uid);
+	});
+}
+
+//Deletes multiple tasks from a single task list, non-recursively.
+BackendDav.prototype.deleteAll = function (taskIds, tasklistId) {
+	let calendar = this.findCalendar(tasklistId);
+	if (!calendar)
+		return Promise.reject("Task list not found: "+tasklistId);
+	
+	return this.getMaybeCached(taskIds, tasklistId)
+	.then(tasks => {
+		let batch = [];
+		for (let taskId in tasks) {
+			console.assert(tasks[taskId].obj);
+			batch.push(dav.deleteCalendarObject(tasks[taskId].obj, { xhr: this.xhr, }));
+		}
+		return Promise.all(batch);
+	}).then(results => {
+		//console.log('delete completed');
+	});
 }

@@ -281,26 +281,28 @@ Tasks
 //Backend.prototype.list = function(tasklistId)
 //Required. Returns a list of all tasks in a taskslist. See BackendGt for more details.
 
-//Backend.prototype.get/getAll
-//At least one is required.
+//Backend.prototype.get/getAll: At least one is required.
 
-Backend.prototype.get = function(taskId) {
+//Returns a promise for the given task content
+//If tasklistId is not given, selected task list is assumed.
+Backend.prototype.get = function(taskId, tasklistId) {
 	if (this.getAll == Backend.prototype.getAll)
 		throw "Backend: Querying tasks is not implemented";
 	//Default: forward to getAll
-	return this.getAll([taskId]).then(results =>
+	return this.getAll([taskId], tasklistId).then(results =>
 		results[Object.keys(results)[0]]
 	);
 }
 
 //Retrieves multiple tasks in a single request. Returns a promise for a taskId -> task map.
-Backend.prototype.getAll = function(taskIds) {
+//If tasklistId is not given, selected task list is assumed.
+Backend.prototype.getAll = function(taskIds, tasklistId) {
 	if (this.get == Backend.prototype.get)
 		throw "Backend: Querying tasks is not implemented";
 	//Default: forward to get() one by one
 	var proms = [];
 	for (let i=0; i<taskIds.length; i++)
-		proms.push(this.get(taskIds[i]));
+		proms.push(this.get(taskIds[i], tasklistId));
 	return Promise.all(proms).then(results => {
 		var dict = {};
 		results.forEach(item => dict[item.id] = item);
@@ -326,6 +328,9 @@ Backend.prototype.patch = function (task, allChildrenIds) {
 }
 
 //BackendGTasks.prototype.insert = function (task, previousId, tasklistId)
+//Creates a new task on the given tasklist. Inserts it after the given previous task.
+//Inserts it under a given parent (in the task object).
+//Returns a task resource.
 //Required, or you cannot add new tasks.
 
 //Insert, but assumes the current task list
@@ -350,13 +355,13 @@ Backend.prototype.delete = function (taskId, tasklistId) {
 	return this.deleteAll(ids, tasklistId);
 }
 
-//Deletes multiple tasks at once, without traversing their children.
 //BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId).
+//Deletes multiple tasks from a single task list, non-recursively (without traversing their childrne).
 //Required for task deletion.
 
 //True if this backend supports task deletion. Same as checking for deleteAll.
 Backend.prototype.hasDelete = function() {
-	return (Backend.prototype.deleteAll);
+	return (this.deleteAll);
 }
 
 
