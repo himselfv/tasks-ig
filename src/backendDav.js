@@ -1,4 +1,4 @@
-/*
+﻿/*
 Tasks backend based on CalDAV VTODOs.
 Requires
 * davlambda\ 		 -> github.com\lambdabaa\dav
@@ -184,6 +184,15 @@ Our rules:
 */
 
 
+//Converts a datetime to the default associated X-APPLE-SORT-ORDER
+//Datetime accepted: Date(), ICAL.Time(), undefined
+BackendDav.prototype.datetimeToPosition = function(dt) {
+	if (!dt) return 0; //  ¯\_(ツ)_/¯
+	if (dt instanceof ICAL.Time)
+		dt = dt.toJSDate();
+	return (dt - new Date(2001, 01, 01, 0, 0, 0)) / 1000
+}
+
 //Parses one calendar "object" (ICS file) into one Task object
 BackendDav.prototype.parseTodoObject = function(object) {
 	let task = {};
@@ -240,7 +249,23 @@ BackendDav.prototype.parseTodoObject = function(object) {
 			break;
 		}
 		
-		task.position = undefined;		//TODO
+		/*
+		For task ordering, the only even remotely widespread approach is X-APPLE-SORT-ORDER.
+		https://github.com/owncloud/tasks/issues/86
+		
+		By default (if not present) it's the number of seconds between the creation of a task
+		and 20010101T000000Z.
+		Moving a task assigns it a value between prevTask...nextTask. Midway is a good choice.
+		
+		This is exactly what we need, the way to move the task while editing only that task.
+		*/
+		let sortOrder = task.baseEntry.getFirstPropertyValue('x-apple-sort-order');
+		task.position = sortOrder;
+		if (!task.position) {
+			task.position = this.datetimeToPosition(task.baseEntry.getFirstPropertyValue('created'));
+			//Store auto-position to later check if the actual position is different and needs saving
+			task.positionAuto = sortOrder;
+		}
 		
 		/*
 		Datetime field and what they mean:
@@ -364,6 +389,10 @@ BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
 		return (!reltype || (reltype == 'PARENT'))
 	});
 	
+	//Only store the position if it differs from auto-generated
+	if ((!task.positionAuto || (task.position != task.positionAuto)))
+		this.updateProperty(entry, 'x-apple-sort-order', task.position, patch);
+
 	if (!patch || (typeof task.status != "undefined")) {
 		//Status is complicated -- see the loader
 		if (task.status == null) //status removed
@@ -444,7 +473,7 @@ BackendDav.prototype.updateProperty = function(icsEntry, name, value, patch, fil
 		icsEntry.removeProperty(prop);
 	else if (prop)
 		prop.setValue(value)
-	else
+	else if (value)
 		icsEntry.addPropertyWithValue(name, value);
 }
 
@@ -629,6 +658,44 @@ BackendDav.prototype.newUid = function() {
     return u;
 }
 
+//Chooses a new position (sort-order) value for a task to be located under a given parent, after a given previous task.
+BackendDav.prototype.choosePosition = function(parentId, previousId, tasklistId) {
+	if (tasklistId && (tasklistId != this.selectedTaskList))
+		throw "Currently unsupported for lists other than current";
+	//console.log('choosePosition: parent=', parentId, 'previous=', previousId);
+
+	//Choose a new position betweeen previous.position and previous.next.position
+	let children = this.getChildren(parentId);
+	//console.log(children);
+	let prevPosition = null;
+	let nextPosition = null;
+	let prevIdx = null;
+	
+	if (!previousId) {
+		prevPosition = 0;
+		prevIdx = -1;
+	} else
+		for (prevIdx=0; prevIdx<children.length; prevIdx++) {
+			if (children[prevIdx].id != previousId)
+				continue;
+			prevPosition = children[prevIdx].position;
+			break;
+		}
+	
+	if (prevIdx+1 < children.length)
+		nextPosition = children[prevIdx+1].position;
+	else
+		//Otherwise there's no next task; choose midway between prev and now()
+		nextPosition = this.datetimeToPosition(new Date());
+	
+	newPosition = Math.floor((nextPosition + prevPosition) / 2);
+	//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
+	if (newPosition < prevPosition + 1)
+		newPosition = prevPosition + 1;
+	//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
+	return newPosition;
+}
+
 BackendDav.prototype.insert = function (task, previousId, tasklistId) {
 	let calendar = this.findCalendar(tasklistId);
 	if (!calendar)
@@ -647,6 +714,7 @@ BackendDav.prototype.insert = function (task, previousId, tasklistId) {
 	this.updateTodoObject(vtodo, task);
 	vtodo.updatePropertyWithValue('created', vtodo.getFirstPropertyValue('last-modified'));
 	vtodo.updatePropertyWithValue('sequence', 1);
+	vtodo.updatePropertyWithValue('position', this.choosePosition(task.parent, previousId, tasklistId));
 	
 	//Compile
 	console.log('insert:', vtodo);
@@ -683,7 +751,7 @@ BackendDav.prototype.deleteAll = function (taskIds, tasklistId) {
 }
 
 BackendDav.prototype.move = function (taskId, parentId, previousId) {
-	//TODO: Implement position
-	task = { id: taskId, parent: parentId };
+	let newPosition = this.choosePosition(parentId, previousId, this.selectedTaskList);
+	let task = { id: taskId, parent: parentId, position: newPosition, };
 	return this.patch(task);
 }
