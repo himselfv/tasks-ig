@@ -223,8 +223,6 @@ BackendDav.prototype.parseTodoObject = function(object) {
 	//If there's still no base, skip the task data -- nothing to parse
 	if (task.baseEntry) {
 		task.title = task.baseEntry.getFirstPropertyValue('summary');
-		task.parent = undefined;		//TODO
-		task.position = undefined;		//TODO
 		task.notes = task.baseEntry.getFirstPropertyValue('description');
 		//Status is complicated. RFC5545, 3.8.1.11: NEEDS-ACTION, COMPLETED, IN-PROCESS, CANCELLED or property missing.
 		//Task() only supports "completed" and "needsAction", but we remember "true status" for updates.
@@ -233,6 +231,18 @@ BackendDav.prototype.parseTodoObject = function(object) {
 			task.status='completed'
 		else
 			task.status='needsAction';
+		
+		//Parent is defined by RELATED-TO[;RELTYPE=PARENT]
+		let relations = task.baseEntry.getAllProperties('related-to');
+		for (let i=0; i<relations.length; i++) {
+			let reltype = relations[i].getParameter('reltype');
+			if (reltype && (reltype != 'PARENT'))
+				continue; //We only support setting relations via RELTYPE=PARENT
+			this.parent = relations[i].getFirstValue(); //No multi-parenting supported
+			break;
+		}
+		
+		task.position = undefined;		//TODO
 		
 		/*
 		Datetime field and what they mean:
@@ -342,6 +352,105 @@ BackendDav.prototype.taskIdsFilter = function(taskIds) {
 		children: vtodos,
 	}];
 }
+
+//Populates/updates VTODO object fields based on the given task contents
+//If "patch" is set, only updates fields that are present (otherwise considers missing fields deleted).
+BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
+	this.updateProperty(entry, 'summary', task.title, patch);
+	this.updateProperty(entry, 'description', task.notes, patch);
+	//this.updateProperty(entry, '?', task.position, patch); //TODO
+	
+	//Preserve all the related-tos except for the one with reltype=parent
+	this.updateProperty(entry, 'related-to', task.parent, patch, (prop) = {
+		//We only support setting relations via RELTYPE=PARENT
+		let reltype = relations[i].getParameter('reltype');
+		return (!reltype || (reltype == 'PARENT'))
+	});
+	
+	if (!patch || (typeof task.status != "undefined")) {
+		//Status is complicated -- see the loader
+		if (task.status == null) //status removed
+			entry.removeProperty('status');
+		else
+		//Completed status is the same in both systems
+		if (task.status == 'completed')
+			entry.updatePropertyWithValue('status', 'COMPLETED')
+		else
+		//IF we have a secret "true status" AND it doesn't contradict us, keep the true one
+		if (task.statusCode && (task.statusCode != "COMPLETED"))
+			entry.updatePropertyWithValue('status', task.statusCode);
+		else
+			entry.updatePropertyWithValue('status', 'NEEDS-ACTION');
+	}
+	
+	//There can be a bunch of time properties -- see the loader
+	if (!patch || (typeof task.due != "undefined")) {
+		if (task.due == null) {
+			//Any of these serves as due
+			entry.removeProperty('due');
+			entry.removeProperty('dtstart');
+			//Leave DURATION because it may be useful by itself
+		} else {
+			//Set all ways of expressing "due" together
+			let due = ICAL.Time.fromJSDate(task.due);
+			entry.updatePropertyWithValue('due', due);
+			let duration = entry.getFirstPropertyValue('duration');
+			if (duration) {
+				duration.isNegative = true;
+				due.addDuration(duration);
+			}
+			entry.updatePropertyWithValue('dtstart', due);
+		}
+	}
+	this.updateProperty(entry, 'completed', task.completed, patch);
+	
+	//Update LAST-MODIFIED
+	var currentDt = ICAL.Time.now();
+	entry.updatePropertyWithValue('last-modified', currentDt);
+	//There's also CREATED to be set when creating a new object
+	
+	//There's also DTSTAMP which is equal to LAST-MODIFIED unless the server compiles data from source,
+	//in which case it's the timestamp of the compilation (as opposed to timestamp of the data changes).
+	//We don't care about that one. Maybe the server will set it by itself?
+	
+	//There's also SEQUENCE which you'll have to set by yourself (its mechanics is complicated)
+}
+/*
+Sets or deletes a property on a given ICS entry (todo, event).
+	null:		Delete the property
+	value: 		Set to this value
+In patch mode:
+	undefined:	Skip property
+Filter:
+ 	A function to select the target property if there are multiple with a given name.
+*/
+BackendDav.prototype.updateProperty = function(icsEntry, name, value, patch, filter) {
+	if (patch && (typeof value == "undefined"))
+		return;
+	
+	//Find the first matching property
+	let props = icsEntry.getAllProperties(name);
+	let prop = null;
+	for (let i=0; i<properties.length; i++) {
+		if (filter && !filter(props[i]))
+			continue;
+		prop = props[i];
+		break;
+	}
+
+	//Adjust types
+	if (value instanceof Date)
+		value = ICAL.Time.fromJSDate(value);
+
+	//Set/remove
+	if (!value && prop)
+		icsEntry.removeProperty(prop);
+	else if (prop)
+		prop.setValue(value)
+	else
+		icsEntry.addPropertyWithValue(name, value);
+}
+
 
 
 /*
@@ -509,78 +618,6 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		//TODO: What should this return? Have to define this.
 		return response;
 	});
-}
-
-
-
-//Populates/updates VTODO object fields based on the given task contents
-//If "patch" is set, only updates fields that are present (otherwise considers missing fields deleted).
-BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
-	this.updateProperty(entry, 'summary', task.title, patch);
-	this.updateProperty(entry, 'description', task.notes, patch);
-	//this.updateProperty(entry, '?', task.parent, patch); //TODO
-	//this.updateProperty(entry, '?', task.position, patch); //TODO
-	
-	if (!patch || (typeof task.status != "undefined")) {
-		//Status is complicated -- see the loader
-		if (task.status == null) //status removed
-			entry.removeProperty('status');
-		else
-		//Completed status is the same in both systems
-		if (task.status == 'completed')
-			entry.updatePropertyWithValue('status', 'COMPLETED')
-		else
-		//IF we have a secret "true status" AND it doesn't contradict us, keep the true one
-		if (task.statusCode && (task.statusCode != "COMPLETED"))
-			entry.updatePropertyWithValue('status', task.statusCode);
-		else
-			entry.updatePropertyWithValue('status', 'NEEDS-ACTION');
-	}
-	
-	//There can be a bunch of time properties -- see the loader
-	if (!patch || (typeof task.due != "undefined")) {
-		if (task.due == null) {
-			//Any of these serves as due
-			entry.removeProperty('due');
-			entry.removeProperty('dtstart');
-			//Leave DURATION because it may be useful by itself
-		} else {
-			//Set all ways of expressing "due" together
-			let due = ICAL.Time.fromJSDate(task.due);
-			entry.updatePropertyWithValue('due', due);
-			let duration = entry.getFirstPropertyValue('duration');
-			if (duration) {
-				duration.isNegative = true;
-				due.addDuration(duration);
-			}
-			entry.updatePropertyWithValue('dtstart', due);
-		}
-	}
-	this.updateProperty(entry, 'completed', task.completed, patch);
-	
-	//Update LAST-MODIFIED
-	var currentDt = ICAL.Time.now();
-	entry.updatePropertyWithValue('last-modified', currentDt);
-	//There's also CREATED to be set when creating a new object
-	
-	//There's also DTSTAMP which is equal to LAST-MODIFIED unless the server compiles data from source,
-	//in which case it's the timestamp of the compilation (as opposed to timestamp of the data changes).
-	//We don't care about that one. Maybe the server will set it by itself?
-	
-	//There's also SEQUENCE which you'll have to set by yourself (its mechanics is complicated)
-}
-//Sets or deletes a property on a given todo entry, depending on the property value.
-//In patch mode, skips properties which are not declared
-BackendDav.prototype.updateProperty = function(todoEntry, name, value, patch) {
-	if (patch && (typeof value == "undefined"))
-		return;
-	if (value != null) {
-		//Adjust types
-		if (value instanceof Date)
-			value = ICAL.Time.fromJSDate(value);
-		todoEntry.updatePropertyWithValue(name, value);
-	} else
-		todoEntry.removeProperty(name);
 }
 
 
