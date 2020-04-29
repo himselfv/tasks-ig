@@ -366,73 +366,6 @@ Backend.prototype.hasDelete = function() {
 
 
 /*
-Tasks can have .position property which establishes their lexicographical sort order.
-On move(task, newParentId, newPrevId) the backend changes the .position value of the task,
-but can only update that task alone.
-
-The backend chooses how to implement this. We provide a default implementation which can be
-used if the backend provides no sorting at all but can store properties.
-
-Note:
- - task.position must be populated for all loaded tasks, the frontend doesn't care about explicit/implicit positions,
-   it just needs a position.
- - if you populate it with implicit position, it's your job to NOT commit it on updates later. Track it somehow.
-  - choosePosition() selects a new explicit position. The default implementation assumes NUMERICAL positions.
-*/
-
-Backend.prototype.newUpmostPosition = function(parentId, tasklistId) {
-	//Default: always use zero.
-	return 0;
-}
-//Returns a position value that could be used as a new "position" for an entry
-//to be inserted as the downmost under the given parent
-Backend.prototype.newDownmostPosition = function(parentId, tasklistId) {
-	//Default: current time in microseconds since 2001.01.01
-	return (new Date() - new Date(2001, 01, 01, 0, 0, 0));
-}
-//Chooses a new sort-order value for a task under a given parent, after a given previous task.
-//If count is given, chooses that number of positions.
-Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, count) {
-	//TODO: Implement count. Use count in multi-task moves by default
-	if (!count) count = 1;
-	if (tasklistId && (tasklistId != this.selectedTaskList))
-		throw "Currently unsupported for lists other than current";
-	//console.log('choosePosition: parent=', parentId, 'previous=', previousId);
-
-	//Choose a new position betweeen previous.position and previous.next.position
-	let children = this.getChildren(parentId);
-	//console.log(children);
-	let prevPosition = null;
-	let nextPosition = null;
-	let prevIdx = null;
-	
-	if (!previousId) {
-		prevPosition = this.newUpmostPosition();
-		prevIdx = -1;
-	} else
-		for (prevIdx=0; prevIdx<children.length; prevIdx++) {
-			if (children[prevIdx].id != previousId)
-				continue;
-			prevPosition = children[prevIdx].position;
-			break;
-		}
-	
-	if (prevIdx+1 < children.length)
-		nextPosition = children[prevIdx+1].position;
-	else
-		//Otherwise there's no next task; choose midway between prev and now()
-		nextPosition = this.newDownmostPosition();
-	
-	newPosition = Math.floor((nextPosition + prevPosition) / 2);
-	//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
-	if (newPosition < prevPosition + 1)
-		newPosition = prevPosition + 1;
-	//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
-	return newPosition;
-}
-
-
-/*
 Moves tasks under a new parent in the same task list (the currently selected one):
   taskIds: taskID or [taskIDs]
 Inserts them in the given order after a given task:
@@ -492,6 +425,75 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId) {
 //May change task id.
 //BackendGTasks.prototype.moveToList = function (oldTask, newTasklistId, newParentId, newPrevId)
 //Implement to allow moving tasks between lists.
+
+
+
+/*
+Tasks are sorted according to their .position property (required).
+On move() the backend changes the .position of the task, but only that task alone.
+
+We provide a default implementation of move() which selects a position between next/prev
+and passes that to update().
+
+Override to provide your own selection algorithm, or override move() if your selection
+happens on the backend.
+*/
+Backend.prototype.newUpmostPosition = function(parentId, tasklistId) {
+	//Default: always use zero.
+	return 0;
+}
+//Returns a position value that could be used as a new "position" for an entry
+//to be inserted as the downmost under the given parent
+Backend.prototype.newDownmostPosition = function(parentId, tasklistId) {
+	//Default: current time in microseconds since 2001.01.01
+	return (new Date() - new Date(2001, 01, 01, 0, 0, 0));
+}
+//Chooses a new sort-order value for a task under a given parent, after a given previous task.
+//If count is given, chooses that number of positions.
+Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, count) {
+	//TODO: Implement count. Use count in multi-task moves by default
+	if (!count) count = 1;
+	if (tasklistId && (tasklistId != this.selectedTaskList))
+		throw "Currently unsupported for lists other than current";
+	//console.log('choosePosition: parent=', parentId, 'previous=', previousId);
+
+	//Choose a new position betweeen previous.position and previous.next.position
+	let children = this.getChildren(parentId);
+	//console.log(children);
+	let prevPosition = null;
+	let nextPosition = null;
+	let prevIdx = null;
+	
+	if (!previousId) {
+		prevPosition = this.newUpmostPosition();
+		prevIdx = -1;
+		//Some safeguards: if our "topmost" position is closer than 1000 to the current topmost,
+		//why not choose a bit lower?
+		//Can't do the same at the bottom as we may overshoot what the next new item is going to get
+		if (children.length >= 1) && (children[0].position < prevPosition + 1000)
+			prevPosition = children[0].position - 1000;
+	} else
+		for (prevIdx=0; prevIdx<children.length; prevIdx++) {
+			if (children[prevIdx].id != previousId)
+				continue;
+			prevPosition = children[prevIdx].position;
+			break;
+		}
+	
+	if (prevIdx+1 < children.length)
+		nextPosition = children[prevIdx+1].position;
+	else
+		//Otherwise there's no next task; choose midway between prev and now()
+		nextPosition = this.newDownmostPosition();
+	
+	newPosition = Math.floor((nextPosition + prevPosition) / 2);
+	//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
+	if (newPosition < prevPosition + 1)
+		newPosition = prevPosition + 1;
+	//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
+	return newPosition;
+}
+
 
 
 
