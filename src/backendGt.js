@@ -305,41 +305,15 @@ BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId) {
 }
 
 
-//Moves a task to a new position in the same task list (currently selected one)
-// parentId: null == top level
-// previousId: null == first position
-BackendGTasks.prototype.move = function (taskId, parentId, previousId) {
-	if (taskId && taskId.id) taskId = taskId.id;
-	if (parentId && parentId.id) parentId = parentId.id;
-	if (previousId && previousId.id) previousId = previousId.id;
-
-	var req = {
-		'tasklist': this.selectedTaskList,
-		'task': taskId,
-	};
-	if (parentId) req.parent = parentId;
-	if (previousId) req.previous = previousId;
-	//log("backend.move");
-	//log(req);
-	return gapi.client.tasks.tasks.move(req).then(response => {
-		taskCache.patch({ //update this tasks's cached data
-			'id': taskId,
-			'parent': parentId,
-			'position': response.result.position,
-		});
-		return response;
-	});
-}
-
 // Moves all given tasks under a new parent in the same task list,
 // inserting them in the given order after a given task (null = at the top).
-BackendGTasks.prototype.moveAll = function (taskIds, newParentId, newPrevId) {
+BackendGTasks.prototype._move = function (taskIds, newParentId, newPrevId) {
 	//log("backend.moveAll: "+taskIds.length+" items to="+newParentId+" after="+newPrevId);
 	if (taskIds.length <= 0)
 		return Promise.resolve();
 
-	var batch = gapi.client.newBatch();
 	//Iterate in reverse so that we can insert each child after the same known one
+	var jobs = [];
 	taskIds.reverse().forEach(id => {
 		let req = {
 			'tasklist': this.selectedTaskList,
@@ -347,10 +321,25 @@ BackendGTasks.prototype.moveAll = function (taskIds, newParentId, newPrevId) {
 		};
 		if (newParentId) req.parent = newParentId;
 		if (newPrevId) req.previous = newPrevId;
-		batch.add(gapi.client.tasks.tasks.move(req));
+		jobs.push(gapi.client.tasks.tasks.move(req));
 	})
+
+	//If only one job is requested, avoid batching
+	var batch = null;
+	if (taskIds.length <= 1)
+		batch = jobs[0].then(response => {
+			let results = {};
+			results[taskIds[0]] = response.result;
+			return { result: results };
+		});
+	else {
+		batch = gapi.client.newBatch();
+		for (let i=0; i<jobs.length; i++)
+			batch.add(jobs[i]);
+	}
+	
 	batch = batch.then(response => {
-		//log("backend.moveAll: results here, patching cache");
+		//log("backend.move: results here, patching cache");
 		Object.keys(response.result).forEach(oldId => {
 			let thisResponse = response.result[oldId];
 			this.responseCheck(thisResponse);

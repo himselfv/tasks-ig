@@ -440,13 +440,13 @@ function processReportedChanges() {
   	var entry = tasks.getFocusedEntry();
   	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert);
   	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.deleteAll || !entry);
-  	element("taskTabBtn").classList.toggle("hidden", !backend || !backend.hasMove() || !entry);
-  	element("taskShiftTabBtn").classList.toggle("hidden", !backend || !backend.hasMove() ||!entry);
+  	element("taskTabBtn").classList.toggle("hidden", !backend || !backend.move || !entry);
+  	element("taskShiftTabBtn").classList.toggle("hidden", !backend || !backend.move ||!entry);
   	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.deleteAll || !entry);
   	element("taskCopyJSON").classList.toggle("hidden", !entry);
   	element("taskExportToFile").classList.toggle("hidden", !entry);
   	element("taskEditFocused").classList.toggle("hidden", !backend || !backend.update || !entry);
-  	element("taskDeleteRecursive").classList.toggle("hidden", !backend || !backend.hasMove() ||!entry);
+  	element("taskDeleteRecursive").classList.toggle("hidden", !backend || !backend.move ||!entry);
   }
 
 
@@ -715,7 +715,7 @@ function processReportedChanges() {
 
   //Starts the drag
   function taskEntryDragStart(event) {
-  	if (!backend || !backend.hasMove()) return;
+  	if (!backend || !backend.move) return;
 	
     //Cancel any text selection that might be going on due to not capturing that initial mouse click
     document.activeElement.blur();
@@ -754,7 +754,7 @@ function processReportedChanges() {
   
   //Ends the drag and commits the move
   function taskEntryDragEnd(event) {
-  	if (!backend || !backend.hasMove()) return;
+  	if (!backend || !backend.move) return;
   	
     var dragEntry = event.entry;
     var dragNode = event.entry.node;
@@ -795,7 +795,7 @@ function processReportedChanges() {
   
   //Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
   function taskEntryDragMove(event) {
-  	if (!backend || !backend.hasMove()) return;
+  	if (!backend || !backend.move) return;
   	
     //Move the node to a new place in the same parent list, tentatively
     var pos = event.pos;
@@ -844,7 +844,7 @@ function processReportedChanges() {
   */
   function taskEntryTab(entry) {
     //log("taskEntryTab");
-    if (!backend || !backend.hasMove()) return;
+    if (!backend || !backend.move) return;
     taskEntryTitleCommitNow(entry); //commit any pending changes
     
     //Find immediate previous sibling on the same task level
@@ -873,7 +873,7 @@ function processReportedChanges() {
   */
   function taskEntryShiftTab(entry) {
     //log("taskEntryShiftTab");
-   	if (!backend || !backend.hasMove()) return;
+   	if (!backend || !backend.move) return;
     taskEntryTitleCommitNow(entry); //commit any pending changes
     
     if (entry.getLevel() <= 0) {
@@ -905,7 +905,7 @@ function processReportedChanges() {
     siblings.splice(0, i+1);
     if (siblings.length >= 1)
     	job = job.then(result => taskEntryNeedIds(siblings))
-    		.then(siblingIds => backend.moveAll(siblingIds, entryId, lastChildId));
+    		.then(siblingIds => backend.move(siblingIds, entryId, lastChildId));
     pushJob(job);
   }
 
@@ -920,7 +920,7 @@ function processReportedChanges() {
 
   //Moves the entry to before the entry above it, on the same level as the entry above it.
   function taskMoveEntryUp(entry) {
-  	if (!backend || !backend.hasMove()) return;
+  	if (!backend || !backend.move) return;
     //Find the entry_above
     var entry_above = entry.getPrev();
     if (!entry_above) return; //nowhere to move
@@ -944,7 +944,7 @@ function processReportedChanges() {
 
   //Moves the entry to after the entry below it, on the same level as the entry below it.
   function taskMoveEntryDown(entry) {
-  	if (!backend || !backend.hasMove()) return;
+  	if (!backend || !backend.move) return;
     /*
       No, it's more complicated.
         A         B         B
@@ -989,7 +989,7 @@ function processReportedChanges() {
   */
   function taskMerge(entry_to, entry_what) {
     //log("taskMerge");
-    if (!backend || !backend.update || !backend.hasMove() || !backend.hasDelete()) return;
+    if (!backend || !backend.update || !backend.move || !backend.hasDelete()) return;
     if (!entry_to || !entry_what) return;
     
     var mergePos = entry_to.getTitle().length;
@@ -1103,7 +1103,7 @@ function processReportedChanges() {
   	if (!backend || !backend.update)
   	  return Promise.reject("Not implemented");
   	let children = prevEntry.getChildren();
-  	if (children && (children.length > 0) && !backend.hasMove())
+  	if (children && (children.length > 0) && !backend.move)
   		return Promise.reject("Not implemented");
     taskEntryTitleCommitNow(); //commit any pending changes
     
@@ -1159,7 +1159,7 @@ function processReportedChanges() {
     if (!children || (children.length <= 0))
       return Promise.resolve();
     
-  	if (!backend || !backend.hasMove())
+  	if (!backend || !backend.move)
   	  return Promise.reject("Not implemented");
     
     var entryParent = entry.getParent();
@@ -1181,7 +1181,7 @@ function processReportedChanges() {
    		//Move it to this task's parent, under this task.
    		return backend.move(firstChildId, ids[1], ids[0]);
    	})
-   	.then(result => backend.moveAll(childIds, firstChildId, null));
+   	.then(result => backend.move(childIds, firstChildId, null));
     return pushJob(job);
   }
 

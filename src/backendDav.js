@@ -749,9 +749,3 @@ BackendDav.prototype.deleteAll = function (taskIds, tasklistId) {
 		//console.log('delete completed');
 	});
 }
-
-BackendDav.prototype.move = function (taskId, parentId, previousId) {
-	let newPosition = this.choosePosition(parentId, previousId, this.selectedTaskList);
-	let task = { id: taskId, parent: parentId, position: newPosition, };
-	return this.patch(task);
-}

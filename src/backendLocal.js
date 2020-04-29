@@ -372,7 +372,7 @@ BackendLocal.prototype.deleteAll = function (taskIds, tasklistId) {
 	});
 }
 
-BackendLocal.prototype.move = function (taskId, parentId, previousId) {
+BackendLocal.prototype._moveOne = function (taskId, parentId, previousId) {
 	if (taskId && taskId.id) taskId = taskId.id;
 	if (parentId && parentId.id) parentId = parentId.id;
 	if (previousId && previousId.id) previousId = previousId.id;

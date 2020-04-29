@@ -365,34 +365,55 @@ Backend.prototype.hasDelete = function() {
 }
 
 
-//Backend.prototype.move / moveAll: At least one is required
+/*
+Tasks can have .position property which defines their lexicographical sort order.
+On move(task, newParentId, newPrevId) the backend changes the .position value of the task,
+but only updates that task alone.
+All the others stay unchanged!
 
-//Moves a task to a new position in the same task list (currently selected one)
-// parentId: null == top level
-// previousId: null == first position
-Backend.prototype.move = function (taskId, parentId, previousId) {
-	if (this.moveAll == Backend.prototype.moveAll)
-		throw "Backend: Moving tasks is not implemented";
-	//Default: forward to moveAll()
-	if (taskId && taskId.id) taskId = taskId.id;
-	return this.moveAll([taskId], parentId, previousId).then(results => results[0]);
-}
-// Moves all given tasks under a new parent in the same task list,
-// inserting them in the given order after a given task (null = at the top).
-Backend.prototype.moveAll = function (taskIds, newParentId, newPrevId) {
-	if (this.move == Backend.prototype.move)
-		throw "Backend: Moving tasks is not implemented";
-	//Default: forward to move() one by one
+The backend chooses how to implement this. We provide a default implementation which can be
+used if the backend provides no sorting at all but can store properties.
+*/
+
+
+/*
+Moves tasks under a new parent in the same task list (the currently selected one):
+  taskIds: taskID or [taskIDs]
+Inserts them in the given order after a given task:
+  parentId: null == top level
+  previousId: null == first position
+Updates cache.
+
+If this function is present then all local move functions are expected to work.
+  Default:		forward to _moveOne() one by one
+  Reimplement 	if you have a better mechanics for batch moves
+  Undefine		if your list does NOT support moving tasks
+*/
+Backend.prototype.move = function(taskIds, newParentId, newPrevId) {
+	if (!isArray(taskIds)) taskIds = [taskIds];
+	if (parentId && parentId.id) parentId = parentId.id;
+	if (previousId && previousId.id) previousId = previousId.id;
+
 	var proms = [];
 	taskIds.reverse().forEach(id => {
-		proms.push(this.move(id, newParentId, newPrevId));
+		proms.push(this._moveOne(id, newParentId, newPrevId));
 	});
 	return Promise.all(proms);
 }
-//True if this backend implements move() in one of the ways. Works automatically.
-Backend.prototype.hasMove = function() {
-	return (this.moveAll != Backend.prototype.moveAll)
-			|| (this.move != Backend.prototype.move);
+/*
+Moves ONE task under a new parent in the same task list.
+Updates cache.
+  Default:		implemented via editing
+  Reimplement	if you want a different approach but to reuse the default _move() batching
+*/
+Backend.prototype._moveOne = function(taskId, newParentId, newPrevId) {
+	if (taskId && taskId.id) taskId = taskId.id;
+	
+	//By default just set the task parent and the position
+	//The position is chosen using the X-APPLE-SORT-ORDER algorithm with overrideable adjustments
+	let newPosition = this.choosePosition(newParentId, newPrevId);
+	let taskPach = { id: taskId, parent: parentId, position: newPosition, };
+	return this.patch(taskPatch);
 }
 // Moves all children of a given task under a new parent in the same task list,
 // inserting them in the existing order after a given task (null = at the top).
@@ -408,8 +429,9 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId) {
 	children.forEach(child => childIds.push(child.id));
 	
 	//log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
-	return this.moveAll(childIds, newParentId, newPrevId);
+	return this.move(childIds, newParentId, newPrevId);
 }
+
 
 //Moves a task with children to a new position in a different task list.
 //May change task id.
