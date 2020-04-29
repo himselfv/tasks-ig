@@ -312,11 +312,14 @@ Backend.prototype.getAll = function(taskIds, tasklistId) {
 
 
 //Backend.prototype.update = function (task)
-//Required for all intents and purposes, or your tasklist is read-only.
+//Updates the contents of the task on the server. Missing or null fields will be deleted.
+//Returns the new task content (may be adjusted by the server).
+//Required, or your tasklist is read-only.
 
-//Updates only the fields mentioned in "task". Fields set to none will be deleted. ID must be set.
+
+//Updates only the fields present in Task objet. Fields set to null will be deleted. ID must be set.
 //Returns a task-update or task-patch request
-Backend.prototype.patch = function (task, allChildrenIds) {
+Backend.prototype.patch = function (task) {
 	//Default: query + update
 	return this.get(task.id).then(result => {
 		resourcePatch(result, task);
@@ -353,7 +356,8 @@ Backend.prototype.insertMultiple = function (tasks, tasklistId) {
 			this.insert(tasks[_id], tasks[_id].previousId, tasklistId).
 			then(newTask => {
 				results[_id] = newTask;
-			});
+			})
+		);
 	}
 	return Promise.all(batch).then(() => {
 		return results;
@@ -383,7 +387,7 @@ Backend.prototype.delete = function (taskId, tasklistId) {
 }
 
 //BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId).
-//Deletes multiple tasks from a single task list, non-recursively (without traversing their childrne).
+//Deletes multiple tasks from a single task list, non-recursively (without traversing their children).
 //Required for task deletion.
 
 //True if this backend supports task deletion. Same as checking for deleteAll.
@@ -406,9 +410,9 @@ If this function is present then all local move functions are expected to work.
   Undefine		if your list does NOT support moving tasks
 */
 Backend.prototype.move = function(taskIds, newParentId, newPrevId) {
-	if (!isArray(taskIds)) taskIds = [taskIds];
-	if (parentId && parentId.id) parentId = parentId.id;
-	if (previousId && previousId.id) previousId = previousId.id;
+	if (!Array.isArray(taskIds)) taskIds = [taskIds];
+	if (newParentId && newParentId.id) newParentId = newParentId.id;
+	if (newPrevId && newPrevId.id) newPrevId = newPrevId.id;
 
 	var proms = [];
 	taskIds.reverse().forEach(id => {
@@ -427,7 +431,7 @@ Backend.prototype._moveOne = function(taskId, newParentId, newPrevId) {
 	
 	//By default just update the task parent and choose a sort-order position
 	let newPosition = this.choosePosition(newParentId, newPrevId);
-	let taskPach = { id: taskId, parent: parentId, position: newPosition, };
+	let taskPatch = { id: taskId, parent: newParentId, position: newPosition, };
 	return this.patch(taskPatch);
 }
 // Moves all children of a given task under a new parent in the same task list,
@@ -493,7 +497,7 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, co
 		//Some safeguards: if our "topmost" position is closer than 1000 to the current topmost,
 		//why not choose a bit lower?
 		//Can't do the same at the bottom as we may overshoot what the next new item is going to get
-		if (children.length >= 1) && (children[0].position < prevPosition + 1000)
+		if ((children.length >= 1) && (children[0].position < prevPosition + 1000))
 			prevPosition = children[0].position - 1000;
 	} else
 		for (prevIdx=0; prevIdx<children.length; prevIdx++) {

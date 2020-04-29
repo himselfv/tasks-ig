@@ -643,9 +643,7 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 	.then(response => {
 		console.log('Calendar updated');
 		taskCache.update(task2); //update cached version
-		//TODO: What to do with the task we've been given? Should we update that to match task2
-		//TODO: What should this return? Have to define this.
-		return response;
+		return task2;
 	});
 }
 

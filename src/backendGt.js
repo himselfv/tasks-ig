@@ -260,16 +260,15 @@ BackendGTasks.prototype.getAll = function(taskIds, tasklistId) {
 }
 
 //Returns a task-update request
+//https://developers.google.com/tasks/v1/reference/tasks/update
 BackendGTasks.prototype.update = function (task) {
-	//log(task);
-	//"request body" is passed as "resource" param
 	return gapi.client.tasks.tasks.update({
 		'tasklist': this.selectedTaskList,
 		'task': task.id,
 		'resource': task
 	}).then(response => {
 		taskCache.update(task); //update cached version
-		return response;
+		return response.result;
 	});
 }
 
