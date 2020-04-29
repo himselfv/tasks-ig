@@ -18,6 +18,9 @@ var backends = [];
 function registerBackend(name, ctor) {
 	backends.push({'name': name, 'ctor': ctor});
 }
+function findBackend(name) {
+	return backends.find(item => { return item.name == name; });
+}
 
 
 //Clones a task resource without preserving its unique IDs
