@@ -1,4 +1,4 @@
-/*
+﻿/*
 Task resources and task cache.
 
 Task and tasklist resources are identical to the objects the GS API returns.
@@ -366,14 +366,70 @@ Backend.prototype.hasDelete = function() {
 
 
 /*
-Tasks can have .position property which defines their lexicographical sort order.
+Tasks can have .position property which establishes their lexicographical sort order.
 On move(task, newParentId, newPrevId) the backend changes the .position value of the task,
-but only updates that task alone.
-All the others stay unchanged!
+but can only update that task alone.
 
 The backend chooses how to implement this. We provide a default implementation which can be
 used if the backend provides no sorting at all but can store properties.
+
+Note:
+ - task.position must be populated for all loaded tasks, the frontend doesn't care about explicit/implicit positions,
+   it just needs a position.
+ - if you populate it with implicit position, it's your job to NOT commit it on updates later. Track it somehow.
+  - choosePosition() selects a new explicit position. The default implementation assumes NUMERICAL positions.
 */
+
+Backend.prototype.newUpmostPosition = function(parentId, tasklistId) {
+	//Default: always use zero.
+	return 0;
+}
+//Returns a position value that could be used as a new "position" for an entry
+//to be inserted as the downmost under the given parent
+Backend.prototype.newDownmostPosition = function(parentId, tasklistId) {
+	//Default: current time in microseconds since 2001.01.01
+	return (new Date() - new Date(2001, 01, 01, 0, 0, 0));
+}
+//Chooses a new sort-order value for a task under a given parent, after a given previous task.
+//If count is given, chooses that number of positions.
+Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, count) {
+	//TODO: Implement count. Use count in multi-task moves by default
+	if (!count) count = 1;
+	if (tasklistId && (tasklistId != this.selectedTaskList))
+		throw "Currently unsupported for lists other than current";
+	//console.log('choosePosition: parent=', parentId, 'previous=', previousId);
+
+	//Choose a new position betweeen previous.position and previous.next.position
+	let children = this.getChildren(parentId);
+	//console.log(children);
+	let prevPosition = null;
+	let nextPosition = null;
+	let prevIdx = null;
+	
+	if (!previousId) {
+		prevPosition = this.newUpmostPosition();
+		prevIdx = -1;
+	} else
+		for (prevIdx=0; prevIdx<children.length; prevIdx++) {
+			if (children[prevIdx].id != previousId)
+				continue;
+			prevPosition = children[prevIdx].position;
+			break;
+		}
+	
+	if (prevIdx+1 < children.length)
+		nextPosition = children[prevIdx+1].position;
+	else
+		//Otherwise there's no next task; choose midway between prev and now()
+		nextPosition = this.newDownmostPosition();
+	
+	newPosition = Math.floor((nextPosition + prevPosition) / 2);
+	//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
+	if (newPosition < prevPosition + 1)
+		newPosition = prevPosition + 1;
+	//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
+	return newPosition;
+}
 
 
 /*
@@ -409,8 +465,7 @@ Updates cache.
 Backend.prototype._moveOne = function(taskId, newParentId, newPrevId) {
 	if (taskId && taskId.id) taskId = taskId.id;
 	
-	//By default just set the task parent and the position
-	//The position is chosen using the X-APPLE-SORT-ORDER algorithm with overrideable adjustments
+	//By default just update the task parent and choose a sort-order position
 	let newPosition = this.choosePosition(newParentId, newPrevId);
 	let taskPach = { id: taskId, parent: parentId, position: newPosition, };
 	return this.patch(taskPatch);

@@ -129,6 +129,33 @@ BackendDav.prototype.findCalendar = function(tasklistId) {
 
 
 /*
+Task ordering:
+The only even remotely widespread approach is X-APPLE-SORT-ORDER.
+  https://github.com/owncloud/tasks/issues/86
+
+By default (if not present) it's the number of seconds between the creation of a task and 20010101T000000Z.
+Moving a task assigns it a value between prevTask...nextTask. Midway is a good choice.
+
+Reuse the default backend ordering mechanics to implement X-APPLE-SORT-ORDER
+*/
+//Converts a datetime to the default associated X-APPLE-SORT-ORDER
+//Datetime accepted: Date(), ICAL.Time(), undefined
+BackendDav.prototype.datetimeToPosition = function(dt) {
+	if (!dt) return 0; //  ¯\_(ツ)_/¯
+	if (dt instanceof ICAL.Time)
+		dt = dt.toJSDate();
+	return (dt - new Date(2001, 01, 01, 0, 0, 0)) / 1000
+}
+BackendDav.prototype.newUpmostPosition = function(parentId, tasklistId) {
+	return 0; //always zero
+}
+BackendDav.prototype.newDownmostPosition = function(parentId, tasklistId) {
+	return this.datetimeToPosition(new Date()); //current time
+}
+//Otherwise the default choosePosition() is compatible with X-APPLE-SORT-ORDER
+
+
+/*
 VEVENT/VTODO is identified by its UID.
 
 RFC4791 4.1:
@@ -182,16 +209,6 @@ Our rules:
 4. The highest available SEQUENCE is considered "max-SEQUENCE".
 5. All recurrences between base-SEQUENCE and max-SEQUENCE are considered to be base-SEQUENCE-related.
 */
-
-
-//Converts a datetime to the default associated X-APPLE-SORT-ORDER
-//Datetime accepted: Date(), ICAL.Time(), undefined
-BackendDav.prototype.datetimeToPosition = function(dt) {
-	if (!dt) return 0; //  ¯\_(ツ)_/¯
-	if (dt instanceof ICAL.Time)
-		dt = dt.toJSDate();
-	return (dt - new Date(2001, 01, 01, 0, 0, 0)) / 1000
-}
 
 //Parses one calendar "object" (ICS file) into one Task object
 BackendDav.prototype.parseTodoObject = function(object) {
@@ -249,22 +266,12 @@ BackendDav.prototype.parseTodoObject = function(object) {
 			break;
 		}
 		
-		/*
-		For task ordering, the only even remotely widespread approach is X-APPLE-SORT-ORDER.
-		https://github.com/owncloud/tasks/issues/86
-		
-		By default (if not present) it's the number of seconds between the creation of a task
-		and 20010101T000000Z.
-		Moving a task assigns it a value between prevTask...nextTask. Midway is a good choice.
-		
-		This is exactly what we need, the way to move the task while editing only that task.
-		*/
-		let sortOrder = task.baseEntry.getFirstPropertyValue('x-apple-sort-order');
-		task.position = sortOrder;
+		//Tasks without X-APPLE-SORT-ORDER get implicit .position because the frontend requires it.
+		//But store auto-position to later check if the actual position has been changed and needs saving.
+		task.position = task.baseEntry.getFirstPropertyValue('x-apple-sort-order');
 		if (!task.position) {
 			task.position = this.datetimeToPosition(task.baseEntry.getFirstPropertyValue('created'));
-			//Store auto-position to later check if the actual position is different and needs saving
-			task.positionAuto = sortOrder;
+			task.positionAuto = task.position;
 		}
 		
 		/*
@@ -656,44 +663,6 @@ BackendDav.prototype.newUid = function() {
         u+=(c=='-'||c=='4')?c:v.toString(16);rb=i%8==0?Math.random()*0xffffffff|0:rb>>4;
     }
     return u;
-}
-
-//Chooses a new position (sort-order) value for a task to be located under a given parent, after a given previous task.
-BackendDav.prototype.choosePosition = function(parentId, previousId, tasklistId) {
-	if (tasklistId && (tasklistId != this.selectedTaskList))
-		throw "Currently unsupported for lists other than current";
-	//console.log('choosePosition: parent=', parentId, 'previous=', previousId);
-
-	//Choose a new position betweeen previous.position and previous.next.position
-	let children = this.getChildren(parentId);
-	//console.log(children);
-	let prevPosition = null;
-	let nextPosition = null;
-	let prevIdx = null;
-	
-	if (!previousId) {
-		prevPosition = 0;
-		prevIdx = -1;
-	} else
-		for (prevIdx=0; prevIdx<children.length; prevIdx++) {
-			if (children[prevIdx].id != previousId)
-				continue;
-			prevPosition = children[prevIdx].position;
-			break;
-		}
-	
-	if (prevIdx+1 < children.length)
-		nextPosition = children[prevIdx+1].position;
-	else
-		//Otherwise there's no next task; choose midway between prev and now()
-		nextPosition = this.datetimeToPosition(new Date());
-	
-	newPosition = Math.floor((nextPosition + prevPosition) / 2);
-	//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
-	if (newPosition < prevPosition + 1)
-		newPosition = prevPosition + 1;
-	//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
-	return newPosition;
 }
 
 BackendDav.prototype.insert = function (task, previousId, tasklistId) {
