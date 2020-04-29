@@ -226,7 +226,7 @@ BackendGTasks.prototype.list = function(tasklistId) {
 		'showCompleted': true,
 		'showHidden': false,
 		'fields': 'items(id,title,parent,position,notes,status,due,completed),nextPageToken',
-	}).then(items => {return {'items': items};});
+	});
 }
 
 //Returns a promise for the given task content

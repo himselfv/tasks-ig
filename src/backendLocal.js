@@ -307,7 +307,7 @@ BackendLocal.prototype.list = function(tasklistId) {
 		for (let i=0; i<items.length; i++)
 			items[i].position = i;
 		//log("list(): returning "+JSON.stringify(items));
-		return {'items': items};
+		return items;
 	});
 }
 //Returns a promise for the given task content
@@ -420,7 +420,9 @@ BackendLocal.prototype._moveOne = function (taskId, parentId, previousId) {
 
 //Moves a task with children to a new position in a different task list.
 //May change task id.
-BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId, newPrevId) {
+BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId, newPrevId, newBackend) {
+	if (newBackend && (newBackend != this))
+		return Backend.prototype.moveToList(taskId, newTasklistId, newParentId, newPrevId, newBackend);
 	if (!newTasklistId || (newTasklistId == this.selectedTaskList))
 		return this.move(taskId, newParentId, newPrevId);
 

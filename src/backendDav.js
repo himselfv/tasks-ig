@@ -498,11 +498,7 @@ BackendDav.prototype.list = function(tasklistId) {
 			attrs: { name: 'VTODO' }
 		}]
 	}];
-	return this.queryTasklist(tasklistId, filters)
-		.then(tasks => {
-			//This function's return is a bit more complicated
-			return {'items': tasks};
-		});
+	return this.queryTasklist(tasklistId, filters);
 }
 
 BackendDav.prototype.getAll = function(taskIds, tasklistId) {
