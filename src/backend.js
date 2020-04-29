@@ -333,6 +333,32 @@ Backend.prototype.patch = function (task, allChildrenIds) {
 //Returns a task resource.
 //Required, or you cannot add new tasks.
 
+/*
+Accepts a _id -> task,previousId list.
+Inserts all tasks to the target tasklist and returns a _id->insertedTask map.
+
+task.parent: The parent to insert under
+task.previousId: Insert after this task.
+
+Tasks are inserted in the order given.
+The _id is only used to identify tasks in the results.
+*/
+Backend.prototype.insertMultiple = function (tasks, tasklistId) {
+	//Default: Call insert() multiple times.
+	results = {};
+	batch = [];
+	for (let _id in tasks) {
+		batch.push(
+			this.insert(tasks[_id], tasks[_id].previousId, tasklistId).
+			then(newTask => {
+				results[_id] = newTask;
+			});
+	}
+	return Promise.all(batch).then(() => {
+		return results;
+	});
+}
+
 //Insert, but assumes the current task list
 Backend.prototype.insertToCurrentList = function (task, previousId) {
 	return this.insert(task, previousId, this.selectedTaskList);
@@ -430,7 +456,10 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId) {
 
 /*
 Tasks are sorted according to their .position property (required).
-On move() the backend changes the .position of the task, but only that task alone.
+On move() the backend changes the .position of the task, ideally that task alone.
+
+The frontend can tolerate backends which change other tasks too (e.g. linked lists),
+but it'll only know new .positions on reload.
 
 We provide a default implementation of move() which selects a position between next/prev
 and passes that to update().
@@ -492,6 +521,90 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, co
 		newPosition = prevPosition + 1;
 	//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
 	return newPosition;
+}
+
+
+/*
+Builds a batch promise that for every pair in "pairs" copies all children of pair.from to pair.to,
+recursively.
+Example:
+  batchCopyChildren([{'from': oldTask, 'to': newTask}], newTasklistId);
+Copies all children of oldTask under newTask, recursively.
+*/
+Backend.prototype.batchCopyChildren = function (pairs, newTasklistId) {
+	if (!pairs || (pairs.length <= 0)) return Promise.resolve();
+
+	var pairs_new = [];
+	var batch = {};
+
+	//Build a batch request for all children on this nesting level
+	pairs.forEach(pair => {
+		//Get all source children
+		let children = this.getChildren(pair.from);
+		//Add children backwards so that each new child can be appended "at the top" --
+		//otherwise we'd need to know the previous child ID and can't batch.
+		children.reverse().forEach(oldChild => {
+			let newChild = taskResClone(oldChild);
+			newChild.parent = pair.to.id;
+			//Add as a new pair entry
+			pairs_new.push({ 'from': oldChild, 'to': null });
+			//Add request to batch
+			newChild.parent = pair.to.id;
+			newChild.previousId = null; //add to the top
+			batch[oldChild.id] = newChild;
+		});
+	});
+
+	if (batch.length<=0)
+		return Promise.resolve();
+
+	batch = batch.then(results => {
+		//Now that we have a response, update a shared variable pairs_new with generated children ids,
+		//and return a new promise to copy the next nested level
+		Object.keys(results).forEach(oldId => {
+			let pair = pairs_new.find(item => { return item.from.id == oldId; });
+			if (!pair)
+				log("can't find pair for id = "+oldId);
+			pair.to = results[oldId];
+		});
+
+		return this.batchCopyChildren(pairs_new, newTasklistId);
+	});
+
+	return batch;
+}
+
+//Copies a task with children to a given position in a different task list
+Backend.prototype.copyToList = function (oldTask, newTasklistId, newParentId, newPrevId) {
+	//log("backend.copyToList: oldTask="+oldTask.id+", newTasklistId="+newTasklistId);
+	var newTask = taskResClone(oldTask);
+	newTask.parent = newParentId;
+	var prom = this.insert(newTask, newPrevId, newTasklistId)
+		.then(response => {
+			//insert returns the final form of the task
+			let pairs = [{'from': oldTask, 'to': response}];
+			return this.batchCopyChildren(pairs, newTasklistId);
+		});
+	return prom;
+}
+
+//Moves a task with children to a new position in a different task list.
+//May change task id.
+Backend.prototype.moveToList = function (oldTask, newTasklistId, newParentId, newPrevId) {
+	if (!newTasklistId || (newTasklistId == this.selectedTaskList))
+		return this.move(oldTask, newParentId, newPrevId);
+
+	if (oldTask && !(oldTask.id)) oldTask = taskCache.get(oldTask);
+	var oldTasklistId = this.selectedTaskList;
+
+	//log("backend.moveToList: oldTask="+oldTask+", newTasklist="+newTasklistId);
+
+	//Default: copy the task subtree + delete the original one
+	return this.copyToList(oldTask, newTasklistId, newParentId, newPrevId)
+		.then(response => {
+			//log("copied!");
+			return this.delete(oldTask, oldTasklistId);
+		});
 }
 
 

@@ -288,6 +288,34 @@ BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
 		return response.result;
 	});
 }
+//Inserts multiple tasks at once
+Backend.prototype.insertMultiple = function (tasks, tasklistId) {
+	if (tasks.length <= 0) return Promise.resolve({});
+	if (tasks.length == 1) return this.insert(tasks[0], tasks[0].previousId, tasklistId);
+	var batch = gapi.client.newBatch();
+	for (let _id in tasks) {
+		//TODO: Maybe we need to trim the task resource's properties before sending it?
+		//  At least .previousId. Maybe others if the task is from elsewhere.
+		batch.add(
+			gapi.client.tasks.tasks.insert({
+				'tasklist': tasklistId,
+				'parent': tasks[i].parent,
+				'previous': tasks[i].previousId,
+				'resource': tasks[i],
+			}),
+			{ 'id': _id, }
+		);
+	}
+	return batch.then(response => {
+		results = {};
+		for(let _id in response.result) {
+			this.responseCheck(response.result[_id]);
+			results[_id] = response.result[_id].result;
+		}
+		return results;
+	});
+}
+
 
 //Deletes multiple tasks at once, without traversing their children.
 BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId) {
@@ -351,103 +379,4 @@ BackendGTasks.prototype._move = function (taskIds, newParentId, newPrevId) {
 		});
 	});
 	return batch;
-}
-
-
-
-/*
-Builds a batch promise that for every pair in "pairs" copies all children of pair.from to pair.to,
-recursively.
-Example:
-  batchCopyChildren([{'from': oldTask, 'to': newTask}], newTasklistId);
-Copies all children of oldTask under newTask, recursively.
-*/
-BackendGTasks.prototype.batchCopyChildren = function (pairs, newTasklistId) {
-	if (!pairs || (pairs.length <= 0)) return Promise.resolve();
-
-	var pairs_new = [];
-
-	var batch = null; //won't be created unless needed
-
-	//Build a batch request for all children on this nesting level
-	pairs.forEach(pair => {
-		//Get all source children
-		let children = this.getChildren(pair.from);
-		//Add children backwards so that each new child can be appended "at the top" --
-		//otherwise we'd need to know the previous child ID and can't batch.
-		children.reverse().forEach(oldChild => {
-			let newChild = taskResClone(oldChild);
-			newChild.parent = pair.to.id;
-			//Add as a new pair entry
-			pairs_new.push({ 'from': oldChild, 'to': null });
-			//Create batch on first need
-			if (!batch)
-				batch = gapi.client.newBatch();
-			//Add request to batch
-			batch.add(
-				gapi.client.tasks.tasks.insert({
-					'tasklist': newTasklistId,
-					'parent': pair.to.id,
-					'previous': null, //add to the top
-					'resource': newChild,
-				}),
-				{ 'id': oldChild.id, }
-			);
-		});
-	});
-
-	if (!batch)
-		return Promise.resolve();
-
-	batch = batch.then(response => {
-		//Now that we have a response, update a shared variable pairs_new with generated children ids,
-		//and return a new promise to copy the next nested level
-
-		Object.keys(response.result).forEach(oldId => {
-			let thisResponse = response.result[oldId];
-			//If any of the requests is rejected for any reason, abort
-			this.responseCheck(thisResponse);
-			let pair = pairs_new.find(item => { return item.from.id == oldId; });
-			if (!pair)
-				log("can't find pair for id = "+oldId);
-			pair.to = thisResponse.result;
-		});
-
-		return this.batchCopyChildren(pairs_new, newTasklistId);
-	});
-
-	return batch;
-}
-
-//Copies a task with children to a given position in a different task list
-BackendGTasks.prototype.copyToList = function (oldTask, newTasklistId, newParentId, newPrevId) {
-	//log("backend.copyToList: oldTask="+oldTask.id+", newTasklistId="+newTasklistId);
-	var newTask = taskResClone(oldTask);
-	newTask.parent = newParentId;
-	var prom = this.insert(newTask, newPrevId, newTasklistId)
-		.then(response => {
-			//insert returns the final form of the task
-			let pairs = [{'from': oldTask, 'to': response}];
-			return this.batchCopyChildren(pairs, newTasklistId);
-		});
-	return prom;
-}
-
-//Moves a task with children to a new position in a different task list.
-//May change task id.
-BackendGTasks.prototype.moveToList = function (oldTask, newTasklistId, newParentId, newPrevId) {
-	if (!newTasklistId || (newTasklistId == this.selectedTaskList))
-		return this.move(oldTask, newParentId, newPrevId);
-
-	if (oldTask && !(oldTask.id)) oldTask = taskCache.get(oldTask);
-	var oldTasklistId = this.selectedTaskList;
-
-	//log("backend.moveToList: oldTask="+oldTask+", newTasklist="+newTasklistId);
-
-	//There's no such function in Tasks API so we have to copy the task subtree + delete the original one
-	return this.copyToList(oldTask, newTasklistId, newParentId, newPrevId)
-		.then(response => {
-			//log("copied!");
-			return this.delete(oldTask, oldTasklistId);
-		});
 }
