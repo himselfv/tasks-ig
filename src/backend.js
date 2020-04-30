@@ -581,6 +581,7 @@ Backend.prototype.batchCopyChildren = function (pairs, newTasklistId, oldBackend
 
 	if (batch.length<=0)
 		return Promise.resolve();
+	batch = this.insertMultiple(batch);
 
 	batch = batch.then(results => {
 		//Now that we have a response, update a shared variable pairs_new with generated children ids,
