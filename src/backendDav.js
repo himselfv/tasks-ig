@@ -674,17 +674,27 @@ BackendDav.prototype.insert = function (task, previousId, tasklistId) {
 	
 	//Compile
 	console.log('insert:', vtodo);
-	let calendarData = comp.toString();
-	console.log('insert.data: ', calendarData);
+	let icsData = comp.toString();
+	console.log('insert.data: ', icsData);
 	
 	//Publish
-	return dav.createCalendarObject(calendar, { data: calendarData, filename: uid+'.ics', xhr: this.xhr })
+	return this.insertTodoObject(calendar, icsData, uid+'.ics')
 	.then(response => {
 		//We need to return a fully functional resulting Task object (with .comp .obj etag etc)
 		//We could TRY to add all fields that the standard loader does, but we have nowhere to get dav.Object() and especially its etag.
 		//So just requery:
 		return this.get(uid);
 	});
+}
+
+//Adds an ICS file to a calendar by its content.
+BackendDav.prototype.insertTodoObject = function(calendar, data, filename) {
+	//a Task can be passed instead of data
+	if ((typeof data != "string") && (data.obj)) {
+		if (!filename) filename = data.id+'.ics';
+		data = data.obj.calendarData;
+	}
+	return dav.createCalendarObject(calendar, { data: data, filename: filename, xhr: this.xhr })
 }
 
 //Deletes multiple tasks from a single task list, non-recursively.
@@ -704,4 +714,110 @@ BackendDav.prototype.deleteAll = function (taskIds, tasklistId) {
 	}).then(results => {
 		//console.log('delete completed');
 	});
+}
+
+
+/*
+Moving and copying ICS files between calendars.
+1. We try to move/copy the entire file, not only the current task version.
+2. When we adjust .parentId, older task revisions still refer to something else which might not
+  even be present in the new calendar.
+  But this is fine, because you can break older revisions in the same way by just deleting the parent anyway.
+*/
+
+BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newParentId, newPrevId, newBackend) {
+	//Optimize moves between DAVs. Other moves => default treatment
+	if (newBackend && !(newBackend instanceof BackendDav))
+		return Backend.prototype.moveToList(oldTask, newTasklistId, newParentId, newPrevId, newBackend);
+	if (!newBackend) newBackend = this;
+	
+	/*
+	DAV moves are ICS file moves.
+	UID, positions and parents do not need to change, except for topmost items parents,
+	and we'll do that with local .move() later.
+	We can move all children at once.
+	*/
+	let children = this.getAllChildren(oldTask);
+	children.unshift(oldTask); //add to the front
+	
+	//Foreign DAVs require INSERT there + DELETE here
+	if (newBackend != this)
+		return this.moveToList_foreignDav(children, newTasklistId, newParentId, newPrevId, newBackend);
+	
+	//Otherwise it's a local move, perform MOVE
+	return this.moveToList_localDav(children, newTasklistId, newParentId, newPrevId);
+}
+
+//Moves a number of tasks (ICS files) to another calendar on a different DAV server (INSERT + DELETE)
+//Do not call directtly.
+BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newParentId, newPrevId, newBackend) {
+	console.log(arguments);
+	if (tasks.length <= 0) return Promise.resolve();
+	//Requery most recent versions: we're moving by contents so shouldn't rely on cache
+	for (let i=0; i<tasks.length; i++)
+		if (tasks[i].id) tasks[i] = tasks[i].id;
+	return this.getAll(tasks)
+	.then(tasks => {
+		let batch = [];
+		for(let i=0; i<tasks.length; i++)
+			batch.push(newBackend.insertTodoObject(tasks[i]));
+		return Promise.all(batch);
+	})
+	.then(results => {
+		//The IDs stayed the same. Position the root task in the new list
+		if (tasks.length > 0)
+			return newBackend.move(tasks[0].id, newParentId, newPrevId);
+	})
+	.then(results => {
+		console.log('Moved to a different DAV list, deleting here');
+		//Delete from local list
+		this.delete(childIds);
+	});
+}
+
+//Moves a number of tasks (ICS files) to another calendar on the same DAV server (MOVE)
+//Do not call directly.
+BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId, newParentId, newPrevId) {
+	console.log(arguments);
+	if (tasks.length <= 0) return Promise.resolve();
+	
+	let newCalendar = this.findCalendar(newTasklistId);
+	if (!newCalendar)
+		return Promise.reject("Task list not found: "+newTasklistId);
+	
+	let batch = [];
+	for (let i=0; i<tasks.length; i++) {
+		//We only need URLs so rely on cache, probably haven't changed and no big deal if we fail
+		if (!tasks[i].id) tasks[i] = taskCache.get(tasks[i]);
+		let sourceUrl = tasks[i].obj.url;
+		let destinationUrl = newCalendar.url + tasks[i].id + '.ics';
+		console.log(sourceUrl, ' -> ', destinationUrl);
+		batch.push(
+			this.davMoveRequest('MOVE', sourceUrl, destinationUrl, { xhr: this.xhr, })
+			);
+	}
+	
+	return Promise.all(batch).then(() => {
+		//Reposition the topmost task
+		if (tasks.length > 0)
+			return this.move(tasks[0].id, newParentId, newPrevId);
+	});
+}
+
+//HTTP DAV MOVE or COPY request
+BackendDav.prototype.davMoveRequest = function(method, fromUrl, toUrl, options) {
+	console.log('davMoveRequest: ', arguments);
+	function transformRequest(xhr) {
+		dav.request.setRequestHeaders(xhr, options);
+		xhr.setRequestHeader('Destination', toUrl);
+	}
+
+	let req = new dav.Request({
+		method: method,
+		requestData: null,
+		transformRequest: transformRequest,
+	});
+	
+	console.log('davMoveRequest: ', req);
+	return options.xhr.send(req, fromUrl, { sandbox: options.sandbox });
 }

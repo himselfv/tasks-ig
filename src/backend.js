@@ -547,7 +547,10 @@ Backend.prototype.copyTo = function (items, newTasklistId, newBackend) {
 	let newItems = {};
 	for (let taskId in items) {
 		let item = items[taskId];
-		let newTask = taskResClone(item.task || taskCache.get(taskId) || throw "copy: Task data not found: "+taskId);
+		let newTask = item.task || taskCache.get(taskId);
+		if (!newTask)
+			throw "copy: Task data not found: "+taskId
+		newTask = taskResClone(newTask);
 		newTask.id = null; //we'll need new ID
 		newTask.parent = item.parent;
 		newTask.previousId = item.previous;
@@ -591,7 +594,7 @@ Backend.prototype.copyToList = function (oldTask, newTasklistId, newParentId, ne
 Builds a batch promise that for every pair in "pairs" copies all children of pair.from to pair.to,
 recursively.
 Example:
-  batchCopyChildren([{'from': oldTask, 'to': newTask}], newTasklistId);
+  copyChildrenTo([{'from': oldTask, 'to': newTask}], newTasklistId);
 Copies all children of oldTask under newTask, recursively.
 If oldBackend is given, uses that to resolve children instead of this one.
 */
@@ -632,7 +635,7 @@ Backend.prototype.copyChildrenTo = function (pairs, newTasklistId, newBackend) {
 				log("can't find pair for id = "+oldId);
 			pair.to = results[oldId];
 		}
-		return this.batchCopyChildren(pairs_new, newTasklistId, newBackend);
+		return this.copyChildrenTo(pairs_new, newTasklistId, newBackend);
 	});
 }
 
@@ -652,7 +655,7 @@ Backend.prototype.moveToList = function (oldTask, newTasklistId, newParentId, ne
 	if (oldTask && !(oldTask.id)) oldTask = taskCache.get(oldTask);
 	var oldTasklistId = this.selectedTaskList;
 
-	return newBackend.copyToList(oldTask, newTasklistId, newParentId, newPrevId)
+	return this.copyToList(oldTask, newTasklistId, newParentId, newPrevId, newBackend)
 		.then(response => {
 			//log("copied!");
 			return this.delete(oldTask, oldTasklistId);
