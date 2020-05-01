@@ -87,17 +87,23 @@ clear : function () {
 	this.items = [];
 },
 //Adds a new task resource to the cached task list
-add : function (task) {
-	this.items[task.id] = task;
+add : function (tasks) {
+	this.update(tasks);
 },
-delete : function (taskId) {
-	delete this.items[taskId];
+delete : function (taskIds) {
+	if (!Array.isArray(taskIds))
+		taskIds = [taskIds];
+	for (let i=0; i<taskIds.length; i++)
+		delete this.items[taskIds[i]];
 },
 get : function (taskId) {
 	return this.items[taskId];
 },
-update : function (task) {
-	this.items[task.id] = task;
+update : function (tasks) {
+	if (!Array.isArray(tasks))
+		tasks = [tasks];
+	for (let i=0; i<tasks.length; i++)
+		this.items[tasks[i].id] = tasks[i];
 },
 //Updates given fields in the cached task entry. Same semantics as backend.patch
 patch : function (patch) {
@@ -166,12 +172,13 @@ class Task {
 	constructor(args) {
 		this.id = undefined;			//Unique for this backend
 		this.title = undefined;
-		this.parent = undefined;		//Parent task ID or null/undefined
-		this.position = undefined;		//Sort order key for items of this parent
+		this.parent = undefined;		//Parent task ID or null/undefined. Not all backends support modifying this directly.
+		this.position = undefined;		//Sort order key for items of this parent. Not all backends support modifying this directly.
 		this.notes = undefined;
 		this.status = undefined;		//Only "completed" or "needsAction". Other DAV-style statuses potentially supported in the future.
 		this.due = undefined;
 		this.completed = undefined;		//True or false/null/undefined
+		this.tasklistId = undefined;	//The tasklist this task belongs to. Not all backends support modifying this directly.
 		for (var key in args)
 			this[key] = args[key];
 	}
@@ -314,7 +321,7 @@ Backend.prototype.getAll = function(taskIds, tasklistId) {
 }
 
 
-//Backend.prototype.update = function (task)
+//Backend.prototype.update = function (task, tasklistId)
 //Updates the contents of the task on the server. Missing or null fields will be deleted.
 //Returns the new task content (may be adjusted by the server).
 //Required, or your tasklist is read-only.
@@ -322,11 +329,11 @@ Backend.prototype.getAll = function(taskIds, tasklistId) {
 
 //Updates only the fields present in Task objet. Fields set to null will be deleted. ID must be set.
 //Returns a task-update or task-patch request
-Backend.prototype.patch = function (task) {
+Backend.prototype.patch = function (task, tasklistId) {
 	//Default: query + update
 	return this.get(task.id).then(result => {
 		resourcePatch(result, task);
-		return this.update(result);
+		return this.update(result, tasklistId);
 	}).then(result => {
 		taskCache.patch(task); //update cached version
 		return result;
@@ -412,14 +419,14 @@ If this function is present then all local move functions are expected to work.
   Reimplement 	if you have a better mechanics for batch moves
   Undefine		if your list does NOT support moving tasks
 */
-Backend.prototype.move = function(taskIds, newParentId, newPrevId) {
+Backend.prototype.move = function(taskIds, newParentId, newPrevId, tasklistId) {
 	if (!Array.isArray(taskIds)) taskIds = [taskIds];
 	if (newParentId && newParentId.id) newParentId = newParentId.id;
 	if (newPrevId && newPrevId.id) newPrevId = newPrevId.id;
 
 	var proms = [];
 	taskIds.reverse().forEach(id => {
-		proms.push(this._moveOne(id, newParentId, newPrevId));
+		proms.push(this._moveOne(id, newParentId, newPrevId, tasklistId));
 	});
 	return Promise.all(proms);
 }
@@ -429,17 +436,17 @@ Updates cache.
   Default:		implemented via editing
   Reimplement	if you want a different approach but to reuse the default _move() batching
 */
-Backend.prototype._moveOne = function(taskId, newParentId, newPrevId) {
+Backend.prototype._moveOne = function(taskId, newParentId, newPrevId, tasklistId) {
 	if (taskId && taskId.id) taskId = taskId.id;
 	
 	//By default just update the task parent and choose a sort-order position
-	let newPosition = this.choosePosition(newParentId, newPrevId);
+	let newPosition = this.choosePosition(newParentId, newPrevId, tasklistId);
 	let taskPatch = { id: taskId, parent: newParentId, position: newPosition, };
-	return this.patch(taskPatch);
+	return this.patch(taskPatch, tasklistId);
 }
 // Moves all children of a given task under a new parent in the same task list,
 // inserting them in the existing order after a given task (null = at the top).
-Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId) {
+Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId, tasklistId) {
 	if (taskId && taskId.id) taskId = taskId.id;
 	if (newParentId && newParentId.id) newParentId = newParentId.id;
 	if (newPrevId && newPrevId.id) newPrevId = newPrevId.id;
@@ -451,7 +458,7 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId) {
 	children.forEach(child => childIds.push(child.id));
 	
 	//log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
-	return this.move(childIds, newParentId, newPrevId);
+	return this.move(childIds, newParentId, newPrevId, tasklistId);
 }
 
 

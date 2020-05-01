@@ -325,11 +325,13 @@ BackendDav.prototype.parseTodoObject = function(object) {
 
 //Parses a list of calendar objects (ICS files), each containing multiple VTODO entris
 //Returns a map of taskId->Tasks
-BackendDav.prototype.parseTodoObjects = function(objects) {
+BackendDav.prototype.parseTodoObjects = function(objects, tasklistId) {
 	let tasks = [];
 	for (var i=0; i<objects.length; i++) {
 		console.log('Object['+i+']', objects[i].calendarData);
-		tasks.push(this.parseTodoObject(objects[i]));
+		let task = this.parseTodoObject(objects[i]);
+		task.tasklistId = tasklistId;
+		tasks.push(task);
 	}
 	return tasks;
 }
@@ -565,12 +567,12 @@ BackendDav.prototype.getMaybeCached = function(taskIds, tasklistId) {
 }
 
 
-BackendDav.prototype.update = function (task) {
-	return this.updateTaskObject(this.selectedTaskList, task, false);
+BackendDav.prototype.update = function (task, tasklistId) {
+	return this.updateTaskObject(tasklistId || task.tasklistId || this.selectedTaskList, task, false);
 }
 //Since we're re-querying the task and patching it on update anyway, makes sense to reimplement patch() directly
 BackendDav.prototype.patch = function (task) {
-	return this.updateTaskObject(this.selectedTaskList, task, true);
+	return this.updateTaskObject(tasklistId || task.tasklistId || this.selectedTaskList, task, true);
 }
 /*
 Handles both update() and patch()
@@ -751,7 +753,7 @@ BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newParentId,
 //Moves a number of tasks (ICS files) to another calendar on a different DAV server (INSERT + DELETE)
 //Do not call directtly.
 BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newParentId, newPrevId, newBackend) {
-	console.log(arguments);
+	console.log('moveToList_foreignDav', arguments);
 	if (tasks.length <= 0) return Promise.resolve();
 	//Requery most recent versions: we're moving by contents so shouldn't rely on cache
 	for (let i=0; i<tasks.length; i++)
@@ -766,7 +768,7 @@ BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newP
 	.then(results => {
 		//The IDs stayed the same. Position the root task in the new list
 		if (tasks.length > 0)
-			return newBackend.move(tasks[0].id, newParentId, newPrevId);
+			return newBackend.move(tasks[0].id, newParentId, newPrevId, newTasklistId);
 	})
 	.then(results => {
 		console.log('Moved to a different DAV list, deleting here');
@@ -778,7 +780,7 @@ BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newP
 //Moves a number of tasks (ICS files) to another calendar on the same DAV server (MOVE)
 //Do not call directly.
 BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId, newParentId, newPrevId) {
-	console.log(arguments);
+	console.log('moveToList_localDav', arguments);
 	if (tasks.length <= 0) return Promise.resolve();
 	
 	let newCalendar = this.findCalendar(newTasklistId);
@@ -798,15 +800,17 @@ BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId, newPar
 	}
 	
 	return Promise.all(batch).then(() => {
+		//All these tasks are now in the different list; cached objects are invalid
+		taskCache.delete(tasks);
 		//Reposition the topmost task
 		if (tasks.length > 0)
-			return this.move(tasks[0].id, newParentId, newPrevId);
+			return this.move(tasks[0].id, newParentId, newPrevId, newTasklistId);
 	});
 }
 
 //HTTP DAV MOVE or COPY request
 BackendDav.prototype.davMoveRequest = function(method, fromUrl, toUrl, options) {
-	console.log('davMoveRequest: ', arguments);
+	console.log('davMoveRequest', arguments);
 	function transformRequest(xhr) {
 		dav.request.setRequestHeaders(xhr, options);
 		xhr.setRequestHeader('Destination', toUrl);
