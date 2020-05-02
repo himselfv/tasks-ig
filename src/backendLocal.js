@@ -433,17 +433,19 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId
 
 	//Collect all children
 	var ids = [taskId];
-	var children = this.getAllChildren(taskId);
-	if (children)
-		children.forEach(child => ids.push(child.id));
-	//log("moveToList(): ids="+JSON.stringify(ids));
-
 	var task = null;
-	var prom = Promise.all([
-		this._getList(oldTasklistId),
-		this._getList(newTasklistId),
-		this._getItem(taskId)
-	]).then(results => {
+	
+	var prom = this.getAllChildren(taskId)
+	.then(children => {
+		if (children)
+			children.forEach(child => ids.push(child.id));
+		return Promise.all([
+			this._getList(oldTasklistId),
+			this._getList(newTasklistId),
+			this._getItem(taskId)
+		])
+	})
+	.then(results => {
 		let oldList = results[0];
 		let newList = results[1];
 		let task = results[2];
