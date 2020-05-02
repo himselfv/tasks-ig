@@ -535,7 +535,7 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, co
 			//Otherwise there's no next task; choose midway between prev and now()
 			nextPosition = this.newDownmostPosition();
 		
-		newPosition = Math.floor((nextPosition + prevPosition) / 2);
+		newPosition = Math.floor((+nextPosition + +prevPosition) / 2);
 		//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
 		if (newPosition < prevPosition + 1)
 			newPosition = prevPosition + 1;
