@@ -539,19 +539,22 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, co
 }
 
 
-
-
 /*
 Copies a number of tasks to a new tasklist/backend, giving them new Ids.
   items: taskId -> {
   	parent: new parentId,
+  	previous: new previousId,
   	[task: task,]					default: try to get by id
-  	[previous: new previousId,]		default: insert topmost
   }
 Returns:
   taskId -> insertedTask
+ 
+Reimplement to copy faster/with associated data/history, etc.
+To reuse the logic for child traversal, call this.copyChildren() -- example below.
+ Q: Can I NOT reuse the logic? My backend already handles recursion.
+ A: Sure. You can override copyChildren() too or leave it alone - it'll still work.
 */
-Backend.prototype.copyTo = function (items, newTasklistId, newBackend) {
+Backend.prototype.copyToList = function (items, newTasklistId, newBackend, recursive) {
 	if (!items || (items.length <= 0)) return Promise.resolve();
 	if (!newBackend) newBackend = this;
 	
@@ -572,54 +575,28 @@ Backend.prototype.copyTo = function (items, newTasklistId, newBackend) {
 	}
 	
 	let batch = newBackend.insertMultiple(newItems);
-/*	if (recursive)
-		batch = batch.then(results => {
-			//insert returns the final form of the task
-			let pairs = [{'from': oldTask, 'to': response}];
-			return this.copyChildrenTo(pairs, newTasklistId, newBackend);
-		});
-*/
+	if (recursive)
+		//insertMultiple() returns a compatible oldId -> newTask dict
+		batch = batch.then(results => this.copyChildrenTo(results, newTasklistId, newBackend);
+
 	return batch;
 }
 
-
 /*
-Copies a task with children to a given position in a different task list.
-The copies will have new IDs.
-
-  Default: Copy the tasks. The default implementation is pretty universal.
-
-The tasks may come from another backend! Ignore any properties except for standard ones.
-*/
-Backend.prototype.copyToList = function (oldTask, newTasklistId, newParentId, newPrevId, oldBackend) {
-	if (!oldBackend) oldBackend = this;
-	var newTask = taskResClone(oldTask);
-	newTask.parent = newParentId;
-	var prom = this.insert(newTask, newPrevId, newTasklistId)
-		.then(response => {
-			//insert returns the final form of the task
-			let pairs = [{'from': oldTask, 'to': response}];
-			return this.batchCopyChildren(pairs, newTasklistId, oldBackend);
-		});
-	return prom;
-}
-
-/*
-Builds a batch promise that for every pair in "pairs" copies all children of pair.from to pair.to,
-recursively.
+For every taskId in "pairs" copies all children of that task to pairs[taskId].id, recursively.
 Example:
-  copyChildrenTo([{'from': oldTask, 'to': newTask}], newTasklistId);
-Copies all children of oldTask under newTask, recursively.
+  copyChildrenTo([oldTask.id: newTask}], newTasklistId);
+ 
+Reimplement if you can optimize: choose children positions all at once etc.
+You do not HAVE to reimplement this if your copyToList() already handles recursion. This will still work if called.
 */
 Backend.prototype.copyChildrenTo = function (pairs, newTasklistId, newBackend) {
 	if (!pairs || (pairs.length <= 0)) return Promise.resolve();
 	if (!newBackend) newBackend = this;
-
-	var pairs_new = [];
+	
+	//Build a batch copyToList request for all children on this nesting level
 	var batch = {};
-
-	//Build a batch request for all children on this nesting level
-	pairs.forEach(pair => {
+	for (oldTaskId in pairs) {
 		//Get all source children
 		let children = oldBackend.getChildren(pair.from);
 		//Add children backwards so that each new child can be appended "at the top" --
@@ -627,30 +604,20 @@ Backend.prototype.copyChildrenTo = function (pairs, newTasklistId, newBackend) {
 		children.reverse().forEach(oldChild => {
 			//Add request to batch
 			let item = {};
-			item.task = oldChild;
+			item.task = oldChild; //do not requery the contents
 			item.parent = pair.to.id;
 			item.previous = null; //add to the top
 			batch[oldChild.id] = item;
-			//Add as a new pair entry
-			pairs_new.push({ 'from': oldChild, 'to': null });
 		});
-	});
-
+	}
+	
 	if (batch.length<=0)
 		return Promise.resolve();
-	return this.copyTo(batch, newTasklistId, newBackend) //not recursive
-	.then(results => {
-		//Now that we have a response, update a shared variable pairs_new with generated children ids,
-		//and return a new promise to copy the next nested level
-		for (let oldId in results) {
-			let pair = pairs_new.find(item => { return item.from.id == oldId; });
-			if (!pair)
-				log("can't find pair for id = "+oldId);
-			pair.to = results[oldId];
-		}
-		return this.copyChildrenTo(pairs_new, newTasklistId, newBackend);
-	});
+	
+	//Copy the children and run us recursively on them
+	return this.copyToList(batch, newTasklistId, newBackend, recursive);
 }
+
 
 /*
 Moves a task with children from *currently selected* task list to a different task list and/or backend.
