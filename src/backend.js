@@ -352,7 +352,7 @@ Backend.prototype.delete = function (taskId, tasklistId) {
 	let prom = null;
 	//Currently only selected list supports recursive deletion
 	if (tasklistId == this.selectedTaskList) {
-		prom = this.getAllChildren(taskId)
+		prom = this.getAllChildren(taskId, tasklistId)
 		.then(children => {
 			children.forEach(child => ids.push(child.id))
 		});
@@ -425,7 +425,7 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId, taskl
 	if (newParentId && newParentId.id) newParentId = newParentId.id;
 	if (newPrevId && newPrevId.id) newPrevId = newPrevId.id;
 
-	this.getChildren(taskId)
+	this.getChildren(taskId, this.selectedTaskList)
 	.then(children => {
 		if (!children || (children.length <= 0))
 			return;
@@ -471,7 +471,7 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, co
 	//console.log('choosePosition: parent=', parentId, 'previous=', previousId);
 
 	//Choose a new position betweeen previous.position and previous.next.position
-	return this.getChildren(parentId)
+	return this.getChildren(parentId, tasklistId)
 	.then(children => {
 		//console.log(children);
 		let prevPosition = null;
@@ -761,7 +761,7 @@ Backend.prototype.cachedGet(taskIds, tasklistId) {
 }
 
 //Returns an array of all children tasks of a given task, sorted by their sort order
-Backend.prototype.getChildren = function (parentId) {
+Backend.prototype.getChildren = function (parentId, tasklistId) {
 	if (parentId && parentId.id) parentId = parentId.id; //sometimes we're given the task object instead of id
 	var list = [];
 	Object.keys(this.cache.items).forEach(key => {
@@ -776,7 +776,7 @@ Backend.prototype.getChildren = function (parentId) {
 	return Promise.resolve(list);
 }
 //Returns an array of all children tasks of a given task at any level
-Backend.prototype.getAllChildren = function (parentId) {
+Backend.prototype.getAllChildren = function (parentId, tasklistId) {
 	if (parentId && parentId.id) parentId = parentId.id; //sometimes we're given the task object instead of id
 	var list = [];
 	Object.keys(this.cache.items).forEach(function(key){

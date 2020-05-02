@@ -435,7 +435,7 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId
 	var ids = [taskId];
 	var task = null;
 	
-	var prom = this.getAllChildren(taskId)
+	var prom = this.getAllChildren(taskId, oldTasklistId)
 	.then(children => {
 		if (children)
 			children.forEach(child => ids.push(child.id));

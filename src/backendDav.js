@@ -739,7 +739,7 @@ BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newBackend) 
 	and we'll do that with local .move() later.
 	We can move all children at once.
 	*/
-	return this.getAllChildren(oldTask)
+	return this.getAllChildren(oldTask, this.selectedTaskList)
 	.then(children => {
 		children.unshift(oldTask); //add to the front
 		return children;
