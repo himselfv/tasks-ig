@@ -57,6 +57,11 @@ A: Prepend them with tasklistId and your moveToList() will be changing task.ids 
 
 Q: What if my backend has no unique IDs for tasks?
 A: Keep everything in memory and assign temporary IDs on the fly.
+
+Q: What if my backend requires specifying BOTH tasklistId and taskId on requests?
+   While taskIds might be unique, I have nowhere to get tasklistId beforehand.
+A: The backend API should require explicit tasklistId everywhere where this might be a problem.
+   E.g.: get(taskId) must also require tasklistId.
 */
 
 
@@ -290,7 +295,6 @@ Backend.prototype.getAll = function(taskIds, tasklistId) {
 //Returns the new task content (may be adjusted by the server).
 //Required, or your tasklist is read-only.
 
-
 //Updates only the fields present in Task objet. Fields set to null will be deleted. ID must be set.
 //Returns a task-update or task-patch request
 Backend.prototype.patch = function (task, tasklistId) {
@@ -345,14 +349,23 @@ Backend.prototype.delete = function (taskId, tasklistId) {
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	
 	ids = [taskId];
+	let prom = null;
+	//Currently only selected list supports recursive deletion
 	if (tasklistId == this.selectedTaskList) {
-		//We need to remove children from cache too, at the very least
-		this.getAllChildren(taskId).forEach(child => ids.push(child.id));
+		prom = this.getAllChildren(taskId)
+		.then(children => {
+			children.forEach(child => ids.push(child.id))
+		});
+	} else
+		prom = Promise.resolve();
+	
+	return prom
+	.then({
+		//We need to remove everything from cache too
 		ids.forEach(id => this.cache.delete(id));
-	} else {
-		//Currently only selected list supports recursive deletion
-	}
-	return this.deleteAll(ids, tasklistId);
+	})
+	.then(this.deleteAll(ids, tasklistId));
+
 }
 
 //BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId).
@@ -399,9 +412,11 @@ Backend.prototype._moveOne = function(taskId, newParentId, newPrevId, tasklistId
 	if (taskId && taskId.id) taskId = taskId.id;
 	
 	//By default just update the task parent and choose a sort-order position
-	let newPosition = this.choosePosition(newParentId, newPrevId, tasklistId);
-	let taskPatch = { id: taskId, parent: newParentId, position: newPosition, };
-	return this.patch(taskPatch, tasklistId);
+	return this.choosePosition(newParentId, newPrevId, tasklistId)
+	.then(newPosition => {
+		let taskPatch = { id: taskId, parent: newParentId, position: newPosition, };
+		return this.patch(taskPatch, tasklistId);
+	});
 }
 // Moves all children of a given task under a new parent in the same task list,
 // inserting them in the existing order after a given task (null = at the top).
@@ -410,14 +425,16 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId, taskl
 	if (newParentId && newParentId.id) newParentId = newParentId.id;
 	if (newPrevId && newPrevId.id) newPrevId = newPrevId.id;
 
-	var children = this.getChildren(taskId);
-	if (!children || (children.length <= 0))
-		return Promise.resolve();
-	var childIds = [];
-	children.forEach(child => childIds.push(child.id));
-	
-	//log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
-	return this.move(childIds, newParentId, newPrevId, tasklistId);
+	this.getChildren(taskId)
+	.then(children => {
+		if (!children || (children.length <= 0))
+			return;
+		//Note: This is super-clumsy if getChildren() is implemented non-cached: we query children, drop their data, then query again in move()->patch()
+		var childIds = [];
+		children.forEach(child => childIds.push(child.id));
+		//log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
+		return this.move(childIds, newParentId, newPrevId, tasklistId);
+	})
 }
 
 
@@ -454,40 +471,42 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, co
 	//console.log('choosePosition: parent=', parentId, 'previous=', previousId);
 
 	//Choose a new position betweeen previous.position and previous.next.position
-	let children = this.getChildren(parentId);
-	//console.log(children);
-	let prevPosition = null;
-	let nextPosition = null;
-	let prevIdx = null;
-	
-	if (!previousId) {
-		prevPosition = this.newUpmostPosition();
-		prevIdx = -1;
-		//Some safeguards: if our "topmost" position is closer than 1000 to the current topmost,
-		//why not choose a bit lower?
-		//Can't do the same at the bottom as we may overshoot what the next new item is going to get
-		if ((children.length >= 1) && (children[0].position < prevPosition + 1000))
-			prevPosition = children[0].position - 1000;
-	} else
-		for (prevIdx=0; prevIdx<children.length; prevIdx++) {
-			if (children[prevIdx].id != previousId)
-				continue;
-			prevPosition = children[prevIdx].position;
-			break;
-		}
-	
-	if (prevIdx+1 < children.length)
-		nextPosition = children[prevIdx+1].position;
-	else
-		//Otherwise there's no next task; choose midway between prev and now()
-		nextPosition = this.newDownmostPosition();
-	
-	newPosition = Math.floor((nextPosition + prevPosition) / 2);
-	//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
-	if (newPosition < prevPosition + 1)
-		newPosition = prevPosition + 1;
-	//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
-	return newPosition;
+	return this.getChildren(parentId)
+	.then(children => {
+		//console.log(children);
+		let prevPosition = null;
+		let nextPosition = null;
+		let prevIdx = null;
+		
+		if (!previousId) {
+			prevPosition = this.newUpmostPosition();
+			prevIdx = -1;
+			//Some safeguards: if our "topmost" position is closer than 1000 to the current topmost,
+			//why not choose a bit lower?
+			//Can't do the same at the bottom as we may overshoot what the next new item is going to get
+			if ((children.length >= 1) && (children[0].position < prevPosition + 1000))
+				prevPosition = children[0].position - 1000;
+		} else
+			for (prevIdx=0; prevIdx<children.length; prevIdx++) {
+				if (children[prevIdx].id != previousId)
+					continue;
+				prevPosition = children[prevIdx].position;
+				break;
+			}
+		
+		if (prevIdx+1 < children.length)
+			nextPosition = children[prevIdx+1].position;
+		else
+			//Otherwise there's no next task; choose midway between prev and now()
+			nextPosition = this.newDownmostPosition();
+		
+		newPosition = Math.floor((nextPosition + prevPosition) / 2);
+		//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
+		if (newPosition < prevPosition + 1)
+			newPosition = prevPosition + 1;
+		//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
+		return newPosition;
+	});
 }
 
 
@@ -562,7 +581,6 @@ recursively.
 Example:
   copyChildrenTo([{'from': oldTask, 'to': newTask}], newTasklistId);
 Copies all children of oldTask under newTask, recursively.
-If oldBackend is given, uses that to resolve children instead of this one.
 */
 Backend.prototype.copyChildrenTo = function (pairs, newTasklistId, newBackend) {
 	if (!pairs || (pairs.length <= 0)) return Promise.resolve();
@@ -606,44 +624,61 @@ Backend.prototype.copyChildrenTo = function (pairs, newTasklistId, newBackend) {
 }
 
 /*
-Moves a task with children to a new position in a different task list and/or backend.
+Moves a task with children from *currently selected* task list to a different task list and/or backend.
 May change task ids.
 
   Default:		copy the task subtree + delete the original one
   Reimplement	if you have better options (can preserve the IDs, move associated history/info etc)
+				Fall back to default implementation if move()ing to unknown backends!
 
-Fall back to default implementation if move()ing to unknown backends!
+Moved task will always appear at the top/bottom of the list. Won't do local positioning. Foreign task list may be not cached.
+If you're sure, position with newBackend.move() manually.
 */
-Backend.prototype.moveToList = function (oldTask, newTasklistId, newParentId, newPrevId, newBackend) {
-	if (!newTasklistId || (newTasklistId == this.selectedTaskList))
-		return this.move(oldTask, newParentId, newPrevId);
+Backend.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
 	if (!newBackend) newBackend = this;
-	if (oldTask && !(oldTask.id)) oldTask = this.cache.get(oldTask);
+	if (!newTasklistId || (newTasklistId == this.selectedTaskList))
+		return Promise.resolve();
 	var oldTasklistId = this.selectedTaskList;
 
-	return this.copyToList(oldTask, newTasklistId, newParentId, newPrevId, newBackend)
-		.then(response => {
-			//log("copied!");
-			return this.delete(oldTask, oldTasklistId);
-		});
+	return this.cachedGet(oldTask)
+		.then(task => {
+			oldTask = task;
+			return this.copyToList(oldTask, newTasklistId, newBackend))
+		})
+		.then(response => this.delete(oldTask, oldTasklistId));
+}
+
+
+/*
+One task list can be "selected".
+This will be the default tasklist unless specified (a rudiment from the past).
+Some operations only work on selected task list -- see caching below.
+*/
+Backend.prototype.selectTaskList = function (tasklistId) {
+	if (this.selectedTaskList == tasklistId)
+		return Promise.resolve();
+	this.selectedTaskList = tasklistId;
+	this.cache.clear();
+	if (!this.selectedTaskList)
+		return Promise.resolve();
+	//Reload the cache
+	return this.cacheLoadList(this.selecedTaskList);
 }
 
 
 /*
 Task caching.
 
-Some operations cannot be effectively implemented on most backends without querying
-the entire list on which they work:
+Some convenience functions cannot be effectively implemented on most backends
+without querying the entire list on which they work:
 - Getting all children, recursively
 - Getting the entire chain of parents
-- Getting siblings
 
-For now we're stuck with a compromise:
-We'll provide convenience functions which mind parents/children, but these only work
-on a "currently selected list".
+A compromise: We provide convenience functions but they only work on
+a "currently selected list", which is cached.
 
 If your backend can implement these efficiently, please do!
-If one day we decide to change this, we may switch to preloading the entire lists by default.
+We may switch away from cache to preloading the entire lists by default one day.
 
 Backends: Remember to update changed tasks!
 */
@@ -688,46 +723,49 @@ TaskCache.prototype.patch = function (patch) {
 Backend.prototype.cacheLoadList(tasklistId) {
 	var prom = this.list(this.selectedTaskList);
 	prom = prom.then(items => {
-		taskCache.clear();
 		let tasks = items || [];
 		for (let i = 0; i < tasks.length; i++)
 			if (!tasks[i].deleted)
-				taskCache.add(tasks[i]);
+				this.cache.add(tasks[i]);
 	});
 	return prom;
-
 }
+//Similar to .getAll(), but can return from cache.
+//+ If you pass it a Task object, will simply return that.
+Backend.prototype.cachedGet(taskIds, tasklistId) {
+	let isArray = Array.isArray(taskIds);
+	if (!isArray) taskIds = [taskIds];
 
-/*
-One task list can be "selected".
-This will be the default tasklist unless specified.
-Selected tasklist is always cached. Some operations are only possible on the selected tasklist.
-*/
-Backend.prototype.selectTaskList = function (tasklistId) {
-	if (this.selectedTaskList == tasklistId)
-		return Promise.resolve();
-	this.selectedTaskList = tasklistId;
-	taskCache.clear();
-	if (!this.selectedTaskList)
-		return Promise.resolve();
-	//Reload the cache
-	return this.cacheLoadList(this.selecedTaskList);
-}
-//Returns the nesting level of a task resource, according to local cache
-Backend.prototype.getLevel = function (task) {
-	var level = 0;
-	while (task.parent) {
-		level++;
-		task = taskCache.get(task.parent);
+	let tasks = {};
+	let requestIds = [];
+	for (let taskId in taskIds) {
+		if (taskId.id) {
+			tasks{taskId.id} = taskId; //already a task
+			continue;
+		}
+		let task = this.cache.get(taskId);
+		if (task)
+			tasks[taskId] = task;
+		else
+			requestIds.push(taskId);
 	}
-	return level;
+	let prom = (requestIds.length <= 0) ? Promise.resolve({}) :
+		this.getAll(taskIds, tasklistId);
+	return prom.then(results => {
+		for (let taskId in results)
+			tasks[taskId] = results[taskId];
+		if (!isArray)
+			return tasks{taskIds[0]};
+		return tasks;
+	});
 }
+
 //Returns an array of all children tasks of a given task, sorted by their sort order
 Backend.prototype.getChildren = function (parentId) {
 	if (parentId && parentId.id) parentId = parentId.id; //sometimes we're given the task object instead of id
 	var list = [];
-	Object.keys(taskCache.items).forEach(key => {
-		var task = taskCache.items[key];
+	Object.keys(this.cache.items).forEach(key => {
+		var task = this.cache.items[key];
 		if (!parentId && (task.parent))
 			return;
 		if ((parentId) && (task.parent != parentId))
@@ -735,8 +773,7 @@ Backend.prototype.getChildren = function (parentId) {
 		list.push(task);
 	});
 	list = list.sort((a, b) => { return a.position - b.position; });
-	//log("getChildren("+parentId+"): "+list.length);
-	return list;
+	return Promise.resolve(list);
 }
 //Returns an array of all children tasks of a given task at any level
 Backend.prototype.getAllChildren = function (parentId) {
@@ -749,24 +786,6 @@ Backend.prototype.getAllChildren = function (parentId) {
 			if (task)
 				list.push(this.cache.items[key]); //the original match
 		});
-	//log("getAllChildren("+parentId+"): "+list.length);
-	return list;
+	return Promise.resolve(list);
 }
-Backend.prototype.getPrevSibling = function (task) {
-	var siblings = this.getChildren(task.parent);
-	var index = siblings.findIndex(item => item.id == task.id);
-	if (!index)
-		return null;
-	if (index > 0)
-		return siblings[index-1];
-	return null;
-}
-Backend.prototype.getLastChild = function (task) {
-	var children = this.getChildren(task.id);
-	if (children.length > 0)
-		return children[children.length-1];
-	else
-		return null;
-}
-
 

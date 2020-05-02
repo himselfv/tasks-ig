@@ -1233,8 +1233,7 @@ function processReportedChanges() {
   }
 
   //Moves the task and all of its children to a different tasklist
-  //WARNING: Only 'entry' supports PromisedIDs. newTaskListId, newParentId and newPrevId must be explicitly passed.
-  function taskMoveToList(entry, newTaskListId, newParentId, newPrevId) {
+  function taskMoveToList(entry, newTaskListId) {
     //Warning! This function has to play nice to taskPatchMoveToList and only use cached task data.
     
     var whenTaskId = entry.whenHaveId(); //before we .delete() it
@@ -1245,18 +1244,18 @@ function processReportedChanges() {
     tasks.delete(entry);
     
     var job = whenTaskId
-    	.then(taskId => backend.moveToList(taskId, newTaskListId, newParentId, newPrevId));
+    	.then(taskId => backend.moveToList(taskId, newTaskListId));
     return pushJob(job);
   }
 
   //Edits the task and immediately moves it and all of its children to a different tasklist
   //WARNING: At the moment, all IDs must be explicitly set
-  function taskPatchMoveToList(patch, newTaskListId, newParentId, newPrevId) {
+  function taskPatchMoveToList(patch, newTaskListId) {
     //To avoid a pointless update of the task in the original list we play unfair:
     //1. Update the current task locally
     //2. Post it to another list and delete from this one
     backend.cache.patch(patch); //patch locally
-    return taskMoveToList(tasks.find(patch.id), newTaskListId, newParentId, newPrevId);
+    return taskMoveToList(tasks.find(patch.id), newTaskListId);
   }
 
 
@@ -1404,7 +1403,7 @@ function processReportedChanges() {
       job = taskPatch(patch);
     else
       //Complicated version, edit and move
-      job = taskPatchMoveToList(patch, newTaskList, null, null);
+      job = taskPatchMoveToList(patch, newTaskList);
     
     job = job.then(response => editorCancel());
     pushJob(job);

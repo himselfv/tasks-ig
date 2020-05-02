@@ -727,10 +727,10 @@ Moving and copying ICS files between calendars.
   But this is fine, because you can break older revisions in the same way by just deleting the parent anyway.
 */
 
-BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newParentId, newPrevId, newBackend) {
+BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
 	//Optimize moves between DAVs. Other moves => default treatment
 	if (newBackend && !(newBackend instanceof BackendDav))
-		return Backend.prototype.moveToList(oldTask, newTasklistId, newParentId, newPrevId, newBackend);
+		return Backend.prototype.moveToList(oldTask, newTasklistId, newBackend);
 	if (!newBackend) newBackend = this;
 	
 	/*
@@ -739,20 +739,28 @@ BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newParentId,
 	and we'll do that with local .move() later.
 	We can move all children at once.
 	*/
-	let children = this.getAllChildren(oldTask);
-	children.unshift(oldTask); //add to the front
-	
-	//Foreign DAVs require INSERT there + DELETE here
-	if (newBackend != this)
-		return this.moveToList_foreignDav(children, newTasklistId, newParentId, newPrevId, newBackend);
-	
-	//Otherwise it's a local move, perform MOVE
-	return this.moveToList_localDav(children, newTasklistId, newParentId, newPrevId);
+	return this.getAllChildren(oldTask)
+	.then(children => {
+		children.unshift(oldTask); //add to the front
+		return children;
+	})
+	.then(children => {
+		//Foreign DAVs require INSERT there + DELETE here
+		if (newBackend != this)
+			return this.moveToList_foreignDav(children, newTasklistId, newParentId, newPrevId, newBackend);
+		//Otherwise it's a local move, perform MOVE
+		return this.moveToList_localDav(children, newTasklistId, newParentId, newPrevId);
+	})
+	.then(tasks => {
+		//In any case, patch the topmost task, remove parentId and assign new position
+		if (tasks.length <= 0) return tasks;
+		return this.patch({ id: tasks[0].id, parent: null, position: this.newDownmostPosition(), }, newTasklistId);
+	});
 }
 
 //Moves a number of tasks (ICS files) to another calendar on a different DAV server (INSERT + DELETE)
 //Do not call directtly.
-BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newParentId, newPrevId, newBackend) {
+BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newBackend) {
 	console.log('moveToList_foreignDav', arguments);
 	if (tasks.length <= 0) return Promise.resolve();
 	//Requery most recent versions: we're moving by contents so shouldn't rely on cache
@@ -766,11 +774,6 @@ BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newP
 		return Promise.all(batch);
 	})
 	.then(results => {
-		//The IDs stayed the same. Position the root task in the new list
-		if (tasks.length > 0)
-			return newBackend.move(tasks[0].id, newParentId, newPrevId, newTasklistId);
-	})
-	.then(results => {
 		console.log('Moved to a different DAV list, deleting here');
 		//Delete from local list
 		this.delete(childIds);
@@ -779,7 +782,7 @@ BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newP
 
 //Moves a number of tasks (ICS files) to another calendar on the same DAV server (MOVE)
 //Do not call directly.
-BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId, newParentId, newPrevId) {
+BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId) {
 	console.log('moveToList_localDav', arguments);
 	if (tasks.length <= 0) return Promise.resolve();
 	
@@ -802,9 +805,6 @@ BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId, newPar
 	return Promise.all(batch).then(() => {
 		//All these tasks are now in the different list; cached objects are invalid
 		this.cache.delete(tasks);
-		//Reposition the topmost task
-		if (tasks.length > 0)
-			return this.move(tasks[0].id, newParentId, newPrevId, newTasklistId);
 	});
 }
 
