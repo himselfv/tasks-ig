@@ -110,15 +110,37 @@ TaskList.prototype.appendTaskChildren = function(parentId, level, taskRecords) {
 	//Sort by position
 	children = children.sort((a, b) => { return a.position - b.position; });
 	//Publish, with recursive children
-	for (let i=0; i < children.length; i++) {
-		this.appendTask(children[i], level);
+	this.appendTasksWithChildren(children, level, taskRecords)
+}
+//Adds all tasks that specify a parent not from this list
+TaskList.prototype.appendOrphans = function(taskRecords) {
+	console.log('appendOrphans', arguments);
+	//Convert task records to dict
+	let tasks = {};
+	for (let i=0; i<taskRecords.length; i++)
+		tasks[taskRecords[i].id] = taskRecords[i];
+	//Find orphans
+	let orphans = [];
+	for (let i=0; i<taskRecords.length; i++) {
+		let task = taskRecords[i];
+		if (!task.parent || (task.parent in tasks))
+			continue;
+		orphans.push(task);
+	}
+	console.log('appendOrphans: orphans=', orphans);
+	//Publish, with recursive children (those are not orphans)
+	this.appendTasksWithChildren(orphans, 0, taskRecords);
+}
+TaskList.prototype.appendTasksWithChildren = function(tasks, level, taskRecords) {
+	for (let i=0; i < tasks.length; i++) {
+		this.appendTask(tasks[i], level);
 		//prevent some dumb endless recursions
-		if (!children[i].id || (children[i].id==parentId))
-			log('TaskList: task ID is weird, preventing recursion');
-		else
-			this.appendTaskChildren(children[i].id, level+1, taskRecords); //Add children
+		if (!tasks[i].id || (tasks[i].id==tasks[i].parent))
+			console.log('TaskList: task ID is weird, preventing recursion');
+		this.appendTaskChildren(tasks[i].id, level+1, taskRecords); //Add children
 	}
 }
+
 
 //Creates a task entry object
 //Previously: taskEntryCreate

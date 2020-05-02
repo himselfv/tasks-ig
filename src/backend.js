@@ -126,6 +126,11 @@ function toTaskIds(taskIds) {
 		if (taskIds[i].id) taskIds[i] = taskIds[i].id;
 	return taskIds;
 }
+function toTaskId(taskId) {
+	if (taskId.id)
+		taskId = taskId.id;
+	return taskId;
+}
 
 
 /*
@@ -287,12 +292,13 @@ Backend.prototype.get = function(taskIds, tasklistId) {
 	if (!this.getOne && !this.getMultiple)
 		throw "Backend: Querying tasks is not implemented";
 	//Single task
-	if (!Array.isArray(taskIds))
+	if (!Array.isArray(taskIds)) {
 		if (this.getOne)
 			return this.getOne(taskIds, tasklistId);
 		//Forward to many
 		return this.getMultiple([taskIds], tasklistId)
 			.then(results => results[taskIds]);
+	}
 	//Multiple tasks
 	if (this.getMultiple)
 		return this.getMultiple(taskIds);
@@ -772,14 +778,14 @@ Backend.prototype.cachedGet = function(taskIds, tasklistId) {
 Backend.prototype.getChildren = function (parentId, tasklistId) {
 	if (parentId && parentId.id) parentId = parentId.id; //sometimes we're given the task object instead of id
 	var list = [];
-	Object.keys(this.cache.items).forEach(key => {
+	for (let key in this.cache.items) {
 		var task = this.cache.items[key];
 		if (!parentId && (task.parent))
-			return;
+			continue;
 		if ((parentId) && (task.parent != parentId))
-			return;
+			continue;
 		list.push(task);
-	});
+	}
 	list = list.sort((a, b) => { return a.position - b.position; });
 	return Promise.resolve(list);
 }
@@ -787,13 +793,14 @@ Backend.prototype.getChildren = function (parentId, tasklistId) {
 Backend.prototype.getAllChildren = function (parentId, tasklistId) {
 	if (parentId && parentId.id) parentId = parentId.id; //sometimes we're given the task object instead of id
 	var list = [];
-	Object.keys(this.cache.items).forEach(function(key){
+	for (let key in this.cache.items) {
 		var task = this.cache.items[key];
-		while (task && (task.parent != parentId))
+		while (task && (task.parent != parentId)) {
 			task = task.parent ? this.cache.items[task.parent] : null;
 			if (task)
 				list.push(this.cache.items[key]); //the original match
-		});
+		}
+	}
 	return Promise.resolve(list);
 }
 

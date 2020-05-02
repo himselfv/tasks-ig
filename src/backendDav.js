@@ -571,7 +571,7 @@ BackendDav.prototype.update = function (task, tasklistId) {
 	return this.updateTaskObject(tasklistId || task.tasklist || this.selectedTaskList, task, false);
 }
 //Since we're re-querying the task and patching it on update anyway, makes sense to reimplement patch() directly
-BackendDav.prototype.patch = function (task) {
+BackendDav.prototype.patch = function (task, tasklistId) {
 	return this.updateTaskObject(tasklistId || task.tasklist || this.selectedTaskList, task, true);
 }
 /*
@@ -749,14 +749,13 @@ BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newBackend) 
 	.then(children => {
 		//Foreign DAVs require INSERT there + DELETE here
 		if (newBackend != this)
-			return this.moveToList_foreignDav(children, newTasklistId, newParentId, newPrevId, newBackend);
+			return this.moveToList_foreignDav(children, newTasklistId, newBackend);
 		//Otherwise it's a local move, perform MOVE
-		return this.moveToList_localDav(children, newTasklistId, newParentId, newPrevId);
+		return this.moveToList_localDav(children, newTasklistId);
 	})
-	.then(tasks => {
+	.then(() => {
 		//In any case, patch the topmost task, remove parentId and assign new position
-		if (tasks.length <= 0) return tasks;
-		return this.patch({ id: tasks[0].id, parent: null, position: this.newDownmostPosition(), }, newTasklistId);
+		return newBackend.patch({ id: toTaskId(oldTask), parent: null, position: newBackend.newDownmostPosition(), }, newTasklistId);
 	});
 }
 

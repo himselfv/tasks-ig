@@ -421,6 +421,8 @@ function processReportedChanges() {
     .then(taskRecords => {
       tasks.clear();
       tasks.appendTaskChildren(null, 0, taskRecords);
+      //Sometimes tasks get orphaned due to bugs; show these at root (better than eternally keeping them hidden)
+      tasks.appendOrphans(taskRecords);
       if (oldFocus) {
       	  let focusTask = tasks.find(oldFocus.id);
       	  if (focusTask)
