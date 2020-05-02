@@ -110,6 +110,25 @@ function resourcePatch(res, patch) {
 
 
 /*
+Some functions can accept both a single task and an array,
+and of either Task objects or IDs.
+These helpers normalize these things.
+*/
+function toArray(tasks) {
+	if (!Array.isArray(task))
+		tasks = [tasks];
+	return tasks;
+}
+function toTaskIds(taskIds) {
+	if (!Array.isArray(taskIds))
+		taskIds = [taskIds];
+	for (let i=0; i<taskIds.length; i++)
+		if (taskIds[i].id) taskIds[i] = taskIds[i].id;
+	return taskIds;
+}
+
+
+/*
 Detects additions, deletions and edits between two dictionaries
 Returns a dict of key => {oldValue, newValue} pairs.
 */
@@ -350,8 +369,20 @@ Backend.prototype.insertMultiple = function (tasks, tasklistId) {
 }
 
 
+/*
+Deletes a task or [tasks] from a single task list, non-recursively (without traversing their children).
+Required for task deletion. The tasks must not have children outside this list.
+
+Q: My backend delete()s tasks with children. Is that okay?
+A: Yes: The tasks must not have children, so if they have children you're only helping by deleting them.
+Q: Can I optimize recursive deletion?
+A: Override deleteWithChildren() and forward to delete()
+*/
+//BackendGTasks.prototype.delete = function (taskIds, tasklistId)
+
+
 //Deletes the task with all children. If tasklistId is not given, assumes current task list.
-Backend.prototype.delete = function (taskId, tasklistId) {
+Backend.prototype.deleteWithChildren = function (taskId, tasklistId) {
 	if (taskId && taskId.id) taskId = taskId.id;
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	
@@ -372,17 +403,8 @@ Backend.prototype.delete = function (taskId, tasklistId) {
 		ids.forEach(id => this.cache.delete(id));
 	})
 	.then(this.deleteAll(ids, tasklistId));
-
 }
 
-//BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId).
-//Deletes multiple tasks from a single task list, non-recursively (without traversing their children).
-//Required for task deletion.
-
-//True if this backend supports task deletion. Same as checking for deleteAll.
-Backend.prototype.hasDelete = function() {
-	return (this.deleteAll);
-}
 
 
 /*

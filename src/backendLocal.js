@@ -354,8 +354,8 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 	
 	return prom.then(result => task);
 }
-//Deletes the task with the children
-BackendLocal.prototype.deleteAll = function (taskIds, tasklistId) {
+
+BackendLocal.prototype.delete = function (taskIds, tasklistId) {
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	
 	//Delete all

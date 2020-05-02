@@ -439,10 +439,10 @@ function processReportedChanges() {
   function tasksActionsUpdate() {
   	var entry = tasks.getFocusedEntry();
   	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert);
-  	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.deleteAll || !entry);
+  	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
   	element("taskTabBtn").classList.toggle("hidden", !backend || !backend.move || !entry);
   	element("taskShiftTabBtn").classList.toggle("hidden", !backend || !backend.move ||!entry);
-  	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.deleteAll || !entry);
+  	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
   	element("taskCopyJSON").classList.toggle("hidden", !entry);
   	element("taskExportToFile").classList.toggle("hidden", !entry);
   	element("taskEditFocused").classList.toggle("hidden", !backend || !backend.update || !entry);
@@ -1051,7 +1051,7 @@ function processReportedChanges() {
           return backend.moveChildren(entryWhatId, entryToId, newPrevChildId);
         }).then(response => {
           //log("moved children")
-          return backend.delete(entryWhatId);
+          return backend.deleteWithChildren(entryWhatId);
         });
     });
     pushJob(job);
@@ -1221,7 +1221,7 @@ function processReportedChanges() {
     
     //Delete the task on the backend
     job = Promise.all([job, whenTaskId])
-    	.then(response => backend.delete(response[1]));
+    	.then(response => backend.deleteWithChildren(response[1]));
     return pushJob(job);
   }
 

@@ -700,7 +700,9 @@ BackendDav.prototype.insertTodoObject = function(calendar, data, filename) {
 }
 
 //Deletes multiple tasks from a single task list, non-recursively.
-BackendDav.prototype.deleteAll = function (taskIds, tasklistId) {
+BackendDav.prototype.delete = function (taskIds, tasklistId) {
+	if (!Array.isArray(taskIds)) taskIds = [taskIds];
+	
 	let calendar = this.findCalendar(tasklistId);
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
@@ -760,13 +762,13 @@ BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newBackend) 
 
 //Moves a number of tasks (ICS files) to another calendar on a different DAV server (INSERT + DELETE)
 //Do not call directtly.
-BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newBackend) {
+BackendDav.prototype.moveToList_foreignDav = function(taskIds, newTasklistId, newBackend) {
 	console.log('moveToList_foreignDav', arguments);
-	if (tasks.length <= 0) return Promise.resolve();
+	if (taskIds.length <= 0) return Promise.resolve();
 	//Requery most recent versions: we're moving by contents so shouldn't rely on cache
-	for (let i=0; i<tasks.length; i++)
-		if (tasks[i].id) tasks[i] = tasks[i].id;
-	return this.get(tasks)
+	for (let i=0; i<taskIds.length; i++)
+		if (taskIds[i].id) taskIds[i] = taskIds[i].id;
+	return this.get(taskIds)
 	.then(tasks => {
 		let batch = [];
 		for(let i=0; i<tasks.length; i++)
@@ -776,7 +778,7 @@ BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newB
 	.then(results => {
 		console.log('Moved to a different DAV list, deleting here');
 		//Delete from local list
-		this.delete(childIds);
+		this.delete(taskIds);
 	});
 }
 
@@ -804,7 +806,7 @@ BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId) {
 	
 	return Promise.all(batch).then(() => {
 		//All these tasks are now in the different list; cached objects are invalid
-		this.cache.delete(tasks);
+		this.cache.delete(toTaskIds(tasks));
 	});
 }
 

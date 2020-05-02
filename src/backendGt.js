@@ -317,7 +317,8 @@ Backend.prototype.insertMultiple = function (tasks, tasklistId) {
 
 
 //Deletes multiple tasks at once, without traversing their children.
-BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId) {
+BackendGTasks.prototype.delete = function (taskIds, tasklistId) {
+	taskIds = toTaskIds(taskIds);
 	var batch = gapi.client.newBatch();
 	taskIds.forEach(id => {
 		batch.add(gapi.client.tasks.tasks.delete({
@@ -326,7 +327,7 @@ BackendGTasks.prototype.deleteAll = function (taskIds, tasklistId) {
 		}));
 	});
 	return batch.then(response => {
-		//log("backend.deleteAll() success");
+		//log("backend.delete() success");
 		return response;
 	});
 }
