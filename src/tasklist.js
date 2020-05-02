@@ -95,16 +95,28 @@ TaskList.prototype.appendTask = function(task, level) {
 	this.appendEntry(this.createEntry(task, level));
 }
 //Adds all child tasks of a given parent task at a given level, recursively.
-//TODO: This is the only function here that uses backend. Fix this.
-TaskList.prototype.appendTaskChildren = function(parentId, level) {
-	var list = backend.getChildren(parentId);
-	for (let i=0; i < list.length; i++) {
-		this.appendTask(list[i], level);
+// taskRecords: All tasks in the currently selected list (including all the children)
+TaskList.prototype.appendTaskChildren = function(parentId, level, taskRecords) {
+	//Select all direct children from the list
+	let children = [];
+	for (let i=0; i<taskRecords.length; i++) {
+		let task = taskRecords[i];
+		if (!parentId && (task.parent))
+			continue;
+		if ((parentId) && (task.parent != parentId))
+			continue;
+		children.push(task);
+	}
+	//Sort by position
+	children = children.sort((a, b) => { return a.position - b.position; });
+	//Publish, with recursive children
+	for (let i=0; i < children.length; i++) {
+		this.appendTask(children[i], level);
 		//prevent some dumb endless recursions
-		if (!list[i].id || (list[i].id==parentId))
+		if (!children[i].id || (children[i].id==parentId))
 			log('TaskList: task ID is weird, preventing recursion');
 		else
-			this.appendTaskChildren(list[i].id, level+1); //Add children
+			this.appendTaskChildren(children[i].id, level+1, taskRecords); //Add children
 	}
 }
 

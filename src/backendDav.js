@@ -343,7 +343,7 @@ BackendDav.prototype.queryTasklist = function(tasklistId, filters) {
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
 	return dav.listCalendarObjects(calendar, { xhr: this.xhr, filters: filters })
-		.then(objects => this.parseTodoObjects(objects));
+		.then(objects => this.parseTodoObjects(objects, tasklistId));
 }
 
 //Returns a set of prop-filters which uniquely identify a task with a given taskId

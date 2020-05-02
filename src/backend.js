@@ -398,7 +398,7 @@ Backend.prototype.deleteWithChildren = function (taskId, tasklistId) {
 		prom = Promise.resolve();
 	
 	return prom
-	.then({
+	.then(() => {
 		//We need to remove everything from cache too
 		ids.forEach(id => this.cache.delete(id));
 	})
@@ -577,7 +577,7 @@ Backend.prototype.copyToList = function (items, newTasklistId, newBackend, recur
 	let batch = newBackend.insertMultiple(newItems);
 	if (recursive)
 		//insertMultiple() returns a compatible oldId -> newTask dict
-		batch = batch.then(results => this.copyChildrenTo(results, newTasklistId, newBackend);
+		batch = batch.then(results => this.copyChildrenTo(results, newTasklistId, newBackend));
 
 	return batch;
 }
@@ -650,7 +650,7 @@ Backend.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
 	return this.cachedGet(oldTask)
 		.then(task => {
 			oldTask = task;
-			return this.copyToList(oldTask, newTasklistId, newBackend))
+			return this.copyToList(oldTask, newTasklistId, newBackend);
 		})
 		.then(response => this.delete(oldTask, oldTasklistId));
 }
@@ -727,19 +727,20 @@ TaskCache.prototype.patch = function (patch) {
 		resourcePatch(task, patch);
 }
 //Preloads all tasks from a tasklist into cache
-Backend.prototype.cacheLoadList(tasklistId) {
+Backend.prototype.cacheLoadList = function(tasklistId) {
 	var prom = this.list(this.selectedTaskList);
 	prom = prom.then(items => {
 		let tasks = items || [];
 		for (let i = 0; i < tasks.length; i++)
 			if (!tasks[i].deleted)
 				this.cache.add(tasks[i]);
+		return items;
 	});
 	return prom;
 }
 //Similar to .get(), but can return from cache.
 //+ If you pass it a Task object, will simply return that.
-Backend.prototype.cachedGet(taskIds, tasklistId) {
+Backend.prototype.cachedGet = function(taskIds, tasklistId) {
 	let isArray = Array.isArray(taskIds);
 	if (!isArray) taskIds = [taskIds];
 
@@ -747,7 +748,7 @@ Backend.prototype.cachedGet(taskIds, tasklistId) {
 	let requestIds = [];
 	for (let taskId in taskIds) {
 		if (taskId.id) {
-			tasks{taskId.id} = taskId; //already a task
+			tasks[taskId.id] = taskId; //already a task
 			continue;
 		}
 		let task = this.cache.get(taskId);
@@ -762,7 +763,7 @@ Backend.prototype.cachedGet(taskIds, tasklistId) {
 		for (let taskId in results)
 			tasks[taskId] = results[taskId];
 		if (!isArray)
-			return tasks{taskIds[0]};
+			return tasks[taskIds[0]];
 		return tasks;
 	});
 }

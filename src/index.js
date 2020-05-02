@@ -417,11 +417,10 @@ function processReportedChanges() {
     }
     
     log('Loading list: '+selectedValue);
-    return backend.selectTaskList(selectedValue).then(response => {
-      log('publishing from cache');
-      //Publish from cache
+    return backend.selectTaskList(selectedValue)
+    .then(taskRecords => {
       tasks.clear();
-      tasks.appendTaskChildren(null, 0);
+      tasks.appendTaskChildren(null, 0, taskRecords);
       if (oldFocus) {
       	  let focusTask = tasks.find(oldFocus.id);
       	  if (focusTask)
