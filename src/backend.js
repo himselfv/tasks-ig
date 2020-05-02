@@ -260,34 +260,41 @@ Tasks
 //Backend.prototype.list = function(tasklistId)
 //Required. Returns a list of all tasks in a taskslist. See BackendGt for more details.
 
-//Backend.prototype.get/getAll: At least one is required.
-
-//Returns a promise for the given task content
-//If tasklistId is not given, selected task list is assumed.
-Backend.prototype.get = function(taskId, tasklistId) {
-	if (this.getAll == Backend.prototype.getAll)
+/*
+Returns a promise for the given task or [tasks] content.
+If tasklistId is not given, selected task list is assumed.
+*/
+Backend.prototype.get = function(taskIds, tasklistId) {
+	if (!this.getOne && !this.getMultiple)
 		throw "Backend: Querying tasks is not implemented";
-	//Default: forward to getAll
-	return this.getAll([taskId], tasklistId).then(results =>
-		results[Object.keys(results)[0]]
-	);
-}
-
-//Retrieves multiple tasks in a single request. Returns a promise for a taskId -> task map.
-//If tasklistId is not given, selected task list is assumed.
-Backend.prototype.getAll = function(taskIds, tasklistId) {
-	if (this.get == Backend.prototype.get)
-		throw "Backend: Querying tasks is not implemented";
-	//Default: forward to get() one by one
-	var proms = [];
+	//Single task
+	if (!Array.isArray(taskIds))
+		if (this.getOne)
+			return this.getOne(taskIds, tasklistId);
+		//Forward to many
+		return this.getMultiple([taskIds], tasklistId)
+			.then(results => results[taskIds]);
+	//Multiple tasks
+	if (this.getMultiple)
+		return this.getMultiple(taskIds);
+	//Query one by one
+	var batch = [];
 	for (let i=0; i<taskIds.length; i++)
-		proms.push(this.get(taskIds[i], tasklistId));
-	return Promise.all(proms).then(results => {
+		batch.push(this.get(taskIds[i], tasklistId));
+	return Promise.all(proms)
+	.then(results => {
 		var dict = {};
 		results.forEach(item => dict[item.id] = item);
 		return dict;
 	});
 }
+
+//Retrieves one task by its ID. Returns the Task object.
+//Backend.prototype.getOne = function(taskId, tasklistId)
+
+//Retrieves multiple tasks in a single request. Returns a promise for a taskId -> task map.
+//If tasklistId is not given, selected task list is assumed.
+//Backend.prototype.getMultiple = function(taskIds, tasklistId)
 
 
 //Backend.prototype.update = function (task, tasklistId)
@@ -730,7 +737,7 @@ Backend.prototype.cacheLoadList(tasklistId) {
 	});
 	return prom;
 }
-//Similar to .getAll(), but can return from cache.
+//Similar to .get(), but can return from cache.
 //+ If you pass it a Task object, will simply return that.
 Backend.prototype.cachedGet(taskIds, tasklistId) {
 	let isArray = Array.isArray(taskIds);
@@ -750,7 +757,7 @@ Backend.prototype.cachedGet(taskIds, tasklistId) {
 			requestIds.push(taskId);
 	}
 	let prom = (requestIds.length <= 0) ? Promise.resolve({}) :
-		this.getAll(taskIds, tasklistId);
+		this.get(taskIds, tasklistId);
 	return prom.then(results => {
 		for (let taskId in results)
 			tasks[taskId] = results[taskId];

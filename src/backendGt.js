@@ -230,7 +230,7 @@ BackendGTasks.prototype.list = function(tasklistId) {
 }
 
 //Returns a promise for the given task content
-BackendGTasks.prototype.get = function (taskId, tasklistId) {
+BackendGTasks.prototype.getOne = function (taskId, tasklistId) {
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	return gapi.client.tasks.tasks.get({
 		'tasklist': tasklistId,
@@ -240,7 +240,7 @@ BackendGTasks.prototype.get = function (taskId, tasklistId) {
 
 //Retrieves multiple tasks in a single request.
 //Returns a promise for a taskId -> task map.
-BackendGTasks.prototype.getAll = function(taskIds, tasklistId) {
+BackendGTasks.prototype.getMultiple = function(taskIds, tasklistId) {
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	var batch = gapi.client.newBatch();
 	taskIds.forEach(taskId => batch.add(gapi.client.tasks.tasks.get({

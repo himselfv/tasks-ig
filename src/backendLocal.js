@@ -301,7 +301,7 @@ Tasks
 */
 BackendLocal.prototype.list = function(tasklistId) {
 	return this._getListIds(tasklistId)
-	.then(list => this.getAll(list))
+	.then(ids => this.get(ids))
 	.then(items => {
 		items = Object.values(items);
 		for (let i=0; i<items.length; i++)
@@ -311,7 +311,7 @@ BackendLocal.prototype.list = function(tasklistId) {
 	});
 }
 //Returns a promise for the given task content
-BackendLocal.prototype.get = function (taskId) {
+BackendLocal.prototype.getOne = function (taskId, tasklistId) {
 	return this._getItem(taskId);
 }
 BackendLocal.prototype.update = function (task) {

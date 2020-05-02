@@ -503,7 +503,7 @@ BackendDav.prototype.list = function(tasklistId) {
 	return this.queryTasklist(tasklistId, filters);
 }
 
-BackendDav.prototype.getAll = function(taskIds, tasklistId) {
+BackendDav.prototype.getMultiple = function(taskIds, tasklistId) {
 	/*
 	Uses OR queries:
 	  https://tools.ietf.org/id/draft-daboo-caldav-extensions-01.txt
@@ -558,7 +558,7 @@ BackendDav.prototype.getMaybeCached = function(taskIds, tasklistId) {
 	
 	//Maybe we should just query everything at this point? It's a single request anyway.
 	
-	return this.getAll(queryTaskIds, tasklistId)
+	return this.getMultiple(queryTaskIds, tasklistId)
 	.then(tasks => {
 		for (let taskId in tasks)
 			results[taskId] = tasks[taskId];
@@ -766,7 +766,7 @@ BackendDav.prototype.moveToList_foreignDav = function(tasks, newTasklistId, newB
 	//Requery most recent versions: we're moving by contents so shouldn't rely on cache
 	for (let i=0; i<tasks.length; i++)
 		if (tasks[i].id) tasks[i] = tasks[i].id;
-	return this.getAll(tasks)
+	return this.get(tasks)
 	.then(tasks => {
 		let batch = [];
 		for(let i=0; i<tasks.length; i++)

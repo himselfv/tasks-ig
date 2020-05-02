@@ -520,7 +520,7 @@ function processReportedChanges() {
   function taskEntryExportAllToFile() {
     var entries = tasks.allEntries();
     var job = taskEntryNeedIds(entries)
-    	.then(ids => backend.getAll(ids))
+    	.then(ids => backend.get(ids))
     	.then(result => downloadAsJson(result, selectedTaskListTitle()));
     pushJob(job);
   }
@@ -1020,7 +1020,7 @@ function processReportedChanges() {
     	entryToId = ids[0];
     	entryWhatId = ids[1];
     	newPrevChildId = ids.splice(2, 1)[0]; //don't query this one
-    	return backend.getAll(ids)
+    	return backend.get(ids)
     })
     .then(results => {
       //log("have entry data");
