@@ -267,7 +267,7 @@ BackendGTasks.prototype.update = function (task) {
 		'task': task.id,
 		'resource': task
 	}).then(response => {
-		taskCache.update(task); //update cached version
+		this.cache.update(task); //update cached version
 		return response.result;
 	});
 }
@@ -283,7 +283,7 @@ BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
 		'resource': task
 	}).then(response => {
 		if (tasklistId == this.selectedTaskList)
-			taskCache.add(response.result); //Add task resource to cache
+			this.cache.add(response.result); //Add task resource to cache
 		return response.result;
 	});
 }
@@ -370,7 +370,7 @@ BackendGTasks.prototype._move = function (taskIds, newParentId, newPrevId) {
 		Object.keys(response.result).forEach(oldId => {
 			let thisResponse = response.result[oldId];
 			this.responseCheck(thisResponse);
-			taskCache.patch({ //update this tasks's cached data
+			this.cache.patch({ //update this tasks's cached data
 				'id': thisResponse.result.id,
 				'parent': newParentId,
 				'position': thisResponse.result.position,

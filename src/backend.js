@@ -23,6 +23,43 @@ function findBackend(name) {
 }
 
 
+/*
+Minimal Task and Tasklist structures.
+You may use simple dicts but keep these in mind.
+*/
+class Tasklist {
+	constructor(args) {
+		this.id = id;			//Unique for this backend
+		this.title = title;
+		for (var key in args)
+			this[key] = args[key];
+	}
+}
+class Task {
+	constructor(args) {
+		this.id = undefined;			//Unique for this backend
+		this.title = undefined;
+		this.notes = undefined;
+		this.status = undefined;		//Only "completed" or "needsAction". Other DAV-style statuses potentially supported in the future.
+		this.due = undefined;
+		this.completed = undefined;		//True or false/null/undefined
+		//Not all backends support modifying these directly with update(). Prefer specialized move*() functions:
+		this.tasklist = undefined;		//The tasklist this task belongs to
+		this.parent = undefined;		//Parent task ID or null/undefined
+		this.position = undefined;		//Sort order key for items of this parent
+		for (var key in args)
+			this[key] = args[key];
+	}
+}
+/*
+Q: What if my backend's task.ids are unique only to tasklist?
+A: Prepend them with tasklistId and your moveToList() will be changing task.ids (allowed).
+
+Q: What if my backend has no unique IDs for tasks?
+A: Keep everything in memory and assign temporary IDs on the fly.
+*/
+
+
 //Clones a task resource without preserving its unique IDs
 function taskResClone(oldTask) {
 	var newTask = Object.assign({}, oldTask);
@@ -68,52 +105,6 @@ function resourcePatch(res, patch) {
 
 
 /*
-Task cache is a locally cached subset of task resources.
-It's required for some more complicated queries such as getting task children. It's kept up to date by the active backend.
-The way its selected defines which tasks can be operated on in this extended sense.
-
-Generally it's advised not to rely on cache and instead deduce all required info from nodes,
-so that we can hide it entirely in the backend.
-*/
-
-
-/*
-A cache of all tasks in the current selected lists.
-We use it to resolve parent/children relationship etc.
-*/
-var taskCache = {
-items : [],
-clear : function () {
-	this.items = [];
-},
-//Adds a new task resource to the cached task list
-add : function (tasks) {
-	this.update(tasks);
-},
-delete : function (taskIds) {
-	if (!Array.isArray(taskIds))
-		taskIds = [taskIds];
-	for (let i=0; i<taskIds.length; i++)
-		delete this.items[taskIds[i]];
-},
-get : function (taskId) {
-	return this.items[taskId];
-},
-update : function (tasks) {
-	if (!Array.isArray(tasks))
-		tasks = [tasks];
-	for (let i=0; i<tasks.length; i++)
-		this.items[tasks[i].id] = tasks[i];
-},
-//Updates given fields in the cached task entry. Same semantics as backend.patch
-patch : function (patch) {
-	var task = this.items[patch.id];
-	if (task)
-		resourcePatch(task, patch);
-},
-}
-
-/*
 Detects additions, deletions and edits between two dictionaries
 Returns a dict of key => {oldValue, newValue} pairs.
 */
@@ -157,35 +148,6 @@ Callback.prototype.notify = function(param1, param2, param3) {
 
 
 /*
-Minimal Task and Tasklist structures.
-You may use simple dicts but keep these in mind.
-*/
-class Tasklist {
-	constructor(args) {
-		this.id = id;			//Unique for this backend
-		this.title = title;
-		for (var key in args)
-			this[key] = args[key];
-	}
-}
-class Task {
-	constructor(args) {
-		this.id = undefined;			//Unique for this backend
-		this.title = undefined;
-		this.parent = undefined;		//Parent task ID or null/undefined. Not all backends support modifying this directly.
-		this.position = undefined;		//Sort order key for items of this parent. Not all backends support modifying this directly.
-		this.notes = undefined;
-		this.status = undefined;		//Only "completed" or "needsAction". Other DAV-style statuses potentially supported in the future.
-		this.due = undefined;
-		this.completed = undefined;		//True or false/null/undefined
-		this.tasklistId = undefined;	//The tasklist this task belongs to. Not all backends support modifying this directly.
-		for (var key in args)
-			this[key] = args[key];
-	}
-}
-
-
-/*
 Backend base class.
 Implements some functions in the default way in case you don't have more performant overrides
 Most functions:
@@ -210,6 +172,8 @@ function Backend() {
 	this.onTaskEdited = new Callback(); // new task info
 	this.onTaskMoved = new Callback(); // task id, {tasklistId, parentId, prevId}
 	this.onTaskDeleted = new Callback(); // task id
+	
+	this.cache = new TaskCache();
 }
 
 /*
@@ -335,7 +299,7 @@ Backend.prototype.patch = function (task, tasklistId) {
 		resourcePatch(result, task);
 		return this.update(result, tasklistId);
 	}).then(result => {
-		taskCache.patch(task); //update cached version
+		this.cache.patch(task); //update cached version
 		return result;
 	});
 }
@@ -374,11 +338,6 @@ Backend.prototype.insertMultiple = function (tasks, tasklistId) {
 	});
 }
 
-//Insert, but assumes the current task list
-Backend.prototype.insertToCurrentList = function (task, previousId) {
-	return this.insert(task, previousId, this.selectedTaskList);
-}
-
 
 //Deletes the task with all children. If tasklistId is not given, assumes current task list.
 Backend.prototype.delete = function (taskId, tasklistId) {
@@ -389,7 +348,7 @@ Backend.prototype.delete = function (taskId, tasklistId) {
 	if (tasklistId == this.selectedTaskList) {
 		//We need to remove children from cache too, at the very least
 		this.getAllChildren(taskId).forEach(child => ids.push(child.id));
-		ids.forEach(id => taskCache.delete(id));
+		ids.forEach(id => this.cache.delete(id));
 	} else {
 		//Currently only selected list supports recursive deletion
 	}
@@ -554,7 +513,7 @@ Backend.prototype.copyTo = function (items, newTasklistId, newBackend) {
 	let newItems = {};
 	for (let taskId in items) {
 		let item = items[taskId];
-		let newTask = item.task || taskCache.get(taskId);
+		let newTask = item.task || this.cache.get(taskId);
 		if (!newTask)
 			throw "copy: Task data not found: "+taskId
 		newTask = taskResClone(newTask);
@@ -659,7 +618,7 @@ Backend.prototype.moveToList = function (oldTask, newTasklistId, newParentId, ne
 	if (!newTasklistId || (newTasklistId == this.selectedTaskList))
 		return this.move(oldTask, newParentId, newPrevId);
 	if (!newBackend) newBackend = this;
-	if (oldTask && !(oldTask.id)) oldTask = taskCache.get(oldTask);
+	if (oldTask && !(oldTask.id)) oldTask = this.cache.get(oldTask);
 	var oldTasklistId = this.selectedTaskList;
 
 	return this.copyToList(oldTask, newTasklistId, newParentId, newPrevId, newBackend)
@@ -670,21 +629,63 @@ Backend.prototype.moveToList = function (oldTask, newTasklistId, newParentId, ne
 }
 
 
-
 /*
-One task list can be "selected".
-This is a rudiment of the time when the backend was tightly integrated with the UI,
-and mostly means this will be the default tasklist unless specified, and that tasks from it will be cached.
+Task caching.
+
+Some operations cannot be effectively implemented on most backends without querying
+the entire list on which they work:
+- Getting all children, recursively
+- Getting the entire chain of parents
+- Getting siblings
+
+For now we're stuck with a compromise:
+We'll provide convenience functions which mind parents/children, but these only work
+on a "currently selected list".
+
+If your backend can implement these efficiently, please do!
+If one day we decide to change this, we may switch to preloading the entire lists by default.
+
+Backends: Remember to update changed tasks!
 */
-selectedTaskList : null,
-Backend.prototype.selectTaskList = function (tasklistId) {
-	if (this.selectedTaskList == tasklistId)
-		return Promise.resolve();
-	this.selectedTaskList = tasklistId;
-	taskCache.clear();
-	if (!this.selectedTaskList)
-		return Promise.resolve();
-	//Reload the cache
+function TaskCache() {
+	this.items = [];
+}
+TaskCache.prototype.clear = function() {
+	this.items = [];
+}
+//Adds a new task resources to the cached task list
+TaskCache.prototype.add = function(tasks) {
+	this.update(tasks);
+}
+TaskCache.prototype.delete = function (taskIds) {
+	if (!Array.isArray(taskIds))
+		taskIds = [taskIds];
+	for (let i=0; i<taskIds.length; i++)
+		delete this.items[taskIds[i]];
+}
+//Deletes all tasks from a given tasklist from the cache
+TaskCache.prototype.deleteList = function (tasklistId) {
+	for (let key in this.items)
+		if (this.items[key].tasklist == tasklistId)
+			delete this.items[key];
+}
+TaskCache.prototype.get = function (taskId) {
+	return this.items[taskId];
+}
+TaskCache.prototype.update = function (tasks) {
+	if (!Array.isArray(tasks))
+		tasks = [tasks];
+	for (let i=0; i<tasks.length; i++)
+		this.items[tasks[i].id] = tasks[i];
+}
+//Updates given fields in the cached task entry. Same semantics as backend.patch
+TaskCache.prototype.patch = function (patch) {
+	var task = this.items[patch.id];
+	if (task)
+		resourcePatch(task, patch);
+}
+//Preloads all tasks from a tasklist into cache
+Backend.prototype.cacheLoadList(tasklistId) {
 	var prom = this.list(this.selectedTaskList);
 	prom = prom.then(items => {
 		taskCache.clear();
@@ -694,6 +695,23 @@ Backend.prototype.selectTaskList = function (tasklistId) {
 				taskCache.add(tasks[i]);
 	});
 	return prom;
+
+}
+
+/*
+One task list can be "selected".
+This will be the default tasklist unless specified.
+Selected tasklist is always cached. Some operations are only possible on the selected tasklist.
+*/
+Backend.prototype.selectTaskList = function (tasklistId) {
+	if (this.selectedTaskList == tasklistId)
+		return Promise.resolve();
+	this.selectedTaskList = tasklistId;
+	taskCache.clear();
+	if (!this.selectedTaskList)
+		return Promise.resolve();
+	//Reload the cache
+	return this.cacheLoadList(this.selecedTaskList);
 }
 //Returns the nesting level of a task resource, according to local cache
 Backend.prototype.getLevel = function (task) {
@@ -724,12 +742,12 @@ Backend.prototype.getChildren = function (parentId) {
 Backend.prototype.getAllChildren = function (parentId) {
 	if (parentId && parentId.id) parentId = parentId.id; //sometimes we're given the task object instead of id
 	var list = [];
-	Object.keys(taskCache.items).forEach(function(key){
-		var task = taskCache.items[key];
+	Object.keys(this.cache.items).forEach(function(key){
+		var task = this.cache.items[key];
 		while (task && (task.parent != parentId))
-			task = task.parent ? taskCache.items[task.parent] : null;
+			task = task.parent ? this.cache.items[task.parent] : null;
 			if (task)
-				list.push(taskCache.items[key]); //the original match
+				list.push(this.cache.items[key]); //the original match
 		});
 	//log("getAllChildren("+parentId+"): "+list.length);
 	return list;
@@ -750,3 +768,5 @@ Backend.prototype.getLastChild = function (task) {
 	else
 		return null;
 }
+
+

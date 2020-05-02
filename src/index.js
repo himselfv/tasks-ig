@@ -514,7 +514,7 @@ function processReportedChanges() {
     var taskId = focusedEntry.getId();
     if (taskId.hasOwnProperty("taskId"))
       return; //can't query cache with promised IDs
-    let task = taskCache.get(taskId);
+    let task = backend.cache.get(taskId);
     copyToClipboard(JSON.stringify(task));
   }
   function taskEntryExportAllToFile() {
@@ -1136,7 +1136,7 @@ function processReportedChanges() {
   		prevTaskId = ids[1];
    		prevPatch.id = ids[1];
    		if (prevPatch.title != prevTitle) { //trim the previous one
-     		taskCache.patch(prevPatch);
+     		backend.cache.patch(prevPatch);
      		return backend.patch(prevPatch);
     	}; //else no update needed
     });
@@ -1255,7 +1255,7 @@ function processReportedChanges() {
     //To avoid a pointless update of the task in the original list we play unfair:
     //1. Update the current task locally
     //2. Post it to another list and delete from this one
-    taskCache.patch(patch); //patch locally
+    backend.cache.patch(patch); //patch locally
     return taskMoveToList(tasks.find(patch.id), newTaskListId, newParentId, newPrevId);
   }
 

@@ -322,7 +322,7 @@ BackendLocal.prototype.update = function (task) {
 			return Promise.reject("update(): No such task in the current list");
 		}
 		taskResNormalize(task);
-		taskCache.update(task);
+		this.cache.update(task);
 		return this._setItem(task.id, task);
 	});
 	
@@ -344,7 +344,7 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 		//log("insert(): "+JSON.stringify(task));
 		if (tasklistId == this.selectedTaskList) {
 			//log("insert(): adding to cache");
-			taskCache.add(task);
+			this.cache.add(task);
 		}
 		return Promise.all([
 			this._setList(tasklistId, list),
@@ -404,7 +404,7 @@ BackendLocal.prototype._moveOne = function (taskId, parentId, previousId) {
 		
 		//Update task
 		task.parent = parentId;
-		taskCache.patch({ //update this tasks's cached data
+		this.cache.patch({ //update this tasks's cached data
 			'id': taskId,
 			'parent': parentId,
 		});
@@ -469,7 +469,7 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId
 			//log("moveToList(): inserted "+taskId+" at position "+(newIndex-1));
 			
 			//Remove from the cache
-			taskCache.delete({'id': taskId});
+			this.cache.delete({'id': taskId});
 		});
 		
 		//Update the task itself

@@ -330,7 +330,7 @@ BackendDav.prototype.parseTodoObjects = function(objects, tasklistId) {
 	for (var i=0; i<objects.length; i++) {
 		console.log('Object['+i+']', objects[i].calendarData);
 		let task = this.parseTodoObject(objects[i]);
-		task.tasklistId = tasklistId;
+		task.tasklist = tasklistId;
 		tasks.push(task);
 	}
 	return tasks;
@@ -542,7 +542,7 @@ BackendDav.prototype.getMaybeCached = function(taskIds, tasklistId) {
 	//If this is a selected list we can optimize a bit by looking up in cache
 	if (!tasklistId || (tasklistId == this.selectedTaskList)) {
 		for (let i=0; i<taskIds.length; i++) {
-			let task = taskCache.get(taskIds[i]);
+			let task = this.cache.get(taskIds[i]);
 			if (task)
 				results[taskIds[i]] = task;
 			else
@@ -568,11 +568,11 @@ BackendDav.prototype.getMaybeCached = function(taskIds, tasklistId) {
 
 
 BackendDav.prototype.update = function (task, tasklistId) {
-	return this.updateTaskObject(tasklistId || task.tasklistId || this.selectedTaskList, task, false);
+	return this.updateTaskObject(tasklistId || task.tasklist || this.selectedTaskList, task, false);
 }
 //Since we're re-querying the task and patching it on update anyway, makes sense to reimplement patch() directly
 BackendDav.prototype.patch = function (task) {
-	return this.updateTaskObject(tasklistId || task.tasklistId || this.selectedTaskList, task, true);
+	return this.updateTaskObject(tasklistId || task.tasklist || this.selectedTaskList, task, true);
 }
 /*
 Handles both update() and patch()
@@ -644,7 +644,7 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 	})
 	.then(response => {
 		console.log('Calendar updated');
-		taskCache.update(task2); //update cached version
+		this.cache.update(task2); //update cached version
 		return task2;
 	});
 }
@@ -790,7 +790,7 @@ BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId, newPar
 	let batch = [];
 	for (let i=0; i<tasks.length; i++) {
 		//We only need URLs so rely on cache, probably haven't changed and no big deal if we fail
-		if (!tasks[i].id) tasks[i] = taskCache.get(tasks[i]);
+		if (!tasks[i].id) tasks[i] = this.cache.get(tasks[i]);
 		let sourceUrl = tasks[i].obj.url;
 		let destinationUrl = newCalendar.url + tasks[i].id + '.ics';
 		console.log(sourceUrl, ' -> ', destinationUrl);
@@ -801,7 +801,7 @@ BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId, newPar
 	
 	return Promise.all(batch).then(() => {
 		//All these tasks are now in the different list; cached objects are invalid
-		taskCache.delete(tasks);
+		this.cache.delete(tasks);
 		//Reposition the topmost task
 		if (tasks.length > 0)
 			return this.move(tasks[0].id, newParentId, newPrevId, newTasklistId);
