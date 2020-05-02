@@ -594,28 +594,39 @@ Backend.prototype.copyChildrenTo = function (pairs, newTasklistId, newBackend) {
 	if (!pairs || (pairs.length <= 0)) return Promise.resolve();
 	if (!newBackend) newBackend = this;
 	
-	//Build a batch copyToList request for all children on this nesting level
-	var batch = {};
+	//Query children for every entry
+	let oldIds = [];
+	let batch = [];
 	for (oldTaskId in pairs) {
-		//Get all source children
-		let children = oldBackend.getChildren(pair.from);
-		//Add children backwards so that each new child can be appended "at the top" --
-		//otherwise we'd need to know the previous child ID and can't batch.
-		children.reverse().forEach(oldChild => {
-			//Add request to batch
-			let item = {};
-			item.task = oldChild; //do not requery the contents
-			item.parent = pair.to.id;
-			item.previous = null; //add to the top
-			batch[oldChild.id] = item;
-		});
+		oldIds.push(oldTaskId);
+		batch.push(this.getChildren(oldTaskId));
 	}
 	
-	if (batch.length<=0)
-		return Promise.resolve();
-	
-	//Copy the children and run us recursively on them
-	return this.copyToList(batch, newTasklistId, newBackend, recursive);
+	return Promise.all(batch)
+	.then(results => {
+		//Build a batch copyToList request for all children on this nesting level
+		var batch = {};
+		for (let i=0; i<oldIds.length; i++) {
+			let oldTaskId = oldIds[i];
+			let children = results[i];
+			//Add children backwards so that each new child can be appended "at the top" --
+			//otherwise we'd need to know the previous child ID and can't batch.
+			children.reverse().forEach(oldChild => {
+				//Add request to batch
+				let item = {};
+				item.task = oldChild; //do not requery the contents
+				item.parent = pairs[oldTaskId].id;
+				item.previous = null; //add to the top
+				batch[oldChild.id] = item;
+			});
+		}
+		
+		if (batch.length<=0)
+			return Promise.resolve();
+		
+		//Copy the children and run us recursively on them
+		return this.copyToList(batch, newTasklistId, newBackend, true);
+	});
 }
 
 
