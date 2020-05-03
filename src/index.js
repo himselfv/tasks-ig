@@ -296,8 +296,12 @@ function processReportedChanges() {
 
   //Reloads the task list selection boxes + the currently selected task list
   function reloadTaskLists() {
+  	let oldSelectedTasklist = selectedTaskList();
     return tasklistBoxesReload().then(response => {
-      selectedTaskListChanged();
+      //tasklistBoxesReload() will trigger changed() by itself when selectedTasklist
+      //cannot be restored after reload -- no need to repeat then
+   	  if (selectedTaskList() == oldSelectedTasklist)
+        selectedTaskListChanged();
     });
   }
   

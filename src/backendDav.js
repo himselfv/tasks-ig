@@ -50,7 +50,7 @@ BackendDav.prototype.connect = function() {
 	var prom = insertDavAPIs()
 	.then(result => {
 		//Automatically sign in.
-		this.signin();
+		return this.signin();
 	});
 	return prom;
 }
