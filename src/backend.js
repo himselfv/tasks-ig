@@ -835,11 +835,10 @@ Backend.prototype.getAllChildren = function (parentId, tasklistId) {
 	var list = [];
 	for (let key in this.cache.items) {
 		var task = this.cache.items[key];
-		while (task && (task.parent != parentId)) {
+		while (task && (task.parent != parentId))
 			task = task.parent ? this.cache.items[task.parent] : null;
-			if (task)
-				list.push(this.cache.items[key]); //the original match
-		}
+		if (task)
+			list.push(this.cache.items[key]); //the original match
 	}
 	return Promise.resolve(list);
 }
