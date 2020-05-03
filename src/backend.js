@@ -517,7 +517,7 @@ Backend.prototype.newDownmostPosition = function(parentId, tasklistId) {
 //Chooses a new sort-order value for a task under a given parent, after a given previous task.
 //  count: If given, choose that number of positions
 Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
-	//console.log('choosePosition: parent=', parentId, 'previous=', previousId);
+	console.log('choosePosition: parent=', parentId, 'previous=', previousId);
 
 	//At least null/undefined needs to work for all lists
 	if (typeof previousId == 'undefined')
@@ -532,7 +532,7 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
 	//Choose a new position betweeen previous.position and previous.next.position
 	return this.getChildren(parentId, tasklistId)
 	.then(children => {
-		//console.log(children);
+		console.log('choosePosition: children=',children);
 		let prevPosition = null;
 		let nextPosition = null;
 		let prevIdx = null;
@@ -559,11 +559,14 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
 			//Otherwise there's no next task; choose midway between prev and now()
 			nextPosition = this.newDownmostPosition();
 		
-		newPosition = Math.floor((+nextPosition + +prevPosition) / 2);
+		//Ensure everything is integer before doing math or comparisons and additions will hopelessly surprise you
+		nextPosition = +nextPosition;
+		prevPosition = +prevPosition;
+		let newPosition = Math.floor((nextPosition + prevPosition) / 2);
 		//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
 		if (newPosition < prevPosition + 1)
 			newPosition = prevPosition + 1;
-		//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
+		console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
 		return newPosition;
 	});
 }
@@ -761,6 +764,7 @@ TaskCache.prototype.get = function (taskId) {
 	return this.items[taskId];
 }
 TaskCache.prototype.update = function (tasks) {
+	console.log('cache.update:', arguments);
 	if (!Array.isArray(tasks))
 		tasks = [tasks];
 	for (let i=0; i<tasks.length; i++)
@@ -768,6 +772,7 @@ TaskCache.prototype.update = function (tasks) {
 }
 //Updates given fields in the cached task entry. Same semantics as backend.patch
 TaskCache.prototype.patch = function (patch) {
+	console.log('cache.patch:', arguments);
 	var task = this.items[patch.id];
 	if (task)
 		resourcePatch(task, patch);

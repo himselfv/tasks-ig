@@ -268,6 +268,12 @@ BackendDav.prototype.parseTodoObject = function(object) {
 		//Tasks without X-APPLE-SORT-ORDER get implicit .position because the frontend requires it.
 		//But store auto-position to later check if the actual position has been changed and needs saving.
 		task.position = task.baseEntry.getFirstPropertyValue('x-apple-sort-order');
+		if (task.position) {
+			//These are ints; try to parse as int, or ordering will be wrong
+			let intPosition = parseInt(task.position, 10);
+			if (!Number.isNaN(intPosition))
+				task.position = intPosition;
+		}
 		if (!task.position) {
 			task.position = this.datetimeToPosition(task.baseEntry.getFirstPropertyValue('created'));
 			task.positionAuto = task.position;
@@ -634,12 +640,20 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		task2.baseEntry.updatePropertyWithValue('sequence', task2.maxsequence);
 		
 		//Pack everything back
-		console.log('updatet:', task2.comp);
+		console.log('update:', task2.comp);
 		task2.obj.calendarData = task2.comp.toString();
 		console.log('update.data:', task2.obj.calendarData);
 		
+		//We want the task2 object itself to reflect changes -- it'll go to cache
+		//But we cannot just resourcePatch() it or it'll copy everything, including obsolete task.baseEntry.
+		
+		//Let's just reparse new baseEntry!
+		task2 = this.parseTodoObject(task2.obj);
+		task2.tasklist = tasklistId;
+		console.log('Reparsed task2:', task2);
+		
 		//Update on server
-		dav.updateCalendarObject(task2.obj, { xhr: this.xhr, });
+		return dav.updateCalendarObject(task2.obj, { xhr: this.xhr, });
 	})
 	.then(response => {
 		console.log('Calendar updated');
@@ -672,22 +686,37 @@ BackendDav.prototype.insert = function (task, previousId, tasklistId) {
 	this.updateTodoObject(vtodo, task);
 	vtodo.updatePropertyWithValue('created', vtodo.getFirstPropertyValue('last-modified'));
 	vtodo.updatePropertyWithValue('sequence', 1);
-	if (typeof previousId != 'undefined') //default position: just don't store it
-		vtodo.updatePropertyWithValue('position', this.choosePosition(task.parent, previousId, tasklistId));
+	
+	let prom = null;
+	if (typeof previousId == 'undefined') //default position: just don't store it
+		prom = Promise.resolve();
+	else
+		prom = this.choosePosition(task.parent, previousId, tasklistId)
+		.then(position => {
+			vtodo.updatePropertyWithValue('x-apple-sort-order', position);
+		});
+	
+	var icsData = null;
 	
 	//Compile
-	console.log('insert:', vtodo);
-	let icsData = comp.toString();
-	console.log('insert.data: ', icsData);
-	
+	return prom.then(() => {
+		console.log('insert:', vtodo);
+		icsData = comp.toString();
+		console.log('insert.data: ', icsData);
+	})
 	//Publish
-	return this.insertTodoObject(calendar, icsData, uid+'.ics')
+	.then(() => this.insertTodoObject(calendar, icsData, uid+'.ics'))
 	.then(response => {
 		//We need to return a fully functional resulting Task object (with .comp .obj etag etc)
 		//We could TRY to add all fields that the standard loader does, but we have nowhere to get dav.Object() and especially its etag.
 		//So just requery:
 		return this.get(uid, tasklistId);
+	})
+	.then(task => {
+		this.cache.add(task);
+		return task;
 	});
+	
 }
 
 //Adds an ICS file to a calendar by its content.
