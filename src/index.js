@@ -990,7 +990,7 @@ function processReportedChanges() {
   */
   function taskMerge(entry_to, entry_what) {
     //log("taskMerge");
-    if (!backend || !backend.update || !backend.move || !backend.hasDelete()) return;
+    if (!backend || !backend.update || !backend.move || !backend.delete) return;
     if (!entry_to || !entry_what) return;
     
     var mergePos = entry_to.getTitle().length;
@@ -1091,7 +1091,7 @@ function processReportedChanges() {
     var job = taskEntryNeedIds([parentEntry, prevEntry])
     	.then(ids => {
     	  newTask.parent = ids[0];
-    	  return backend.insertToCurrentList(newTask, ids[1]);
+    	  return backend.insert(newTask, ids[1], backend.selectedTaskList);
     	});
     pushJob(job);
 
@@ -1191,7 +1191,7 @@ function processReportedChanges() {
   recursive: Kill the children too
   */
   function taskDelete(entry, recursive) {
-  	if (!backend || !backend.hasDelete())
+  	if (!backend || !backend.delete)
   	  return Promise.reject("Not implemented");
     taskEntryTitleCommitNow(); //commit any pending changes
     

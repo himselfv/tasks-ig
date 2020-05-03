@@ -14,7 +14,6 @@ If your server needs auth:
 
 function BackendDav() {
 	Backend.call(this);
-	this.STORAGE_PREFIX = 'tasksIg_backend_';
 }
 BackendDav.prototype = Object.create(Backend.prototype);
 
@@ -146,8 +145,8 @@ BackendDav.prototype.datetimeToPosition = function(dt) {
 		dt = dt.toJSDate();
 	return (dt - new Date(2001, 01, 01, 0, 0, 0)) / 1000
 }
-BackendDav.prototype.newUpmostPosition = function(parentId, tasklistId) {
-	return 0; //always zero
+BackendDav.prototype.newTopmostPosition = function(parentId, tasklistId) {
+	return -this.datetimeToPosition(new Date()); //minus current time
 }
 BackendDav.prototype.newDownmostPosition = function(parentId, tasklistId) {
 	return this.datetimeToPosition(new Date()); //current time
@@ -608,7 +607,7 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 	
 	return dav.listCalendarObjects(calendar, { xhr: this.xhr, filters: filters })
 	.then(objects => {
-		if (objects.length <= 0)
+		if (isEmpty(objects))
 			return Promise.reject("Task not found: "+task.id);
 		if (objects.length > 1)
 			return Promise.reject("Task "+task.id+" stored across multiple ICS files on server"); //Prohibited by RFC!
@@ -655,6 +654,7 @@ BackendDav.prototype.newUid = function() {
 }
 
 BackendDav.prototype.insert = function (task, previousId, tasklistId) {
+	console.log('BackendDav.insert:',arguments);
 	let calendar = this.findCalendar(tasklistId);
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
@@ -672,7 +672,8 @@ BackendDav.prototype.insert = function (task, previousId, tasklistId) {
 	this.updateTodoObject(vtodo, task);
 	vtodo.updatePropertyWithValue('created', vtodo.getFirstPropertyValue('last-modified'));
 	vtodo.updatePropertyWithValue('sequence', 1);
-	vtodo.updatePropertyWithValue('position', this.choosePosition(task.parent, previousId, tasklistId));
+	if (typeof previousId != 'undefined') //default position: just don't store it
+		vtodo.updatePropertyWithValue('position', this.choosePosition(task.parent, previousId, tasklistId));
 	
 	//Compile
 	console.log('insert:', vtodo);
@@ -685,7 +686,7 @@ BackendDav.prototype.insert = function (task, previousId, tasklistId) {
 		//We need to return a fully functional resulting Task object (with .comp .obj etag etc)
 		//We could TRY to add all fields that the standard loader does, but we have nowhere to get dav.Object() and especially its etag.
 		//So just requery:
-		return this.get(uid);
+		return this.get(uid, tasklistId);
 	});
 }
 
@@ -728,8 +729,8 @@ Moving and copying ICS files between calendars.
   even be present in the new calendar.
   But this is fine, because you can break older revisions in the same way by just deleting the parent anyway.
 */
-
-BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
+//TODO: Rename back
+BackendDav.prototype.moveToList2 = function (oldTask, newTasklistId, newBackend) {
 	//Optimize moves between DAVs. Other moves => default treatment
 	if (newBackend && !(newBackend instanceof BackendDav))
 		return Backend.prototype.moveToList(oldTask, newTasklistId, newBackend);
@@ -763,7 +764,7 @@ BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newBackend) 
 //Do not call directtly.
 BackendDav.prototype.moveToList_foreignDav = function(taskIds, newTasklistId, newBackend) {
 	console.log('moveToList_foreignDav', arguments);
-	if (taskIds.length <= 0) return Promise.resolve();
+	if (isArrayEmpty(taskIds)) return Promise.resolve();
 	//Requery most recent versions: we're moving by contents so shouldn't rely on cache
 	for (let i=0; i<taskIds.length; i++)
 		if (taskIds[i].id) taskIds[i] = taskIds[i].id;
@@ -785,7 +786,7 @@ BackendDav.prototype.moveToList_foreignDav = function(taskIds, newTasklistId, ne
 //Do not call directly.
 BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId) {
 	console.log('moveToList_localDav', arguments);
-	if (tasks.length <= 0) return Promise.resolve();
+	if (isArrayEmpty(tasks)) return Promise.resolve();
 	
 	let newCalendar = this.findCalendar(newTasklistId);
 	if (!newCalendar)

@@ -288,7 +288,7 @@ BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
 	});
 }
 //Inserts multiple tasks at once
-Backend.prototype.insertMultiple = function (tasks, tasklistId) {
+BackendGTasks.prototype.insertMultiple = function (tasks, tasklistId) {
 	if (tasks.length <= 0) return Promise.resolve({});
 	if (tasks.length == 1) return this.insert(tasks[0], tasks[0].previousId, tasklistId);
 	var batch = gapi.client.newBatch();
