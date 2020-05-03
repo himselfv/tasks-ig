@@ -609,7 +609,7 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		return Promise.reject("Task has no VTODO entry associated with it");
 	
 	let filters = this.taskIdsFilter([task.id]);
-	let task2 = null;
+	var task2 = null;
 	
 	return dav.listCalendarObjects(calendar, { xhr: this.xhr, filters: filters })
 	.then(objects => {
@@ -655,8 +655,13 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		//Update on server
 		return dav.updateCalendarObject(task2.obj, { xhr: this.xhr, });
 	})
-	.then(response => {
-		console.log('Calendar updated');
+	.then(xhr => {
+		console.log('updateTaskObject: calendar updated');
+		//Update etag in cache if the server returns it as a header -- or cache-based updates will fail
+		//CORS: Add 'etag' to Access-Control-Expose-Headers or the browser won't tell us
+		//   Davlambda queries etag via CalDAV protocol but that would require another get().
+		let etag = xhr.getResponseHeader('etag');
+		if (etag) task2.obj.etag = etag;
 		this.cache.update(task2); //update cached version
 		return task2;
 	});
