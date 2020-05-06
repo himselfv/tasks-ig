@@ -55,6 +55,22 @@ BackendDav.prototype.connect = function() {
 	return prom;
 }
 
+BackendDav.prototype.settingsPage = function() {
+	return	{
+		server: {
+			type: 'string',
+			hint: 'This is your DAV server root',
+		},
+		login: { type: 'string', },
+		pass: {	type: 'pass', },
+		auth: {
+			type: ['Auto/Both', 'Basic', 'Digest'],
+			default: 'Auto/Both',
+			hint: 'Leave Auto/Both if unsure',
+		},
+	};
+}
+
 BackendDav.prototype.signin = function() {
 	log("BackendDav.signin");
 	

@@ -221,6 +221,23 @@ function Backend() {
 	this.cache = new TaskCache();
 }
 
+
+/*
+Returns a {dict} of parameters to ask from the user before signin(). Example:
+	login: {
+		title: 'Login';	//Optional, default: param id
+		desc: null;		//Optional hint
+		type: 'string'/'pass'/'bool'/['list', 'of', 'choices']
+		default: value;
+	}
+These fields will be collected and passed to signin():
+   signin({login: value});
+*/
+Backend.prototype.settingsPage = function() {
+	return null;
+}
+
+
 /*
 Connection
 Implementations must notify onSigningChange subscribers.
