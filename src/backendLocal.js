@@ -420,11 +420,10 @@ BackendLocal.prototype._moveOne = function (taskId, parentId, previousId) {
 
 //Moves a task with children to a new position in a different task list.
 //May change task id.
-BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId, newPrevId, newBackend) {
-	if (newBackend && (newBackend != this))
-		return Backend.prototype.moveToList(taskId, newTasklistId, newParentId, newPrevId, newBackend);
+BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newBackend) {
+	if (!newBackend) newBackend = this;
 	if (!newTasklistId || (newTasklistId == this.selectedTaskList))
-		return this.move(taskId, newParentId, newPrevId);
+		return Promise.resolve();
 
 	if (taskId && taskId.id) taskId = taskId.id;
 	var oldTasklistId = this.selectedTaskList;
@@ -448,14 +447,9 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId
 	.then(results => {
 		let oldList = results[0];
 		let newList = results[1];
-		let task = results[2];
+		task = results[2];
 
-		let newIndex = 0;
-		if (newPrevId) {
-			newIndex = newList.findIndex(item => item.id == newPrevId);
-			if (newIndex < 0)
-				return Promise.reject("moveToList(): No such target task in a given list");
-		}
+		let newIndex = 0; //insert at the top
 		
 		//Edit lists
 		ids.forEach(taskId => {
@@ -474,8 +468,8 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newParentId
 			this.cache.delete({'id': taskId});
 		});
 		
-		//Update the task itself
-		task.parent = newParentId;
+		//Update the root task itself
+		task.parent = null;
 		
 		//Push everything
 		return Promise.all([
