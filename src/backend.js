@@ -322,7 +322,7 @@ Backend.prototype.get = function(taskIds, tasklistId) {
 	var batch = [];
 	for (let i=0; i<taskIds.length; i++)
 		batch.push(this.get(taskIds[i], tasklistId));
-	return Promise.all(proms)
+	return Promise.all(batch)
 	.then(results => {
 		var dict = {};
 		results.forEach(item => dict[item.id] = item);

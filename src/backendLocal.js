@@ -203,8 +203,10 @@ BackendLocal.prototype._getList = function(id) {
 }
 BackendLocal.prototype._getListIds = function(id) {
 	return this._getList(id).then(items => {
+		console.log(items);
 		let results = [];
 		items.forEach(item => results.push(item.id));
+		console.log(results);
 		return results;
 	});
 }
@@ -458,8 +460,10 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newBackend)
 				return Promise.reject("moveToList(): Task not found in a source list");
 
 			//Remove from old list and add to new
-			oldList.splice(oldIndex, 1);
-			newList.splice(newIndex, 0, new TasklistEntry(taskId, newParentId));
+			tasklistEntry = oldList.splice(oldIndex, 1).shift();
+			if (tasklistEntry.id == taskId)
+				tasklistEntry.parentId = null; //topmost task is reparented to null
+			newList.splice(newIndex, 0, tasklistEntry);
 			//Increase insert index
 			newIndex += 1;
 			//log("moveToList(): inserted "+taskId+" at position "+(newIndex-1));

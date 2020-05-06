@@ -321,11 +321,11 @@ function processReportedChanges() {
   }
   //Update available tasklist actions depending on the selected tasklist and available backend functions
   function tasklistActionsUpdate() {
-    var taskList = selectedTaskList();
+    var tasklist = selectedTaskList();
   	element("listAddBtn").classList.toggle("hidden",    !backend || !backend.tasklistAdd);
     element("listRenameBtn").classList.toggle("hidden", !backend || !backend.tasklistUpdate || !tasklist);
     element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
-  	element("tasksExportAllToFile").classList.toggle("hidden", !taskList);
+  	element("tasksExportAllToFile").classList.toggle("hidden", !tasklist);
   	tasksActionsUpdate();
   }
   
