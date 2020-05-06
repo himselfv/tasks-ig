@@ -243,11 +243,15 @@ BackendDav.prototype.parseTodoObject = function(object) {
 	if (task.baseEntry) {
 		task.title = task.baseEntry.getFirstPropertyValue('summary');
 		task.notes = task.baseEntry.getFirstPropertyValue('description');
-		//Status is complicated. RFC5545, 3.8.1.11: NEEDS-ACTION, COMPLETED, IN-PROCESS, CANCELLED or property missing.
-		//Task() only supports "completed" and "needsAction", but we remember "true status" for updates.
-		task.statusCode = task.baseEntry.getFirstPropertyValue('status');
-		if (task.statusCode=='COMPLETED')
-			task.status='completed'
+		//RFC5545, 3.8.1.11: NEEDS-ACTION, COMPLETED, IN-PROCESS, CANCELLED or property missing.
+		//Task() stores this in hungarian notation
+		task.status = task.baseEntry.getFirstPropertyValue('status');
+		if (task.status=='COMPLETED')
+			task.status='completed';
+		else if (task.status=='IN-PROGRESS')
+			task.status='inProgress';
+		else if (task.status=='CANCELLED')
+			task.status='cancelled';
 		else
 			task.status='needsAction';
 		
@@ -409,13 +413,14 @@ BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
 		if (task.status == null) //status removed
 			entry.removeProperty('status');
 		else
-		//Completed status is the same in both systems
 		if (task.status == 'completed')
-			entry.updatePropertyWithValue('status', 'COMPLETED')
+			entry.updatePropertyWithValue('status', 'COMPLETED');
 		else
-		//IF we have a secret "true status" AND it doesn't contradict us, keep the true one
-		if (task.statusCode && (task.statusCode != "COMPLETED"))
-			entry.updatePropertyWithValue('status', task.statusCode);
+		if (task.status == 'inProgress')
+			entry.updatePropertyWithValue('status', 'IN-PROGRESS');
+		else
+		if (task.status == 'cancelled')
+			entry.updatePropertyWithValue('status', 'CANCELLED');
 		else
 			entry.updatePropertyWithValue('status', 'NEEDS-ACTION');
 	}

@@ -259,13 +259,40 @@ BackendGTasks.prototype.getMultiple = function(taskIds, tasklistId) {
 	});
 }
 
+//Task()s are similar to GTasks Task resources, but may contain additional fields --
+//this has to be cleaned up before sending
+//https://developers.google.com/tasks/v1/reference/tasks#resource
+BackendGTasks.prototype.GTASK_FIELDS = [
+	'kind', 'id', 'etag', 'selfLink', 'title', 'notes', 'status', 'parent', 'position',
+	'updated', 'completed', 'due', 'deleted', 'hidden', 'links'];
+
+//Works with patch()es and full update()s:
+BackendGTasks.prototype.taskToResource = function(task) {
+	taskRes = {};
+	//Copy only the GTasks supported fields
+	for (key in task)
+		if (key in this.GTASK_FIELDS)
+			taskRes[key] = task[key];
+	//Normalize fields
+	taskResNormalize(taskRes);
+	//GTasks only supports "completed" and "needsAction"
+	if ((typeof taskRes.status != 'undefined') && (taskRes.status != 'completed'))
+		taskRes.status = 'needsAction';
+	//GTasks requires time to be in a particular format:
+	if (taskRes.completed instanceof Date)
+		taskRes.completed = taskRes.completed.toISOString();
+	if (taskRes.due instanceof Date)
+		taskRes.due = taskRes.due.toISOString();
+	return taskRes;
+}
+
 //Returns a task-update request
 //https://developers.google.com/tasks/v1/reference/tasks/update
 BackendGTasks.prototype.update = function (task) {
 	return gapi.client.tasks.tasks.update({
 		'tasklist': this.selectedTaskList,
 		'task': task.id,
-		'resource': task
+		'resource': this.taskToResource(task)
 	}).then(response => {
 		this.cache.update(task); //update cached version
 		return response.result;
@@ -280,7 +307,7 @@ BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
 		'tasklist': tasklistId,
 		'parent': task.parent,
 		'previous': previousId,
-		'resource': task
+		'resource': this.taskToResource(task)
 	}).then(response => {
 		if (tasklistId == this.selectedTaskList)
 			this.cache.add(response.result); //Add task resource to cache
@@ -293,14 +320,12 @@ BackendGTasks.prototype.insertMultiple = function (tasks, tasklistId) {
 	if (tasks.length == 1) return this.insert(tasks[0], tasks[0].previousId, tasklistId);
 	var batch = gapi.client.newBatch();
 	for (let _id in tasks) {
-		//TODO: Maybe we need to trim the task resource's properties before sending it?
-		//  At least .previousId. Maybe others if the task is from elsewhere.
 		batch.add(
 			gapi.client.tasks.tasks.insert({
 				'tasklist': tasklistId,
 				'parent': tasks[i].parent,
 				'previous': tasks[i].previousId,
-				'resource': tasks[i],
+				'resource': this.taskToResource(tasks[i]),
 			}),
 			{ 'id': _id, }
 		);

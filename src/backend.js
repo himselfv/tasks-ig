@@ -40,9 +40,10 @@ class Task {
 		this.id = undefined;			//Unique for this backend
 		this.title = undefined;
 		this.notes = undefined;
-		this.status = undefined;		//Only "completed" or "needsAction". Other DAV-style statuses potentially supported in the future.
-		this.due = undefined;
-		this.completed = undefined;		//True or false/null/undefined
+		this.status = undefined;		//CalDAV status in hungarian notation: "completed", "needsAction", "inProcess", "cancelled"
+		this.completed = undefined;		//Completion time, or False/null/undefined
+		this.due = undefined;			//Due time, or Falsey.
+		this.updated = undefined;		//Last update time, or Falsey. Not all backends return this. Backends track this automatically.
 		//Not all backends support modifying these directly with update(). Prefer specialized move*() functions:
 		this.tasklist = undefined;		//The tasklist this task belongs to
 		this.parent = undefined;		//Parent task ID or null/undefined
@@ -75,11 +76,12 @@ function taskResClone(oldTask) {
 }
 
 //Updates task resource to be completed/non-completed
+//Other status are currently preserved but ignored.
 function taskResSetCompleted(task, completed, completed_when) {
 	if (completed) {
 		task.status="completed";
 		if (!completed_when)
-			completed_when = new Date().toISOString();
+			completed_when = new Date(); //now
 		task.completed = completed_when;
 	}
 	else {
@@ -87,11 +89,11 @@ function taskResSetCompleted(task, completed, completed_when) {
 		task.completed = null;
 	}
 }
-//Normalizes some fields which must be changed in accord
+//Normalizes some fields which should be changed in accord
 function taskResNormalize(task) {
 	if ((task.status == "completed") && !task.completed)
-		task.completed = new Date().toISOString();
-	if ((task.status == "needsAction") && task.completed)
+		task.completed = new Date(); //now
+	if ((task.status != "completed") && task.completed)
 		delete task.completed;
 }
 
