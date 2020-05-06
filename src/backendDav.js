@@ -39,7 +39,7 @@ function insertDavAPIs() {
 	return loadScripts({
 		'davlambda': 'davlambda/dav.js',
 		'cryptojs': 'davlambda-digest/crypto.js',
-		'dijest-ajax': 'davlambda-digest/digest-ajax.js',
+		'authcalc': 'davlambda-digest/authcalc.js',
 	}).then(result => loadScripts({
 		'dav-transport-digest': 'davlambda-digest/transport-digest.js',
 		'ical.js': 'ical/ical.js',
@@ -62,10 +62,7 @@ BackendDav.prototype.signin = function() {
 		username: DAV_USERNAME,
 		password: DAV_PASSWORD
 	});
-	if ((typeof DAV_AUTH != 'undefined') && (DAV_AUTH === "digest"))
-		this.xhr = new DavDigestTransport(credentials);
-	else
-		this.xhr = new DavBasicAuthTransport(credentias)
+	this.xhr = new DavDigestTransport(credentials);
 	
 	return dav.createAccount({ server: DAV_SERVER, xhr: this.xhr })
 		.catch(error =>
