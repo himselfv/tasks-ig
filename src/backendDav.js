@@ -58,11 +58,11 @@ BackendDav.prototype.connect = function() {
 BackendDav.prototype.settingsPage = function() {
 	return	{
 		server: {
-			type: 'string',
+			type: 'url',
 			hint: 'This is your DAV server root',
 		},
-		login: { type: 'string', },
-		pass: {	type: 'pass', },
+		login: { type: 'text', },
+		pass: {	type: 'password', },
 		auth: {
 			type: ['Auto/Both', 'Basic', 'Digest'],
 			default: 'Auto/Both',

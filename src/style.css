@@ -438,6 +438,33 @@ Start page
 }
 
 
+/*
+Settings page
+*/
+#settingsPage {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  position: relative;
+  left: 0;
+  top: 0;
+}
+#settingsControls {
+  /* Align buttons to the right */
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: baseline;
+  /* Stick to bottom: */
+  /*position: absolute;
+  bottom: 0;*/
+}
+
+
+
 /* Remove any fixed width limitations on lower widths */
 @media handheld, (max-width: 600px) { 
 body { max-width: none; }

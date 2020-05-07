@@ -8,6 +8,7 @@ var backend = null;
 var startPage = document.getElementById('startPage');
 var listPage = document.getElementById('listPage');
 var editorPage = document.getElementById('editorPage');
+var settingsPage = document.getElementById('settingsPage');
 
 var mainmenu = null;
 var taskmenu = null;
@@ -77,8 +78,13 @@ function backendsInit() {
 		updateSigninStatus(false);
 }
 function handleBackendAuthorize(event) {
-	log("Authorizing with "+event.target.associatedBackend);
-	backendInit(event.target.associatedBackend.ctor)
+	log("Authorizing with ", event.target.associatedBackend);
+	backendInit(event.target.associatedBackend.ctor);
+	if (backend.settingsPage) {
+		settings = backend.settingsPage();
+		settingsPageShow(settings);
+	}
+
 }
 function backendInit(backendCtor) {
 	if (typeof backendCtor == 'string') {
@@ -128,6 +134,102 @@ function updateSigninStatus(isSignedIn) {
 function backendActionsUpdate() {
 	element("accountResetBtn").classList.toggle("hidden", !backend.reset);
 	tasklistActionsUpdate();
+}
+
+
+/*
+Settings page
+*/
+function settingsPageReload(settings) {
+	console.log('settingsPageReload:', settings);
+	let content = document.getElementById('settingsContent');
+	while (content.firstChild) {
+		console.log('removing child');
+    	content.removeChild(content.lastChild);
+    }
+    for (let key in settings) {
+    	let param = settings[key];
+    	
+		let row = document.createElement("div");
+		row.classList.add("settingsRow");
+		content.appendChild(row);
+		
+		let paramRow = document.createElement("p");
+		row.appendChild(paramRow);
+		
+		let paramName = document.createElement("label");
+		paramName.id = 'settingsLabel-'+key;
+		paramName.textContent = ('title' in param) ? (param.title)
+			: (key[0].toUpperCase() + key.slice(1));	//key + capitalize first letter
+		paramName.htmlFor = 'settingsValue-'+key;
+		
+		let paramValue = null;
+		console.log(param.type);
+		if (['text', 'number', 'password', 'date', 'time', 'url', 'email'].includes(param.type)) {
+			paramValue = document.createElement('input');
+			paramValue.type = param.type;
+		}
+		else if (param.type == 'datetime') {
+			paramValue = document.createElement('input');
+			paramValue.type = 'datetime-local';
+		}
+		else if (param.type == 'book') {
+			paramValue = document.createElement('input');
+			paramValue.type = 'checkbox';
+		}
+		else if (Array.isArray(param.type)) {
+			paramValue = document.createElement('select');
+			for (let i=0; i<param.type.length; i++) {
+				let option = document.createElement('option');
+				option.value = param.type[i];
+				option.textContent = param.type[i];
+				paramValue.append(option);
+			}
+		}
+		
+		if (paramValue) {
+			paramValue.id = 'settingsValue-'+key;
+			if ('default' in param)
+				paramValue.value = param.default;
+		}
+		
+		console.log(paramName);
+		console.log(paramValue);
+		if (param.type == 'bool') {
+			paramRow.appendChild(paramValue);
+			paramRow.appendChild(paramName);
+		} else {
+			paramRow.appendChild(paramName);
+			if (paramValue)
+				paramRow.appendChild(paramValue);
+		}
+		
+		if ('hint' in param) {
+			let hintText = document.createElement("p");
+			hintText.textContent = param.hint;
+			hintText.classList += 'settingsHintText';
+			row.append(hintText);
+		}
+		
+    }
+	document.getElementById('settingsOk').onclick = handleSettingsPageOk;
+	document.getElementById('settingsCancel').onclick = settingsPageClose;
+}
+function settingsPageShow(settings) {
+	console.log('settingsPageShow');
+	settingsPageReload(settings);
+	settingsPage.classList.remove("hidden");
+	listPage.classList.add("hidden");
+}
+function settingsPageClose() {
+	console.log('settingsPageClose');
+	settingsPageReload({});
+	listPage.classList.remove("hidden");
+	settingsPage.classList.add("hidden");
+}
+function handleSettingsPageOk(event) {
+	//TODO
+	settingsPageClose();
 }
 
 
