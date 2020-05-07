@@ -249,8 +249,15 @@ Backend.prototype.connect = function() {
 	this.signin();
 	return Promise.resolve();
 }
+//Performs initial connection to the backend source/account given by settings.
+//Returns the set of settings/cookies to be stored and reused to restore the connection later.
+Backend.prototype.setup = function(settings) {
+	//By default simply equivalent to signin, and cookies~=settings
+	return this.signin(settings);
+}
 //Sign in to the backend with the configured params
-Backend.prototype.signin = function() {
+Backend.prototype.signin = function(settings) {
+	//By default requires nothing
 	//log("Backend.signin");
 	this._signedIn = true;
 	this.notifySignInStatus(true);

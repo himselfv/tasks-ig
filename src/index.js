@@ -77,41 +77,58 @@ function backendsInit() {
 	if (!backendName || !backendInit(backendName))
 		updateSigninStatus(false);
 }
-function handleBackendAuthorize(event) {
-	log("Authorizing with ", event.target.associatedBackend);
-	backendInit(event.target.associatedBackend.ctor);
-	if (backend.settingsPage) {
-		settings = backend.settingsPage();
-		settingsPageShow(settings);
-	}
-
-}
+//Initializes a new backend instance from a given constructor. Returns a promise.
 function backendInit(backendCtor) {
 	if (typeof backendCtor == 'string') {
 		let constructor = window[backendCtor]; //a way to call function by string name
-		if (!constructor) {
-			handleError("Backend not found: "+backendCtor);
-			return false;
-		}
+		if (!constructor)
+			Promise.reject("Backend not found: "+backendCtor);
 		backendCtor = constructor;
 	}
 	log("Using backend: "+backendCtor.name);
 
 	backend = new backendCtor();
-	if (!backend) {
-		handleError("Cannot create backend "+backendCtor.name);
-		return false;
-	}
+	if (!backend)
+		return Promise.reject("Cannot create backend "+backendCtor.name);
 	backend.onSignInStatus.push(updateSigninStatus);
 	registerChangeNotifications(backend);
 	backendActionsUpdate();
-	backend.connect().then(() => {
-		if (!backend.isSignedIn())
-			return backend.signin();
-	}).then(() => {
+	return backend.connect().then(() => backend);
+}
+function handleBackendAuthorize(event) {
+	log("Authorizing with ", event.target.associatedBackend);
+	backendInit(event.target.associatedBackend.ctor)
+	.then(backend => {
+		if (!backend.settingsPage)
+			return backend.setup({});
+		settings = backend.settingsPage();
+		settingsPage = settingsPageShow(settings);
+		settingsPage.addEventListener('ok', function(event) {
+			console.log('onSettingsOk', event);
+			//TODO:  огда нажимаем OK, нельз€ давать повторно нажимать OK, пока работает промиз
+			// ¬ообще всЄ это нужно сделать каким-то стандартным промизом дл€ таких модалов
+			return backend.setup(event.results)
+			.then(() => settingsPage.resolve())
+			.catch(error => {
+				//Cannot connect => leave settings page open
+				//Special error handling because these errors are planned
+				console.log('Backend.setup() error: ', error);
+				window.alert(error);
+				settingsPage.reenable();
+			});
+		});
+		return settingsPage.waitResult();
+	})
+	.then(setupResults => {
+		//Save the backend configuration
 		window.localStorage.setItem("tasksIg_ui_backend", backendCtor.name);
-	}).catch(handleError);
-	return true;
+		window.localStorage.setItem("tasksIg_ui_backendCookies", JSON.stringify(setupResults));
+	})
+	.catch(error => {
+		//Usually "Cancelled", don't show to user
+		console.log('Could not configure backend:', error);
+		return null;
+	});
 }
 function handleSignoutClick(event) {
 	backend.signout().catch(handleError);
@@ -139,7 +156,71 @@ function backendActionsUpdate() {
 
 /*
 Settings page
+Activate with settingsPageShow(), then check the data in 'ok' event handler
+and close with close().
 */
+function settingsPageShow(settings) {
+	//We could've created the page from scratch but we'll reuse the precreated one
+	console.log('settingsPageShow');
+	settingsPageReload(settings);
+	settingsPage.classList.remove("hidden");
+	
+	//Clients can wait for the page to be either OK'd or Cancelled
+	settingsPage.waitResult = function() { return settingsPage.promise };
+	
+	//Calling either of these closes the page
+	settingsPage.promise = new Promise((_resolve, _reject) => {
+		settingsPage.resolve = _resolve;
+		settingsPage.reject = _reject;
+	});
+	//Cleanup
+	settingsPage.promise
+	.catch(() => {})
+	.then(() => {
+		settingsPage.promise = null; //prevent further access
+		settingsPage.resolve = null;
+		settingsPage.reject = null;
+		settingsPageClose();
+	});
+	
+	let btnOk = document.getElementById('settingsOk');
+	let btnCancel = document.getElementById('settingsCancel');
+	
+	//Clicking OK temporarily disables the page while event handlers try the new settings
+	//Event handlers should reenable() the page if an attempt resulted in neither Success nor final Cancel.
+	settingsPage.disable = function() {
+		btnOk.disabled = true;
+		//Cancel button is always available
+	};
+	settingsPage.reenable = function() {
+		btnOk.disabled = false;
+	}
+	settingsPage.reenable(); //enable for starters
+	
+	btnOk.onclick = function() {
+		//Disable the OK button for the time being
+		settingsPage.disable();
+		//Call events
+		let event = new CustomEvent('ok');
+		event.results = settingsPageCollectResults();
+		console.log(event);
+		settingsPage.dispatchEvent(event);
+		//We're disabled until someone reenables us
+		//Event handles have to call resolve() explicitly because they might need to wait
+	}
+	btnCancel.onclick = function() {
+		let event = new CustomEvent('cancel');
+		settingsPage.dispatchEvent(event);
+		settingsPage.reject("Cancelled");
+	}
+
+	return settingsPage;
+}
+function settingsPageClose() {
+	console.log('settingsPageClose');
+	settingsPageReload({});
+	settingsPage.classList.add("hidden");
+}
 function settingsPageReload(settings) {
 	console.log('settingsPageReload:', settings);
 	let content = document.getElementById('settingsContent');
@@ -189,6 +270,7 @@ function settingsPageReload(settings) {
 		
 		if (paramValue) {
 			paramValue.id = 'settingsValue-'+key;
+			paramValue.dataId = key;
 			if ('default' in param)
 				paramValue.value = param.default;
 		}
@@ -211,25 +293,19 @@ function settingsPageReload(settings) {
 			row.append(hintText);
 		}
 		
-    }
-	document.getElementById('settingsOk').onclick = handleSettingsPageOk;
-	document.getElementById('settingsCancel').onclick = settingsPageClose;
+	}
 }
-function settingsPageShow(settings) {
-	console.log('settingsPageShow');
-	settingsPageReload(settings);
-	settingsPage.classList.remove("hidden");
-	listPage.classList.add("hidden");
-}
-function settingsPageClose() {
-	console.log('settingsPageClose');
-	settingsPageReload({});
-	listPage.classList.remove("hidden");
-	settingsPage.classList.add("hidden");
-}
-function handleSettingsPageOk(event) {
-	//TODO
-	settingsPageClose();
+function settingsPageCollectResults() {
+	let results = {};
+	let content = document.getElementById('settingsContent');
+	let inputs = content.getElementsByTagName('input');
+	for (let i=0; i<inputs.length; i++)
+		results[inputs[i].dataId] = inputs[i].value;
+	inputs = content.getElementsByTagName('select');
+	for (let i=0; i<inputs.length; i++)
+		results[inputs[i].dataId] = inputs[i].value;
+	console.log(results);
+	return results;
 }
 
 

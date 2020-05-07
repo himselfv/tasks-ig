@@ -46,13 +46,8 @@ function insertDavAPIs() {
 	}));
 }
 BackendDav.prototype.connect = function() {
-	log("BackendDav.login");
-	var prom = insertDavAPIs()
-	.then(result => {
-		//Automatically sign in.
-		return this.signin();
-	});
-	return prom;
+	log("BackendDav.init");
+	return insertDavAPIs();
 }
 
 BackendDav.prototype.settingsPage = function() {
@@ -71,16 +66,19 @@ BackendDav.prototype.settingsPage = function() {
 	};
 }
 
-BackendDav.prototype.signin = function() {
+BackendDav.prototype.signin = function(settings) {
 	log("BackendDav.signin");
 	
+	if (!settings || !settings.server)
+		return Promise.reject("Server URL required for CalDAV backend");
+	
 	var credentials = new dav.Credentials({
-		username: DAV_USERNAME,
-		password: DAV_PASSWORD
+		username: settings.login,
+		password: settings.password,
 	});
 	this.xhr = new DavDigestTransport(credentials);
 	
-	return dav.createAccount({ server: DAV_SERVER, xhr: this.xhr })
+	return dav.createAccount({ server: settings.server, xhr: this.xhr })
 		.catch(error =>
 			this.signout() //delete created objects
 			.then(result => {throw error;}) //rethrow
