@@ -74,18 +74,29 @@ function backendsInit() {
 
 	//Activate current backend if there's any
 	var backendName = window.localStorage.getItem("tasksIg_ui_backend");
-	if (!backendName || !backendInit(backendName))
+	var backendParams = window.localStorage.getItem("tasksIg_ui_backendParams");
+	console.log(backendName, backendParams, !backendParams);
+	if (backendParams) backendParams = JSON.parse(backendParams)
+	if (!backendName)
 		updateSigninStatus(false);
+	else
+		backendInit(backendName)
+		.then(backend => backend.signin(backendParams))
+		.catch(error => {
+			updateSigninStatus(false);
+			handleError(error);
+		});
 }
 //Initializes a new backend instance from a given constructor. Returns a promise.
 function backendInit(backendCtor) {
 	if (typeof backendCtor == 'string') {
 		let constructor = window[backendCtor]; //a way to call function by string name
 		if (!constructor)
-			Promise.reject("Backend not found: "+backendCtor);
+			return Promise.reject("Backend not found: "+backendCtor);
 		backendCtor = constructor;
 	}
-	log("Using backend: "+backendCtor.name);
+
+	console.log("Using backend: ", backendCtor.name);
 
 	backend = new backendCtor();
 	if (!backend)
@@ -96,8 +107,9 @@ function backendInit(backendCtor) {
 	return backend.connect().then(() => backend);
 }
 function handleBackendAuthorize(event) {
-	log("Authorizing with ", event.target.associatedBackend);
-	backendInit(event.target.associatedBackend.ctor)
+	backendClass = event.target.associatedBackend;
+	console.log("Authorizing with ", backendClass);
+	backendInit(backendClass.ctor)
 	.then(backend => {
 		if (!backend.settingsPage)
 			return backend.setup({});
@@ -105,10 +117,10 @@ function handleBackendAuthorize(event) {
 		settingsPage = settingsPageShow(settings);
 		settingsPage.addEventListener('ok', function(event) {
 			console.log('onSettingsOk', event);
-			//TODO:  огда нажимаем OK, нельз€ давать повторно нажимать OK, пока работает промиз
-			// ¬ообще всЄ это нужно сделать каким-то стандартным промизом дл€ таких модалов
 			return backend.setup(event.results)
-			.then(() => settingsPage.resolve())
+			.then(backendResults => {
+				settingsPage.resolve(backendResults);
+			})
 			.catch(error => {
 				//Cannot connect => leave settings page open
 				//Special error handling because these errors are planned
@@ -121,8 +133,9 @@ function handleBackendAuthorize(event) {
 	})
 	.then(setupResults => {
 		//Save the backend configuration
-		window.localStorage.setItem("tasksIg_ui_backend", backendCtor.name);
-		window.localStorage.setItem("tasksIg_ui_backendCookies", JSON.stringify(setupResults));
+		//console.log('Saving:', backendClass.name, setupResults);
+		window.localStorage.setItem("tasksIg_ui_backend", backendClass.ctor.name);
+		window.localStorage.setItem("tasksIg_ui_backendParams", JSON.stringify(setupResults));
 	})
 	.catch(error => {
 		//Usually "Cancelled", don't show to user
@@ -134,6 +147,7 @@ function handleSignoutClick(event) {
 	backend.signout().catch(handleError);
 	backend = null;
 	window.localStorage.removeItem("tasksIg_ui_backend");
+	window.localStorage.removeItem("tasksIg_ui_backendParams");
 }
 // Called when the signed in status changes, whether after a button click or automatically
 function updateSigninStatus(isSignedIn) {

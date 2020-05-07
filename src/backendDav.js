@@ -56,8 +56,8 @@ BackendDav.prototype.settingsPage = function() {
 			type: 'url',
 			hint: 'This is your DAV server root',
 		},
-		login: { type: 'text', },
-		pass: {	type: 'password', },
+		username: { type: 'text', },
+		password: {	type: 'password', },
 		auth: {
 			type: ['Auto/Both', 'Basic', 'Digest'],
 			default: 'Auto/Both',
@@ -67,13 +67,13 @@ BackendDav.prototype.settingsPage = function() {
 }
 
 BackendDav.prototype.signin = function(settings) {
-	log("BackendDav.signin");
+	console.log("BackendDav.signin", settings);
 	
 	if (!settings || !settings.server)
 		return Promise.reject("Server URL required for CalDAV backend");
 	
 	var credentials = new dav.Credentials({
-		username: settings.login,
+		username: settings.username,
 		password: settings.password,
 	});
 	this.xhr = new DavDigestTransport(credentials);
@@ -87,7 +87,9 @@ BackendDav.prototype.signin = function(settings) {
 			this.account = account;
 			this._signedIn = true;
 			this.notifySignInStatus(true);
-		});
+		})
+		//Return the same settings
+		.then(() => settings);
 }
 
 //Sign out from the backend
