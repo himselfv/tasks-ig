@@ -221,6 +221,15 @@ function Backend() {
 	this.cache = new TaskCache();
 }
 
+//Initialize the backend instance, load any neccessary libraries
+Backend.prototype.init = function() {
+	//log("Backend.init");
+	//Older API compatibility:
+	if (this.connect)
+		return this.connect();
+	return Promise.resolve();
+}
+
 
 /*
 Returns a {dict} of parameters to ask from the user before signin(). Example:
@@ -242,13 +251,7 @@ Backend.prototype.settingsPage = function() {
 Connection
 Implementations must notify onSigningChange subscribers.
 */
-//Connect to the backend
-Backend.prototype.connect = function() {
-	//log("Backend.connect");
-	//Automatically consider us signed in
-	this.signin();
-	return Promise.resolve();
-}
+
 //Performs initial connection to the backend source/account given by settings.
 //Returns the set of settings/cookies to be stored and reused to restore the connection later.
 Backend.prototype.setup = function(settings) {
@@ -256,12 +259,13 @@ Backend.prototype.setup = function(settings) {
 	return this.signin(settings);
 }
 //Sign in to the backend with the configured params
-Backend.prototype.signin = function(settings) {
+Backend.prototype.signin = function(params) {
 	//By default requires nothing
 	//log("Backend.signin");
 	this._signedIn = true;
 	this.notifySignInStatus(true);
-	return Promise.resolve();
+	//Return the same cookies unchanged
+	return Promise.resolve(params);
 }
 //Sign out from the backend
 Backend.prototype.signout = function() {

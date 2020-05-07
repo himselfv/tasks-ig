@@ -104,7 +104,7 @@ function backendInit(backendCtor) {
 	backend.onSignInStatus.push(updateSigninStatus);
 	registerChangeNotifications(backend);
 	backendActionsUpdate();
-	return backend.connect().then(() => backend);
+	return backend.init().then(() => backend);
 }
 function handleBackendAuthorize(event) {
 	backendClass = event.target.associatedBackend;
@@ -114,7 +114,9 @@ function handleBackendAuthorize(event) {
 		if (!backend.settingsPage)
 			return backend.setup({});
 		settings = backend.settingsPage();
-		settingsPage = settingsPageShow(settings);
+		if (!settings)
+			return backend.setup({});
+		settingsPage = settingsPageShow(settings, backendClass.name);
 		settingsPage.addEventListener('ok', function(event) {
 			console.log('onSettingsOk', event);
 			return backend.setup(event.results)
@@ -173,9 +175,15 @@ Settings page
 Activate with settingsPageShow(), then check the data in 'ok' event handler
 and close with close().
 */
-function settingsPageShow(settings) {
+function settingsPageShow(settings, backendName) {
 	//We could've created the page from scratch but we'll reuse the precreated one
 	console.log('settingsPageShow');
+	
+	if (!backendName)
+		backendName = 'Connection';
+	let pageTitle = document.getElementById('settingsPageTitle');
+	pageTitle.textContent = backendName + ' settings:';
+	
 	settingsPageReload(settings);
 	settingsPage.classList.remove("hidden");
 	
@@ -240,11 +248,11 @@ function settingsPageReload(settings) {
 	let content = document.getElementById('settingsContent');
 	while (content.firstChild) {
 		console.log('removing child');
-    	content.removeChild(content.lastChild);
-    }
-    for (let key in settings) {
-    	let param = settings[key];
-    	
+		content.removeChild(content.lastChild);
+	}
+	for (let key in settings) {
+		let param = settings[key];
+		
 		let row = document.createElement("div");
 		row.classList.add("settingsRow");
 		content.appendChild(row);
@@ -306,7 +314,6 @@ function settingsPageReload(settings) {
 			hintText.classList += 'settingsHintText';
 			row.append(hintText);
 		}
-		
 	}
 }
 function settingsPageCollectResults() {
