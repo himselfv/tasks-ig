@@ -5,8 +5,10 @@ Load additional JS
 //Returns a promise that's fulfilled when the JS is loaded
 function loadScript(scriptId, scriptSrc) {
 	return new Promise((resolve, reject) => {
-		if (document.getElementById(scriptId))
-			return Promise.resolve();
+		if (document.getElementById(scriptId)) {
+			resolve()
+			return;
+		}
 		log('inserting script '+scriptSrc);
 		var script = document.createElement('script');
 		script.id = scriptId;
