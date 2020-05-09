@@ -7,6 +7,7 @@ function loadScript(scriptId, scriptSrc) {
 	return new Promise((resolve, reject) => {
 		var script = document.getElementById(scriptId);
 		if (script && (script.readyState == "complete")) {
+			console.log("script already loaded: ", scriptId);
 			resolve();
 			return;
 		}
@@ -17,9 +18,14 @@ function loadScript(scriptId, scriptSrc) {
 			script.src = scriptSrc;
 			script.async = true;
 			script.defer = true;
-			script.addEventListener("readystatechange", () => { if (script.readyState == 'complete') script.onload() });
+			//Some browsers fire readyStateChange, others onLoad and don't even support readyState
+			//We need some indication that the script has finished loading, so reimplement readyState if it's not there
+			script.addEventListener("readystatechange", () => { if (script.readyState == 'complete') script.onload(); });
+			script.addEventListener("load", () => { if (!script.readyState) script.readyState = "complete"; });
 			document.body.append(script);
 		}
+		console.log(script);
+		console.log(script.readyState);
 		script.addEventListener("load", () => { console.log('loaded script'); resolve(); } );
 	});
 }
