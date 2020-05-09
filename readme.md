@@ -2,7 +2,7 @@ Google Tasks is a service by Google partially integrated in Calendar. It had a s
 
 > **https://mail.google.com/tasks/ig**
 
-This project reimplements everything in that frontend from scratch. It uses Google Tasks API to access Tasks but can support different backends.
+This project reimplements everything in that frontend from scratch. It uses Google Tasks API to access Tasks but can support different backends (including CalDAV tasks!)
 
 ![Screenshot](docs/screen-features.png)
 
@@ -28,13 +28,13 @@ Once Google shuts down Tasks which they will eventually do because they shut dow
 
 Different backends are available in each case:
 
-|				| Google Tasks	| Browser (sync)	| Browser (local)	|
-|------				|:----:		|:----:			|:----:			|
-| Chrome extension (page)	| +		| +			| +			|
-| Firefox extension (sidebar)	| 		| +			| +			|
-| Self-hosted			| +		| 			| + (less safe)		|
-| Self-hosted in sidebar	| +		| 			| + (less safe)		|
-| Local file or github		| 		| 			| + (less safe)		|
+|				| CalDAV| Google Tasks	| Browser (sync)	| Browser (local)	|
+|------				|:----:	|:----:		|:----:			|:----:			|
+| Chrome extension (page)	| +	| +		| +			| +			|
+| Firefox extension (sidebar)	| +	| 		| +			| +			|
+| Self-hosted			| +	| +		| 			| + (less safe)		|
+| Self-hosted in sidebar	| +	| +		| 			| + (less safe)		|
+| Local file or github		| +	| 		| 			| + (less safe)		|
 
 Browser backends are completely offline. The sync version is synchronized by the browser between your different PCs. The "less safe" versions use Local Storage instead of Extension's Storage and it's easy to reset by cleaning cookies, so I wouldn't store anything important.
 
@@ -54,7 +54,18 @@ Chrome: Go to Extensions page and enable "Developer mode". Press "Load unpacked 
 Firefox: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`.
 
 
-### Self-hosting
+### CalDAV
+
+CalDAV Tasks are now mostly supported!
+
+* Work in all environments, including from [here on GitHub](https://himselfv.github.io/tasks-ig/)
+* Subtasks via RELATED-TO, the most supported way
+* Fixed ordering via X-APPLE-SORT-ORDER, the only at least somewhat supported way
+* No calendar creation/deletion -- please use a full-blown CalDAV client for initial setup
+* No task recurrence
+
+
+### Self-hosting for Google Tasks
 **Plan A:**
 
 1. You need a domain.
