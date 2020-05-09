@@ -3,13 +3,6 @@ Tasks backend based on CalDAV VTODOs.
 Requires
 * davlambda\ 		 -> github.com\lambdabaa\dav
 * davlambda-digest\	 -> github.com\himselfv\davlambda-digest
-
-Requires globals:
-  DAV_SERVER = url
-If your server needs auth:
-  DAV_USERNAME = login
-  DAV_PASSWORD = password
-  DAV_AUTH = basic/digest [default: basic]
 */
 
 function BackendDav() {
@@ -18,16 +11,8 @@ function BackendDav() {
 BackendDav.prototype = Object.create(Backend.prototype);
 
 
-//Self-register
-function backendDavSupported() {
-	if (typeof DAV_SERVER != 'undefined')
-		return true;
-	else
-		log("BackendDAV: DAV_SERVER not set");
-	return false;
-}
-if (backendDavSupported())
-	registerBackend("CalDAV", BackendDav);
+//Self-register -- DAV is always supported
+registerBackend("CalDAV", BackendDav);
 
 
 /*
