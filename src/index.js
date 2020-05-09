@@ -5,6 +5,8 @@ Security considerations in some contexts require:
 */
 var backend = null;
 
+var options = options || {}; //see config.js
+
 var startPage = document.getElementById('startPage');
 var listPage = document.getElementById('listPage');
 var editorPage = document.getElementById('editorPage');
@@ -75,7 +77,6 @@ function backendsInit() {
 	//Activate current backend if there's any
 	var backendName = window.localStorage.getItem("tasksIg_ui_backend");
 	var backendParams = window.localStorage.getItem("tasksIg_ui_backendParams");
-	console.log(backendName, backendParams, !backendParams);
 	if (backendParams) backendParams = JSON.parse(backendParams)
 	if (!backendName)
 		updateSigninStatus(false);
@@ -118,7 +119,6 @@ function handleBackendAuthorize(event) {
 			return backend.setup({});
 		settingsPage = settingsPageShow(settings, backendClass.name);
 		settingsPage.addEventListener('ok', function(event) {
-			console.log('onSettingsOk', event);
 			return backend.setup(event.results)
 			.then(backendResults => {
 				settingsPage.resolve(backendResults);
@@ -177,7 +177,7 @@ and close with close().
 */
 function settingsPageShow(settings, backendName) {
 	//We could've created the page from scratch but we'll reuse the precreated one
-	console.log('settingsPageShow');
+	//console.log('settingsPageShow');
 	
 	if (!backendName)
 		backendName = 'Connection';
@@ -225,7 +225,6 @@ function settingsPageShow(settings, backendName) {
 		//Call events
 		let event = new CustomEvent('ok');
 		event.results = settingsPageCollectResults();
-		console.log(event);
 		settingsPage.dispatchEvent(event);
 		//We're disabled until someone reenables us
 		//Event handles have to call resolve() explicitly because they might need to wait
@@ -239,15 +238,14 @@ function settingsPageShow(settings, backendName) {
 	return settingsPage;
 }
 function settingsPageClose() {
-	console.log('settingsPageClose');
+	//console.log('settingsPageClose');
 	settingsPageReload({});
 	settingsPage.classList.add("hidden");
 }
 function settingsPageReload(settings) {
-	console.log('settingsPageReload:', settings);
+	//console.log('settingsPageReload:', settings);
 	let content = document.getElementById('settingsContent');
 	while (content.firstChild) {
-		console.log('removing child');
 		content.removeChild(content.lastChild);
 	}
 	for (let key in settings) {
@@ -257,9 +255,6 @@ function settingsPageReload(settings) {
 		row.classList.add("settingsRow");
 		content.appendChild(row);
 		
-		let paramRow = document.createElement("p");
-		row.appendChild(paramRow);
-		
 		let paramName = document.createElement("label");
 		paramName.id = 'settingsLabel-'+key;
 		paramName.textContent = ('title' in param) ? (param.title)
@@ -267,7 +262,6 @@ function settingsPageReload(settings) {
 		paramName.htmlFor = 'settingsValue-'+key;
 		
 		let paramValue = null;
-		console.log(param.type);
 		if (['text', 'number', 'password', 'date', 'time', 'url', 'email'].includes(param.type)) {
 			paramValue = document.createElement('input');
 			paramValue.type = param.type;
@@ -297,20 +291,20 @@ function settingsPageReload(settings) {
 				paramValue.value = param.default;
 		}
 		
-		console.log(paramName);
-		console.log(paramValue);
+		//console.log(paramName);
+		//console.log(paramValue);
 		if (param.type == 'bool') {
-			paramRow.appendChild(paramValue);
-			paramRow.appendChild(paramName);
+			row.appendChild(paramValue);
+			row.appendChild(paramName);
 		} else {
-			paramRow.appendChild(paramName);
+			row.appendChild(paramName);
 			if (paramValue)
-				paramRow.appendChild(paramValue);
+				row.appendChild(paramValue);
 		}
 		
 		if ('hint' in param) {
 			let hintText = document.createElement("p");
-			hintText.textContent = param.hint;
+			hintText.innerHTML = param.hint;
 			hintText.classList += 'settingsHintText';
 			row.append(hintText);
 		}
@@ -325,7 +319,7 @@ function settingsPageCollectResults() {
 	inputs = content.getElementsByTagName('select');
 	for (let i=0; i<inputs.length; i++)
 		results[inputs[i].dataId] = inputs[i].value;
-	console.log(results);
+	//console.log(results);
 	return results;
 }
 

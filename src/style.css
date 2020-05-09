@@ -455,24 +455,33 @@ Settings page
   /*position: absolute;
   bottom: 0;*/
 }
-.settingsRow p {
+.settingsRow {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
   width: 100%;
   padding-bottom: 0.2em;
   margin-bottom: 0.2em;
 }
-.settingsRow p label {
+.settingsRow label {
   padding-right: 1em;
 }
-.settingsRow p input, .settingsRow p select {
+/* Value inputs grow to 100%, force-wrapping flex */
+.settingsRow input, .settingsRow select {
   width: 100%;
 }
+/* No value input => caption grows to 100% */
+.settingsRow label + :not(input),
+.settingsRow label + :not(value) {
+  width: 100%;
+}
+
 .settingsHintText {
   font-size: 0.8em;
   color: gray;
   padding-top: 0px;
   margin-top: 0px;
+  width: 100%;
 }
 
 
