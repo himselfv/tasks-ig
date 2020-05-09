@@ -7,11 +7,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div id="startPage" class="hidden">
-  <span id="startPrompt">Authorize with:</span>
-  </div>
-
-  <div id="listPage" class="hidden">
+  <div id="listPage" class="page hidden" style="z-index: 0;">
     <div id="listHeader">
       <select id="listSelectBox"></select>
       <span id="listHeaderSpacer"></span>
@@ -25,7 +21,7 @@
     </div>
   </div>
 
-  <div id="editorPage" class="hidden">
+  <div id="editorPage" class="page hidden" style="z-index: 12;">
     <p id="editorTaskTitleP">
       <input type="checkbox" id="editorTaskTitleBox" /><label id="editorTaskTitle" for="editorTaskTitleBox"></label>
       <button type="button" id="editorDelete">Delete</button>
@@ -40,7 +36,11 @@
     </p>
   </div>
 
-  <div id="settingsPage" class="hidden">
+  <div id="startPage" class="page hidden" style="z-index: 14;">
+  <span id="startPrompt">Authorize with:</span>
+  </div>
+
+  <div id="settingsPage" class="page hidden" style="z-index: 16;">
     <h1 id="settingsPageTitle"></h1>
     <p id="settingsContent">
     </p>
@@ -50,7 +50,7 @@
     </p>
   </div>
 
-  <div id="errorPopup" class="hidden"></div>
+  <div id="errorPopup" class="hidden" style="z-index: 200;"></div>
 
 <script src="config.js"></script>
 <script src="utils.js"></script>

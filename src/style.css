@@ -7,8 +7,23 @@ html, body {
   font-size: 10pt;
 }
 body {
-  max-width: 400px; /* For debugging */
+  max-width: 400px; /* One-column view even on wide screens */
+  position: relative; /* Absolute-positioned pages stick to us */
 }
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box; /* incl. pad and marg in WH */
+  position: absolute; /* relative to body */
+  left: 0;
+  top: 0;
+  background-color: white; /* hide everything underneath */
+}
+
 
 /*
 Special classes that are applied in certain situations
@@ -38,15 +53,7 @@ Error message popup
 Task list page
 Header sticks to top, footer sticks to bottom, the rest expands as content grows.
 */
-#listPage {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-  padding: 0;
-  margin: 0;
-}
-
+#listPage {} /* a .page */
 #listHeader {
   display: flex;
   flex-direction: row;
@@ -354,12 +361,11 @@ Everything inside is packed unless overriden
   visibility: visible;
 }
 
+
 /*
 Editor
 */
-#editorPage {
-  position: relative;
-  width: 100%;
+#editorPage { /* a .page */
   height: 90%;
   /*
   If you want to allow expand to scroll:
@@ -367,9 +373,6 @@ Editor
     height: auto;
   But this will make it impossible to expand the textbox 100% by default
   */
-  margin: 0;
-  display: flex;
-  flex-direction: column;
   /*
   Elements inside #editor have margins. If padding is 0, they merge into #editor margins and add to its 100% width.
   Even 1px padding protects from that.
@@ -423,9 +426,7 @@ Editor
 /*
 Start page
 */
-#startPage {
-  display: flex;
-  flex-direction: column;
+#startPage { /* a .page */
   justify-content: center;
   align-items: center;
   text-align: center;
@@ -441,16 +442,8 @@ Start page
 /*
 Settings page
 */
-#settingsPage {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-  padding: 0;
-  margin: 0;
-  position: relative;
-  left: 0;
-  top: 0;
+#settingsPage { /* a .page */
+  padding: 1px 1em;
 }
 #settingsControls {
   /* Align buttons to the right */
