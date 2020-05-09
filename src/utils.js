@@ -5,19 +5,22 @@ Load additional JS
 //Returns a promise that's fulfilled when the JS is loaded
 function loadScript(scriptId, scriptSrc) {
 	return new Promise((resolve, reject) => {
-		if (document.getElementById(scriptId)) {
-			resolve()
+		var script = document.getElementById(scriptId);
+		if (script && (script.readyState == "complete")) {
+			resolve();
 			return;
 		}
-		log('inserting script '+scriptSrc);
-		var script = document.createElement('script');
-		script.id = scriptId;
-		script.src = scriptSrc;
-		script.async = true;
-		script.defer = true;
-		script.addEventListener("load", () => resolve());
-		script.addEventListener("readystatechange", () => { if (script.readyState == 'complete') script.onload() });
-		document.body.append(script);
+		if (!script) {
+			console.log('inserting script '+scriptSrc);
+			script = document.createElement('script');
+			script.id = scriptId;
+			script.src = scriptSrc;
+			script.async = true;
+			script.defer = true;
+			script.addEventListener("readystatechange", () => { if (script.readyState == 'complete') script.onload() });
+			document.body.append(script);
+		}
+		script.addEventListener("load", () => { console.log('loaded script'); resolve(); } );
 	});
 }
 
