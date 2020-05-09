@@ -31,14 +31,18 @@ function BackendBrowserStorage(areaName) {
 BackendBrowserStorage.prototype = Object.create(BackendLocal.prototype);
 
 function getBrowserStorage() {
+	//Prefer "browser" as it's more standardized and less available (FF provides "chrome" too)
 	return (typeof browser != 'undefined') ? browser.storage : (typeof chrome != 'undefined') ? chrome.storage : null;
 }
 function getBrowserStorageSync() {
-	//Prefer "browser" as it's more standardized and less available (FF provides "chrome" too)
-	return (typeof browser != 'undefined') ? browser.storage.sync : (typeof chrome != 'undefined') ? new ChromeStorageWrapper(chrome.storage.sync) : null;
+	let storage = getBrowserStorage();
+	if (!storage) return null;
+	return (typeof browser != 'undefined') ? storage.sync : (typeof chrome != 'undefined') ? new ChromeStorageWrapper(storage.sync) : null;
 }
 function getBrowserStorageLocal() {
-	return (typeof browser != 'undefined') ? browser.storage.local : (typeof chrome != 'undefined') ? new ChromeStorageWrapper(chrome.storage.local) : null;
+	let storage = getBrowserStorage();
+	if (!storage) return null;
+	return (typeof browser != 'undefined') ? storage.local : (typeof chrome != 'undefined') ? new ChromeStorageWrapper(storage.local) : null;
 }
 
 //Chrome storage.* APIs do not return promises but instead use callbacks
