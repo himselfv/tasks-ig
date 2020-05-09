@@ -815,14 +815,14 @@ function processReportedChanges() {
     } else if (event.key=="Delete") {
       //If we're at the end, delete the next entry and merge its title and notes into this one.
       var caretPos = entry.getCaret();
-      if (options.mergeByDelete && (caretPos == entry.getLength()) && window.getSelection().isCollapsed) {
+      if (!options.noMergeByDelete && (caretPos == entry.getLength()) && window.getSelection().isCollapsed) {
         event.preventDefault();
         taskMergeForward(entry);
       }
     } else if (event.key=="Backspace") {
       //If we're at the beginning, delete this entry and merge its title and notes into the previous one.
       var caretPos = entry.getCaret();
-      if (options.mergeByBackspace && (caretPos == 0) && window.getSelection().isCollapsed) {
+      if (options.noMergeByBackspace && (caretPos == 0) && window.getSelection().isCollapsed) {
         event.preventDefault();
         taskMergeBackward(entry);
       }
