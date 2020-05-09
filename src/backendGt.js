@@ -47,12 +47,24 @@ BackendGTasks.prototype.init = function() {
 /*
 Connection
 */
+BackendGTasks.prototype.getHardcodedParams = function() {
+	if ((typeof GTASKS_CLIENT_ID != 'undefined') && (GTASKS_CLIENT_ID != '')
+		&& (typeof GTASKS_API_KEY != 'undefined') && (GTASKS_API_KEY != ''))
+	{
+		return {
+			clientId: GTASKS_CLIENT_ID,
+			apiKey: GTASKS_API_KEY,
+		}
+	}
+	return null;
+}
 BackendGTasks.prototype.settingsPage = function() {
 	//Chrome extensions does not need ClientID/API Key
 	if (isChromeExtension()) return null;
 	
 	//If hardcoded via JS, use the values
-	if (!!GTASKS_CLIENT_ID && !!GTASKS_API_KEY) {
+	if (this.getHardcodedParams())
+	{
 		console.log('BackendGt: Using hardcoded ClientID/API Key');
 		return null;
 	}
@@ -76,21 +88,16 @@ BackendGTasks.prototype.settingsPage = function() {
 			type: 'text',
 		},
 	};
-	//if ((typeof GTASKS_CLIENT_ID != 'undefined') && (GTASKS_CLIENT_ID != '')
-	//&& (typeof GTASKS_API_KEY != 'undefined') && (GTASKS_API_KEY != '') ) {
 }
 
 BackendGTasks.prototype.clientLogin = function(params) {
 	if (isChromeExtension()) {
 		return this.chromeClientLogin();
 	} else {
+		//Nb: Make sure not to return hardcoded params from signin()
 		if (!params || (!params.clientId && !params.apiKey))
-			//Nb: Make sure not to return hardcoded params from signin()
-			params = {
-				clientId: GTASKS_CLIENT_ID,
-				apiKey: GTASKS_API_KEY,
-			}
-		if (!params.clientId || !params.apiKey)
+			params = this.getHardcodedParams;
+		if (!params || !params.clientId || !params.apiKey)
 			return Promise.reject("Google ClientID or API Key not set");
 		
 		return gapi.client.init({

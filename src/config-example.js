@@ -6,9 +6,10 @@ https://console.developers.google.com/cloud-resource-manager
 See here how:
 https://developers.google.com/tasks/firstapp
 
-*/
 var GTASKS_CLIENT_ID = '';
 var GTASKS_API_KEY = '';
+*/
+
 
 options.mergeByDelete = true; //Merge the next task into this one by Delete button
 options.mergeByBackspace = true; //Merge this task into the previous one by Backspace button
