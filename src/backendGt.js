@@ -1,10 +1,6 @@
 /*
-Implements task backend based on Google Tasks.
-Currently that's the only backend but functions should be neutral enough that it's possible to implement another one later.
-
-Requires globals:
-  var GTASKS_CLIENT_ID
-  var GTASKS_API_KEY
+Task backend based on Google Tasks.
+Supported globals: GTASKS_CLIENT_ID, GTASKS_API_KEY, otherwise will ask via UI.
 */
 function BackendGTasks() {
 	Backend.call(this);
@@ -23,16 +19,7 @@ function isChromeExtension() {
 }
 
 //Self-register
-function backendGtSupported() {
-	if (isChromeExtension()) return true;
-	if ((typeof GTASKS_CLIENT_ID != 'undefined') && (typeof GTASKS_API_KEY != 'undefined'))
-		return true;
-	else
-		log("BackendGTasks: ClientId / API key not set");
-	return false;
-}
-if (backendGtSupported())
-	registerBackend("Google Tasks", BackendGTasks);
+registerBackend("Google Tasks", BackendGTasks);
 
 
 /*
@@ -50,17 +37,73 @@ function gapiLoad() {
 		});
 	});
 }
+BackendGTasks.prototype.init = function() {
+	return insertGoogleAPIs()
+		//Load the auth2 library and API client library.
+		.then(result => gapiLoad());
+}
 
 
 /*
 Connection
 */
-BackendGTasks.prototype.connect = function() {
-	var prom = insertGoogleAPIs()
-	//Load the auth2 library and API client library.
-	.then(result => gapiLoad())
+BackendGTasks.prototype.settingsPage = function() {
+	//Chrome extensions does not need ClientID/API Key
+	if (isChromeExtension()) return null;
+	
+	//If hardcoded via JS, use the values
+	if (!!GTASKS_CLIENT_ID && !!GTASKS_API_KEY) {
+		console.log('BackendGt: Using hardcoded ClientID/API Key');
+		return null;
+	}
+	
+	//Otherwise provide the UI
+	return {
+		intro: {
+			title: '',
+			hint: 'Google requires a Client ID and API Key for your Tasks-IG instance to access Tasks programmatically.'
+				+ 'See:<ul>'
+				+ '<li><a href=https://developers.google.com/tasks/firstapp>How to register</a></li>'
+				+ '<li><a href=https://console.developers.google.com/cloud-resource-manager>Developer console</a></li></ul>'
+				+'Or use Tasks-IG instance from someone who already did.',
+		},
+		clientId: {
+			title: 'Client ID',
+			type: 'text',
+		},
+		apiKey: {
+			title: 'API Key',
+			type: 'text',
+		},
+	};
+	//if ((typeof GTASKS_CLIENT_ID != 'undefined') && (GTASKS_CLIENT_ID != '')
+	//&& (typeof GTASKS_API_KEY != 'undefined') && (GTASKS_API_KEY != '') ) {
+}
+
+BackendGTasks.prototype.clientLogin = function(params) {
+	if (isChromeExtension()) {
+		return this.chromeClientLogin();
+	} else {
+		if (!params || (!params.clientId && !params.apiKey))
+			//Nb: Make sure not to return hardcoded params from signin()
+			params = {
+				clientId: GTASKS_CLIENT_ID,
+				apiKey: GTASKS_API_KEY,
+			}
+		if (!params.clientId || !params.apiKey)
+			return Promise.reject("Google ClientID or API Key not set");
+		
+		return gapi.client.init({
+			discoveryDocs: DISCOVERY_DOCS,
+			clientId: params.clientId,
+			apiKey: params.apiKey,
+			scope: SCOPES
+		});
+	};
+}
+BackendGTasks.prototype.signin = function(params) {
 	//Initialize the API client library
-	.then(result => this.clientLogin())
+	return this.clientLogin(params)
 	.then(result => {
 		this._initialized = true;
 		if (!isChromeExtension())
@@ -68,25 +111,12 @@ BackendGTasks.prototype.connect = function() {
 			gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
 		//Handle the initial sign-in state.
 		this.notifySignInStatus(this.isSignedIn());
-	});
-	return prom;
-}
-BackendGTasks.prototype.clientLogin = function() {
-	if (isChromeExtension()) {
-		return this.chromeClientLogin()
-	} else {
-		return gapi.client.init({
-			apiKey: GTASKS_API_KEY,
-			discoveryDocs: DISCOVERY_DOCS,
-			clientId: GTASKS_CLIENT_ID,
-			scope: SCOPES
-		});
-	};
-}
-BackendGTasks.prototype.signin = function() {
-	if (isChromeExtension())
-		return;
-	return gapi.auth2.getAuthInstance().signIn();
+		if (isChromeExtension())
+			return;
+		return gapi.auth2.getAuthInstance().signIn();
+	})
+	//Return the params passed
+	.then(() => params);
 }
 //Call to disconnect from the backend
 BackendGTasks.prototype.signout = function() {
