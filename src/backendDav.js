@@ -22,12 +22,12 @@ function insertDavAPIs() {
 	//We assume that this script (with its dependencies) is on the same level as index.html
 	//To be more change-proof we could locate our <script> tag and extract our relative path.
 	return loadScripts({
-		'davlambda': 'davlambda/dav.js',
-		'cryptojs': 'davlambda-digest/crypto.js',
-		'authcalc': 'davlambda-digest/authcalc.js',
+		'davjs': 'dav/dav.js',
+		'cryptojs': 'dav/httpauth/crypto.js',
+		'httpauth': 'dav/httpauth/httpauth.js',
 	}).then(result => loadScripts({
-		'dav-transport-digest': 'davlambda-digest/transport-digest.js',
-		'ical.js': 'ical/ical.js',
+		'davauth': 'dav/transport-digest.js',
+		'ical.js': 'dav/ical.js',
 	}));
 }
 BackendDav.prototype.connect = function() {
