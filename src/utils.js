@@ -56,6 +56,18 @@ function newGuid() {
 
 
 /*
+Stores/retrieves local storage entries as JSON
+*/
+function getLocalStorageItem(key) {
+	var data = window.localStorage.getItem(key);
+	return (data) ? JSON.parse(data);
+}
+function setLocalStorageItem(key, value) {
+	window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+
+/*
 Focus, caret and selection
 https://developer.mozilla.org/en-US/docs/Web/API/Selection
 

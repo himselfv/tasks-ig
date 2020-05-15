@@ -3,9 +3,8 @@ Security considerations in some contexts require:
  * No inline JS in HTML
  * No inline onclick= handlers.
 */
-var backend = null;
-
 var options = options || {}; //see config.js
+var accounts = [];
 
 var startPage = document.getElementById('startPage');
 var listPage = document.getElementById('listPage');
@@ -51,44 +50,14 @@ function initUi() {
 	
     tasklistInit();
     editorInit();
-    backendsInit();
+    accountsLoad();
 }
 
 
 /*
-Backend selection.
-Possible backends self-register in backends.js/backends.
-Currently active backend is stored in localstorage; if it's present, we try to load it automatically.
+Initializes a new backend instance from a given constructor.
+Used both when loading an existing account or creating a new one.
 */
-
-function backendsInit() {
-	//Create activation buttons
-	document.getElementById('startPrompt').textContent = 
-		(backends.length > 0) ? "Access tasks in:"
-		: "No backends available, see error log for details";
-	backends.forEach(item => {
-		let btn = document.createElement("button");
-		btn.textContent = item.name;
-		btn.associatedBackend = item;
-		btn.onclick = handleBackendAuthorize;
-		startPage.appendChild(btn);
-	});
-
-	//Activate current backend if there's any
-	var backendName = window.localStorage.getItem("tasksIg_ui_backend");
-	var backendParams = window.localStorage.getItem("tasksIg_ui_backendParams");
-	if (backendParams) backendParams = JSON.parse(backendParams)
-	if (!backendName)
-		updateSigninStatus(false);
-	else
-		backendInit(backendName)
-		.then(backend => backend.signin(backendParams))
-		.catch(error => {
-			updateSigninStatus(false);
-			handleError(error);
-		});
-}
-//Initializes a new backend instance from a given constructor. Returns a promise.
 function backendInit(backendCtor) {
 	if (typeof backendCtor == 'string') {
 		let constructor = window[backendCtor]; //a way to call function by string name
@@ -107,7 +76,141 @@ function backendInit(backendCtor) {
 	backendActionsUpdate();
 	return backend.init().then(() => backend);
 }
-function handleBackendAuthorize(event) {
+
+
+/*
+Account list
+Possible backends self-register in backends.js/backends.
+Account configuration is stored in localstorage; we try to load all accounts automatically.
+*/
+//Loads the current list of accounts and tries to activate each
+function accountsLoad() {
+	accounts = [];
+	
+	//Each entry is a backend with a few additional properties:
+	//  id = Unique ID of this backend instance
+	//  error = Exception that led to the backend failing to initialize or signin
+	//  tasklists = Current list of task lists (to simplify reloading the combined list)
+	
+	//Contains an ordered list of account IDs
+	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
+	for (let i in accountList) {
+		if (!accountList[i]) continue;
+		
+		let accountData = getLocalStorageItem("tasksIg_account_"+accountList[i]) || {};
+		//Each entry has:
+		//  backendName
+		//  params: any account params
+		
+		//Temporary use as account object until Backend is initialized
+		accountData.id = accountList[i]
+		accountData.initialized = false;
+		accountData.ui = {};
+		let accountNo = accounts.length;
+		accounts.push(accountData);
+
+		backendInit(accountData.backendName)
+		.then(backend => {
+			//TODO: Do not use accountNo, it can be changed by moveUp/moveDown while it's being initialized
+			//Once backend is initialized, store it instead
+			accounts[accountNo] = backend;
+			backend.id = accountData.id;
+			backend.ui = accountData.ui;
+			backend.initialized = true;
+			return backend.signin(accountData.params));
+		}
+		.catch(error => {
+			accounts[accountNo].error = error;
+			updateSigninStatus(accounts[accountNo], false);
+		});
+		
+	}
+	
+	accountListChanged();
+}
+//Account must have .id and its prototype be based on the backend class
+function accountAdd(account, params) {
+	var accountData = {};
+	accountData.backendName = account.prototype.functionName; //TODO: How?
+	accountData.params = params;
+	setLocalStorageItem("tasksIg_account_"+account.id, accountData);
+	
+	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
+	accountList.push(a)
+	setLocalStorageItem("tasksIg_accounts", accountList);
+
+	accounts.push(account); //this one should already be signin in
+	accountListChanged();
+}
+//Deletes the account by its id.
+function accountDelete(id) {
+	//TODO: We don't sign out here ATM, maybe we should? We should then accept "account" instead
+	
+	window.localStorage.removeItem("tasksIg_account_"+id);
+	
+	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
+	let i = accountList.findIndex(item => (item==entry));
+    accountList.splice(i, 1);
+	setLocalStorageItem("tasksIg_accounts", accountList);
+	accountListChanged();
+}
+//Switches places for accounts #i and #j in the ordered account list
+function accountSwap(i, j) {
+	//TODO: more index-safe inserts/deletions, perhaps with slices?
+	
+	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
+	var tmp = accountList[i];
+	accountList[i] = accountList[j];
+	accountList[j] = tmp;
+	setLocalStorageItem("tasksIg_accounts", accountList);
+	
+	//Also switch the loaded account slots
+	//Note that the switching may happen even while we're waiting for account to be initialized,
+	//so accounts indexes should not be considered stable for any lengthy time
+	tmp = accountList[i];
+	accountList[i] = accountList[j];
+	accountList[j] = tmp;
+	accountListChanged(); //the order has changed
+}
+function accountMoveUp(i) { if (i >= 0) return accountSwap(i, i-1); }
+function accountMoveDown(i) { return accountSwap(i, i+1); }
+
+//Called when the account list changes either due to initial loading, or addition/deletion/reordering
+function accountListChanged() {
+	//If we have no accounts at all, show account addition page,
+	//otherwise do nothing and wait for backends to initialize
+	if (accounts.keys().length <= 0) {
+		editorCancel();
+		tasklistClear();
+		backendSelectionShow({ cancellable: false; });
+	};
+	
+	backendListCancel(); //if present
+	reloadTaskLists(); //if e.g. the order of the lists has changed
+}
+
+
+/*
+Backend selection page
+*/
+function backendSelectionShow() {
+	//Create activation buttons
+	document.getElementById('startPrompt').textContent = 
+		(backends.length > 0) ? "Access tasks in:"
+		: "No backends available, see error log for details";
+	backends.forEach(item => {
+		let btn = document.createElement("button");
+		btn.textContent = item.name;
+		btn.associatedBackend = item;
+		btn.onclick = handleBackendClicked;
+		startPage.appendChild(btn);
+	});
+	startPage.classList.remove("hidden");
+}
+function backendSelectionCancel() {
+	startPage.classList.add("hidden");
+}
+function handleBackendClicked(event) {
 	backendClass = event.target.associatedBackend;
 	console.log("Authorizing with ", backendClass);
 	backendInit(backendClass.ctor)
@@ -134,10 +237,7 @@ function handleBackendAuthorize(event) {
 		return settingsPage.waitResult();
 	})
 	.then(setupResults => {
-		//Save the backend configuration
-		//console.log('Saving:', backendClass.name, setupResults);
-		window.localStorage.setItem("tasksIg_ui_backend", backendClass.ctor.name);
-		window.localStorage.setItem("tasksIg_ui_backendParams", JSON.stringify(setupResults));
+		accountsAdd(backend, setupResults);
 	})
 	.catch(error => {
 		//Usually "Cancelled", don't show to user
@@ -145,29 +245,7 @@ function handleBackendAuthorize(event) {
 		return null;
 	});
 }
-function handleSignoutClick(event) {
-	backend.signout().catch(handleError);
-	backend = null;
-	window.localStorage.removeItem("tasksIg_ui_backend");
-	window.localStorage.removeItem("tasksIg_ui_backendParams");
-}
-// Called when the signed in status changes, whether after a button click or automatically
-function updateSigninStatus(isSignedIn) {
-	if (isSignedIn) {
-		startPage.classList.add("hidden");
-		listPage.classList.remove("hidden");
-		reloadTaskLists();
-	} else {
-		editorCancel();
-		tasklistClear();
-		startPage.classList.remove("hidden");
-		listPage.classList.add("hidden");
-	}
-}
-function backendActionsUpdate() {
-	element("accountResetBtn").classList.toggle("hidden", !backend.reset);
-	tasklistActionsUpdate();
-}
+
 
 
 /*
@@ -321,6 +399,31 @@ function settingsPageCollectResults() {
 		results[inputs[i].dataId] = inputs[i].value;
 	//console.log(results);
 	return results;
+}
+
+
+/*
+Account list page
+*/
+function handleSignoutClick(event) {
+	backend.signout().catch(handleError);
+	backend = null;
+	window.localStorage.removeItem("tasksIg_ui_backend");
+	window.localStorage.removeItem("tasksIg_ui_backendParams");
+}
+
+// Called when the signed in status changes, whether after a button click or automatically
+function updateSigninStatus(account, isSignedIn) {
+	//TODO: Reload this account's tasklist + reload the tasklistList
+	
+	//If we're on the list from this account, switch away
+	//If we're editing a task from this account, cancel
+	
+	reloadTaskLists(); //in any case
+}
+function backendActionsUpdate() {
+	element("accountResetBtn").classList.toggle("hidden", !backend.reset);
+	tasklistActionsUpdate();
 }
 
 
@@ -482,102 +585,142 @@ function processReportedChanges() {
 }
 
 
-  /*
-  Task list selection box
-  */
-  var listSelectBox = document.getElementById('listSelectBox');
+/*
+Task list selection box
+*/
+var listSelectBox = document.getElementById('listSelectBox');
 
-  //Reloads the task list selection boxes + the currently selected task list
-  function reloadTaskLists() {
-  	let oldSelectedTasklist = selectedTaskList();
-    return tasklistBoxesReload().then(response => {
-      //tasklistBoxesReload() will trigger changed() by itself when selectedTasklist
-      //cannot be restored after reload -- no need to repeat then
-   	  if (selectedTaskList() == oldSelectedTasklist)
-        selectedTaskListChanged();
-    });
-  }
-  
-  function selectedTaskList() {
-    return listSelectBox.value;
-  }
-  function selectedTaskListTitle() {
-    return listSelectBox.options[listSelectBox.selectedIndex].text;
-  }
-  function setSelectedTaskList(tasklistId) {
-    listSelectBox.value = tasklistId;
-    selectedTaskListChanged(); //Won't get called automatically
-  }
-  function selectedTaskListChanged() {
-    tasklistActionsUpdate();
-   	return tasklistReloadSelected();
-  }
-  //Update available tasklist actions depending on the selected tasklist and available backend functions
-  function tasklistActionsUpdate() {
-    var tasklist = selectedTaskList();
-  	element("listAddBtn").classList.toggle("hidden",    !backend || !backend.tasklistAdd);
-    element("listRenameBtn").classList.toggle("hidden", !backend || !backend.tasklistUpdate || !tasklist);
-    element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
-  	element("tasksExportAllToFile").classList.toggle("hidden", !tasklist);
-  	tasksActionsUpdate();
-  }
-  
-  
-  //Reloads the contents of the task list boxes without reacting to possible
-  //changes of the currently selected list
-  function tasklistBoxesReload() {
-    return backend.tasklistList().then(taskLists => {
-      var oldSelection = listSelectBox.value;
-      nodeRemoveAllChildren(listSelectBox); //clear the list
-      nodeRemoveAllChildren(editorTaskList);
-      
-      if (taskLists && taskLists.length > 0) {
-        for (let i = 0; i < taskLists.length; i++) {
-          let taskList = taskLists[i];
-          let option = document.createElement("option");
-          option.text = taskList.title;
-          option.value = taskList.id;
-          editorTaskList.add(option.cloneNode(true));
-          listSelectBox.add(option);
-        }
-        listSelectBox.classList.remove("grayed");
-      } else {
-        let option = document.createElement("option");
-        option.hidden = true;
-        option.text = "Create a new list from the menu...";
-        option.value = "";
-        listSelectBox.add(option);
-        listSelectBox.classList.add("grayed");
-      }
-      
-      listSelectBox.value = oldSelection;
-      if ((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0)) {
-        listSelectBox.selectedIndex = 0;
-        return selectedTaskListChanged(); //in this case we have to
-      }
-    }).catch(handleError);
-  }
+//Starts the task list reload process for all accounts. The UI will be updated dynamically
+function reloadTaskLists() {
+	for (let i in accounts)
+		reloadAccountTaskLists(accounts[i]);
+}
+//Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
+function reloadAccountTaskLists(account) {
+	let prom = null;
+	if (!account.initialized || !account.isSignedIn)
+		prom = Promise.Resolve([]);
+	} else
+		prom = backend.tasklistList();
+	
+	prom.then(taskLists => {
+		account.ui.tasklists = [];
+		tasklistBoxReload();
+	});
+	return prom;
+}
+function tasklistBoxReload() {
+	var oldSelection = listSelectBox.value;
+	nodeRemoveAllChildren(listSelectBox); //clear the list
+	for (let i in accounts) {
+		let account = accounts[i];
+		if (!account)
+			continue;
+		
+		if (!account.initialized || !account.is !account.ui || !account.ui.tasklists) {
+			//Add a "grayed line" representing the account and it's problems
+			let option = document.createElement("option");
+			option.text = account.id;
+			if (account.error)
+				option.text = option.text+': '+account.error;
+			option.accountId = account.id;
+			option.value = "";
+			option.classList.add("grayed");
+			listSelectBox.add(option);
+			continue;
+		}
+		
+		for (let j in account.ui.tasklists) {
+			let tasklist = account.ui.tasklists[j];
+			let option = document.createElement("option");
+			option.value = {account: account, list: tasklist.id};
+			option.text = tasklist.title;
+			listSelectBox.add(option);
+		}
+	}
+	
+	if (accounts.length <= 0) {
+		let option = document.createElement("option");
+		option.hidden = true;
+		option.text = "Create a new acount from the menu...";
+		option.value = "";
+		listSelectBox.add(option);
+		listSelectBox.classList.add("grayed");
+	} else {
+		listSelectBox.classList.remove("grayed");
+	}
+	
+	listSelectBox.value = oldSelection;
+	if ((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0)) {
+		listSelectBox.selectedIndex = 0;
+		return selectedTaskListChanged(); //in this case we have to
+	}
+}
+
+//Backend for the currently selected list. Only set if the backend is initialized.
+var backend = null;
+
+//Compatibility. Returns the currently selected task list ID (in the currently selected account)
+function selectedTaskListId() {
+	let selection = listSelectBox.value;
+	return (!!selection) ? selection.tasklist : null;
+}
+function selectedTaskListTitle() {
+	return listSelectBox.options[listSelectBox.selectedIndex].text;
+}
+//Returns the { account: account, tasklist: tasklist } structure or null.
+function selectedTaskList() {
+	return listSelectBox.value;
+}
+//Selects the { account: account, tasklist: tasklist } entry.
+//noNotify: Do not call changed() -- we're simply restoring the control state
+function setSelectedTaskList(tasklist, noNotify) {
+	if (listSelectBox.value == tasklist)
+		return; //nothing to change
+	listSelectBox.value = tasklist;
+	selectedTaskListChanged(); //Won't get called automatically
+}
+function selectedTaskListChanged() {
+	tasklist = selectedTaskList();
+	if (!!tasklist && !!tasklist.backend)
+		backend = tasklistId.backend;
+	else
+		backend = null;
+	tasklistActionsUpdate();
+	return tasklistReloadSelected();
+}
+//Update available tasklist actions depending on the selected tasklist and available backend functions
+function tasklistActionsUpdate() {
+	var tasklist = selectedTaskList();
+	element("listAddBtn").classList.toggle("hidden",    !backend || !backend.tasklistAdd);
+	element("listRenameBtn").classList.toggle("hidden", !backend || !backend.tasklistUpdate || !tasklist);
+	element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
+	element("tasksExportAllToFile").classList.toggle("hidden", !tasklist);
+	tasksActionsUpdate();
+}
 
 
 
-  /*
-  Task list
-  Most procedures here update both the backend and the UI.
-  
-  Task entry and backend synchronization rules:
-  1. Update the UI first, post to backend later
-  2. Backend requests are processed more or less in order so eventually they catch up
-  3. Rely on the UI for current state
-  
-  The only thing that we need back from backend are new task IDs.
-  So everywhere instead of task IDs we should use promises to have task IDs. Even if task nodes
-  are by then deleted, promises should still be fulfilled if anyone holds them.
-  
-  Note: any data that we don't have stored locally in the nodes we should only update synchronously.
-  (See: taskMerge, editorOpen)
-  */
 
-  var tasks = null;
+
+/*
+Task list
+Most procedures here update both the backend and the UI.
+
+Task entry and backend synchronization rules:
+1. Update the UI first, post to backend later
+2. Backend requests are processed more or less in order so eventually they catch up
+3. Rely on the UI for current state
+
+The only thing that we need back from backend are new task IDs.
+So everywhere instead of task IDs we should use promises to have task IDs. Even if task nodes
+are by then deleted, promises should still be fulfilled if anyone holds them.
+
+Note: any data that we don't have stored locally in the nodes we should only update synchronously.
+(See: taskMerge, editorOpen)
+*/
+
+var tasks = null;
 
   function tasklistInit() {
     tasks = new TaskList(document.getElementById('listContent'));
@@ -1522,110 +1665,127 @@ function processReportedChanges() {
 
 
 
-  /*
-  Editor
-  */
-  var editor = document.getElementById("editor");
-  var editorTaskList = document.getElementById("editorTaskList");
-  var editorSaveBtn = document.getElementById("editorSave");
-  var editorCancelBtn = document.getElementById("editorCancel");
-  var editorDeleteBtn = document.getElementById("editorDelete");
-  var editorTaskId = null;
-  var editorListPageBackup = {}; //overwritten properties of listPage
-  
-  function editorInit() {
-    editorTaskList.onchange = editorTaskListChanged;
-    editorSaveBtn.onclick = editorSaveClose;
-    editorCancelBtn.onclick = editorCancel;
-    editorDeleteBtn.onclick = editorDelete;
-  }
+/*
+Editor
+*/
+var editor = document.getElementById("editor");
+var editorTaskList = document.getElementById("editorTaskList");
+var editorSaveBtn = document.getElementById("editorSave");
+var editorCancelBtn = document.getElementById("editorCancel");
+var editorDeleteBtn = document.getElementById("editorDelete");
+var editorTaskId = null;
+var editorListPageBackup = {}; //overwritten properties of listPage
 
-  //Show the editor
-  function editorOpen(taskId) {
-    if (!taskId) return;
-    log("Opening editor for task "+taskId);
-    
-    //Title edits sometimes are not yet commited even though we've sent the request
-    var job = waitCurrentJobsCompleted()
-    //Load the task data into the editor
-    .then(results => backend.get(taskId))
-    .then(task => {
-      if (!task) {
-        log("Failed to load the requested task for editing");
-        editorTaskId = null;
-        return;
-      }
-      document.getElementById("editorTaskTitle").innerText = task.title;
-      document.getElementById("editorTaskTitleBox").checked = (task.completed != null);
-      document.getElementById("editorTaskTitleP").classList.toggle("completed", task.completed != null);
-      document.getElementById("editorTaskList").value = selectedTaskList();
-      document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
-      document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
-      document.getElementById("editorMoveNotice").style.display = "none";
-      
-      editorTaskId = taskId;
-      
-      editorListPageBackup.display = listPage.style.display;
-      listPage.style.display = "none";
-      editorPage.classList.remove("hidden");
-    });
-    pushJob(job);
-  }
-  
-  //Called when the user selects a new list to move task to
-  function editorTaskListChanged() {
-    if (!editorTaskId) return;
-    if (document.getElementById("editorTaskList").value != selectedTaskList())
-      document.getElementById("editorMoveNotice").style.display = "block";
-    else
-      document.getElementById("editorMoveNotice").style.display = "none";
-  }
-  
-  //Save the task data currently in the editor
-  function editorSaveClose() {
-    if (!editorTaskId) {
-      editorCancel();
-      return;
-    }
-    
-    var patch = { "id": editorTaskId };
-    taskResSetCompleted(patch, document.getElementById("editorTaskTitleBox").checked);
-    patch.due = document.getElementById("editorTaskDate").valueAsDate; //null is fine!
-    patch.notes = document.getElementById("editorTaskNotes").value;
-    
-    var job = null;
-    
-    var newTaskList = document.getElementById("editorTaskList").value;
-    if (newTaskList == selectedTaskList())
-      //Simple version, just edit the task
-      job = taskPatch(patch);
-    else
-      //Complicated version, edit and move
-      job = taskPatchMoveToList(patch, newTaskList);
-    
-    job = job.then(response => editorCancel());
-    pushJob(job);
-  }
-  
-  //Close the editor
-  function editorCancel() {
-    log("Closing the editor");
-    editorPage.classList.add("hidden");
-    listPage.style.display = editorListPageBackup.display;
-    editorTaskId = null;
-    document.getElementById("editorMoveNotice").style.display = "none";
-  }
+function editorInit() {
+	editorTaskList.onchange = editorTaskListChanged;
+	editorSaveBtn.onclick = editorSaveClose;
+	editorCancelBtn.onclick = editorCancel;
+	editorDeleteBtn.onclick = editorDelete;
+}
 
-  function editorDelete() {
-    if (!editorTaskId)
-      return;
-    pushJob(
-    	taskDelete(tasks.find(editorTaskId))
-    	.then(response => editorCancel())
-    );
-  }
-  
-  
+//Show the editor
+function editorOpen(taskId) {
+	if (!taskId) return;
+	log("Opening editor for task "+taskId);
+
+	//Title edits sometimes are not yet commited even though we've sent the request
+	var job = waitCurrentJobsCompleted()
+	//Load the task data into the editor
+	.then(results => backend.get(taskId))
+	.then(task => {
+		if (!task) {
+			log("Failed to load the requested task for editing");
+			editorTaskId = null;
+			return;
+		}
+		editorTaskListBoxReload();
+		document.getElementById("editorTaskTitle").innerText = task.title;
+		document.getElementById("editorTaskTitleBox").checked = (task.completed != null);
+		document.getElementById("editorTaskTitleP").classList.toggle("completed", task.completed != null);
+		document.getElementById("editorTaskList").value = selectedTaskList();
+		document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
+		document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
+		document.getElementById("editorMoveNotice").style.display = "none";
+
+		editorTaskId = taskId;
+
+		editorListPageBackup.display = listPage.style.display;
+		listPage.style.display = "none";
+		editorPage.classList.remove("hidden");
+	});
+	pushJob(job);
+}
+
+function editorTaskListBoxReload() {
+	nodeRemoveAllChildren(editorTaskList);
+	for (let i in accounts) {
+		let account = accounts[i];
+		if (!account || !account.ui || !account.ui.tasklists)
+			continue;
+		for (let j in account.ui.tasklists) {
+			let tasklist = account.ui.tasklists[j];
+			let option = document.createElement("option");
+			option.accountId = account.id;
+			option.value = tasklist.id;
+			option.text = tasklist.title;
+			editorTaskList.add(option);
+		}
+}
+}
+//Called when the user selects a new list to move task to
+function editorTaskListChanged() {
+	if (!editorTaskId) return;
+	if (document.getElementById("editorTaskList").value != selectedTaskList())
+		document.getElementById("editorMoveNotice").style.display = "block";
+	else
+		document.getElementById("editorMoveNotice").style.display = "none";
+}
+
+//Save the task data currently in the editor
+function editorSaveClose() {
+	if (!editorTaskId) {
+		editorCancel();
+		return;
+	}
+
+	var patch = { "id": editorTaskId };
+	taskResSetCompleted(patch, document.getElementById("editorTaskTitleBox").checked);
+	patch.due = document.getElementById("editorTaskDate").valueAsDate; //null is fine!
+	patch.notes = document.getElementById("editorTaskNotes").value;
+
+	var job = null;
+
+	var newTaskList = document.getElementById("editorTaskList").value;
+	if (newTaskList == selectedTaskList())
+		//Simple version, just edit the task
+		job = taskPatch(patch);
+	else
+		//Complicated version, edit and move
+		job = taskPatchMoveToList(patch, newTaskList);
+
+	job = job.then(response => editorCancel());
+	pushJob(job);
+}
+
+//Close the editor
+function editorCancel() {
+	log("Closing the editor");
+	editorPage.classList.add("hidden");
+	listPage.style.display = editorListPageBackup.display;
+	editorTaskId = null;
+	document.getElementById("editorMoveNotice").style.display = "none";
+}
+
+function editorDelete() {
+	if (!editorTaskId)
+		return;
+	pushJob(
+		taskDelete(tasks.find(editorTaskId))
+		.then(response => editorCancel())
+	);
+}
+
+
 /*
 Currently this is called on load so index.js should be the last script in the list.
 */
