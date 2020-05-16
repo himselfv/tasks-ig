@@ -75,7 +75,6 @@ function backendCreate(backendCtor) {
 	//We store a few additional runtime properties with each account,
 	//under account.ui.
 	backend.ui = {};
-	backend.initialized = false;
 	
 	backend.onSignInStatus.push(updateSigninStatus);
 	registerChangeNotifications(backend);
@@ -116,7 +115,6 @@ function accountsLoad() {
 		accounts.push(account);
 		account.init()
 		.then(() => {
-			backend.initialized = true;
 			return backend.signin(accountData.params);
 		})
 		.catch(error => {
@@ -192,8 +190,6 @@ function accountSwap(i, j) {
 	setLocalStorageItem("tasksIg_accounts", accountList);
 	
 	//Also switch the loaded account slots
-	//Note that the switching may happen even while we're waiting for account to be initialized,
-	//so accounts indexes should not be considered stable for any lengthy time
 	tmp = accountList[i];
 	accountList[i] = accountList[j];
 	accountList[j] = tmp;
@@ -644,7 +640,7 @@ function reloadTaskLists() {
 function reloadAccountTaskLists(account) {
 	console.log('reloadAccountTaskLists:', account);
 	let prom = null;
-	if (!account.initialized || !account.isSignedIn) {
+	if ( !account.isSignedIn) {
 		console.log('Not initialized/not signed in, no lists');
 		prom = Promise.resolve([]);
 	} else
@@ -664,13 +660,16 @@ function tasklistBoxReload() {
 		let account = accounts[i];
 		if (!account)
 			continue;
+		console.log('tasklistBoxReload: account=', account, 'signedIn=', account.isSignedIn(), 'ui=', account.ui);
 		
-		if (!account.initialized || !account.isSignedIn() || !account.ui || !account.ui.tasklists) {
+		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists || isArrayEmpty(account.ui.tasklists)) {
 			//Add a "grayed line" representing the account and it's problems
 			let option = document.createElement("option");
 			option.text = account.constructor.uiName || account.constructor.name;
 			if (account.error)
 				option.text = option.text+': '+account.error;
+			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
+				option.text = option.text+' (no lists, add from menu)';
 			option.accountId = account.id;
 			option.value = "";
 			option.classList.add("grayed");

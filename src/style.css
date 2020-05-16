@@ -74,7 +74,8 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   flex-grow:10;
   margin-right:4px;
 }
-#listSelectBox.grayed {
+#listSelectBox.grayed,
+option.grayed {
   color: gray;
 }
 #listHeaderSpacer {
