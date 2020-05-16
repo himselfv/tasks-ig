@@ -8,18 +8,18 @@ function BackendLocal() {
 	this.STORAGE_PREFIX = 'tasksIg_backend_';
 }
 BackendLocal.prototype = Object.create(Backend.prototype);
+BackendLocal.prototype.constructor = BackendLocal;
 
 function BackendLocalStorage() {
-	log("BackendLocalStorage");
 	BackendLocal.call(this);
 	window.addEventListener('storage', (event) => this.localStorageChanged(event));
 }
 BackendLocalStorage.prototype = Object.create(BackendLocal.prototype);
+BackendLocalStorage.prototype.constructor = BackendLocalStorage;
 
 
 //Pass browser.storage.sync or browser.storage.local
 function BackendBrowserStorage(areaName) {
-	log("BackendBrowserStorage")
 	BackendLocal.call(this);
 	this.areaName = areaName;
 	if (areaName == "sync")
@@ -29,6 +29,7 @@ function BackendBrowserStorage(areaName) {
 	getBrowserStorage().onChanged.addListener((changes, areaName_) => this.backendStorageChanged(changes, areaName_));
 }
 BackendBrowserStorage.prototype = Object.create(BackendLocal.prototype);
+BackendBrowserStorage.prototype.constructor = BackendBrowserStorage;
 
 function getBrowserStorage() {
 	//Prefer "browser" as it's more standardized and less available (FF provides "chrome" too)
@@ -82,14 +83,16 @@ function BackendBrowserStorageSync() { BackendBrowserStorage.call(this, "sync");
 function BackendBrowserStorageLocal() { BackendBrowserStorage.call(this, "local"); }
 BackendBrowserStorageSync.prototype = Object.create(BackendBrowserStorage.prototype);
 BackendBrowserStorageLocal.prototype = Object.create(BackendBrowserStorage.prototype);
+BackendBrowserStorageSync.prototype.constructor = BackendBrowserStorageSync;
+BackendBrowserStorageLocal.prototype.constructor = BackendBrowserStorageLocal;
 
 //Self-register
 if (getBrowserStorageSync())
-	registerBackend("Browser storage (synced)", BackendBrowserStorageSync);
+	registerBackend(BackendBrowserStorageSync, "Browser storage (synced)");
 if (getBrowserStorageLocal())
-	registerBackend("Browser storage (local)", BackendBrowserStorageLocal);
+	registerBackend(BackendBrowserStorageLocal, "Browser storage (local)");
 else
-	registerBackend("Local storage", BackendLocalStorage);
+	registerBackend(BackendLocalStorage, "Local storage");
 
 
 /*
@@ -101,11 +104,11 @@ All must implement _get, _set, _remove and optionally "reset()".
 */
 BackendLocalStorage.prototype._get = function(key) {
 	var data = window.localStorage.getItem(this.STORAGE_PREFIX+key);
-	//log("_get: "+key+" -> "+data);
+	//console.log("_get: ", key, " -> ", data);
 	return Promise.resolve((data) ? JSON.parse(data) : null);
 }
 BackendLocalStorage.prototype._set = function(key, value) {
-	//log("_set: "+key+" := "+JSON.stringify(value));
+	//console.log("_set: ", key, " := ", value);
 	window.localStorage.setItem(this.STORAGE_PREFIX+key, JSON.stringify(value));
 	return Promise.resolve();
 }
@@ -126,7 +129,7 @@ BackendLocalStorage.prototype.reset = function() {
 BackendLocalStorage.prototype.localStorageChanged = function(event) {
 	if (event.storageArea != window.localStorage)
 		return;
-	//log(event);
+	//console.log(event);
 	var key = event.key;
 	if (!key.startsWith(this.STORAGE_PREFIX))
 		return;
@@ -135,10 +138,10 @@ BackendLocalStorage.prototype.localStorageChanged = function(event) {
 }
 
 BackendBrowserStorage.prototype._get = function(key) {
-	//log("get("+JSON.stringify(key)+")");
+	//console.log("get("+JSON.stringify(key)+")");
 	return this.storage.get(key)
 	.then(results => {
-		//log("get -> "+JSON.stringify(results));
+		//console.log("get -> "+JSON.stringify(results));
 		let value = results[key];
 		return value ? JSON.parse(value) : null;
 	});
@@ -146,33 +149,33 @@ BackendBrowserStorage.prototype._get = function(key) {
 BackendBrowserStorage.prototype._set = function(key, value) {
 	var data = {};
 	data[key] = JSON.stringify(value); //complex objects need to be stringified
-	//log("set("+JSON.stringify(key)+","+data[key]+")");
+	//console.log("set("+JSON.stringify(key)+","+data[key]+")");
 	return this.storage.set(data)
 	.then(results => {
-		//log("set -> "+JSON.stringify(results));
+		//console.log("set -> "+JSON.stringify(results));
 		return results;
 	});
 }
 BackendBrowserStorage.prototype._remove = function(key) {
-	//log("remove("+JSON.stringify(key)+")");
+	//console.log("remove("+JSON.stringify(key)+")");
 	return this.storage.remove(key)
 	.then(results => {
-		//log("remove -> "+JSON.stringify(results));
+		//console.log("remove -> "+JSON.stringify(results));
 		return results;
 	});
 }
 BackendBrowserStorage.prototype.reset = function() {
-	//log("remove()");
+	//console.log("remove()");
 	return this.storage.clear()
 	.then(results => {
-		//log("reset -> "+JSON.stringify(results));
+		//console.log("reset -> "+JSON.stringify(results));
 		return results;
 	});
 }
 BackendBrowserStorage.prototype.backendStorageChanged = function(changes, areaName) {
 	if (areaName != this.areaName)
 		return;
-	//log(changes);
+	//console.log(changes);
 	Object.keys(changes).forEach(key => {
 		let change = changes[key];
 		this.storageChanged(key, change.oldValue, change.newValue);
@@ -215,7 +218,7 @@ BackendLocal.prototype._getListIds = function(id) {
 	});
 }
 BackendLocal.prototype._setList = function(id, list) {
-	//log("_setList: id="+id+", list="+JSON.stringify(list));
+	//console.log("_setList: id="+id+", list="+JSON.stringify(list));
 	if (!id || !list) throw "_setList: id="+id+", list="+list;
 	return this._set("list_"+id, list);
 }
@@ -226,7 +229,7 @@ BackendLocal.prototype._getItem = function(id) {
 	return this._get("item_"+id); //null is okay
 }
 BackendLocal.prototype._setItem = function(id, item) {
-	//log("_setItem: id="+id+", item="+JSON.stringify(item));
+	//console.log("_setItem: id="+id+", item="+JSON.stringify(item));
 	if (!id || !item) throw "_setItem: id="+id+", item="+item;
 	return this._set("item_"+id, item);
 }
@@ -248,7 +251,7 @@ function _tasklistToParentPrev(list) {
 			prevId: prevId
 		};
 	});
-	//log(results);
+	//console.log(results);
 	return results;
 }
 
@@ -312,7 +315,7 @@ BackendLocal.prototype.list = function(tasklistId) {
 		items = Object.values(items);
 		for (let i=0; i<items.length; i++)
 			items[i].position = i;
-		//log("list(): returning "+JSON.stringify(items));
+		//console.log("list(): returning "+JSON.stringify(items));
 		return items;
 	});
 }
@@ -324,7 +327,7 @@ BackendLocal.prototype.update = function (task) {
 	var prom = this._getListIds(this.selectedTaskList)
 	.then(list => {
 		if (!list.includes(task.id)) {
-			//log("update(): list="+JSON.stringify(list)+", task="+task.id+", not found.");
+			//console.log("update(): list="+JSON.stringify(list)+", task="+task.id+", not found.");
 			return Promise.reject("update(): No such task in the current list");
 		}
 		taskResNormalize(task);
@@ -347,9 +350,9 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 		task.id = this._newId();
 		taskResNormalize(task);
 		list.splice(index, 0, new TasklistEntry(task.id, task.parent));
-		//log("insert(): "+JSON.stringify(task));
+		//console.log("insert(): "+JSON.stringify(task));
 		if (tasklistId == this.selectedTaskList) {
-			//log("insert(): adding to cache");
+			//console.log("insert(): adding to cache");
 			this.cache.add(task);
 		}
 		return Promise.all([
@@ -434,7 +437,7 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newBackend)
 	if (taskId && taskId.id) taskId = taskId.id;
 	var oldTasklistId = this.selectedTaskList;
 
-	//log("backend.moveToList: taskId	="+taskId+", newTasklist="+newTasklistId);
+	//console.log("backend.moveToList: taskId	="+taskId+", newTasklist="+newTasklistId);
 
 	//Collect all children
 	var ids = [taskId];
@@ -470,7 +473,7 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newBackend)
 			newList.splice(newIndex, 0, tasklistEntry);
 			//Increase insert index
 			newIndex += 1;
-			//log("moveToList(): inserted "+taskId+" at position "+(newIndex-1));
+			//console.log("moveToList(): inserted "+taskId+" at position "+(newIndex-1));
 			
 			//Remove from the cache
 			this.cache.delete({'id': taskId});
@@ -498,9 +501,9 @@ LocalStorage and browser.storage versions both end up here.
   !newValue => deleted
 */
 BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
-	//log("storageChanged: "+key);
-	//log(oldValue);
-	//log(newValue);
+	//console.log("storageChanged: "+key);
+	//console.log(oldValue);
+	//console.log(newValue);
 	
 	//To avoid duplicates, make sure each notification is only tracked in one way
 

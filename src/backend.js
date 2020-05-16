@@ -1,26 +1,29 @@
 ﻿/*
 Task resources and task cache.
 
-Task and tasklist resources are identical to the objects the GS API returns.
-Patch resources are identical to GS API patch sets.
+Task and tasklist resources are similar to the objects the GS API returns.
+Patch resources are similar to GS API patch sets.
 
 https://developers.google.com/tasks/v1/reference/tasks#resource
 https://developers.google.com/tasks/v1/reference/tasklists#resource
 
-Even if a backend has nothing to do with GTasks it needs to provide the same resources. At a minimum:
-Tasklist: id, title
-Task: id, title, parent, position, notes, status, due, completed, deleted
+Even if a backend has nothing to do with GTasks it needs to provide the same resources.
+See below for minimal structures.
 */
 
-//Lists all registered backend types for the application
-//Backend normally self-register when they're available
+//Lists all registered backend types for the application.
+//Backend normally self-register when they're available.
 var backends = [];
-function registerBackend(name, ctor) {
-	backends.push({'name': name, 'ctor': ctor});
+function registerBackend(ctor, name) {
+	if (name)
+		ctor.uiName = name;
+	backends.push(ctor);
 }
-function findBackend(name) {
-	return backends.find(item => { return item.name == name; });
-}
+/*
+A backend must be an object, its constructor correct -- it will be used to recreate it.
+  Derived.prototype = Object.create(Base.prototype); //or new Base(), if running Base() breaks nothing
+  Derived.prototype.constructor = Derived;
+*/
 
 
 /*
@@ -223,7 +226,7 @@ function Backend() {
 
 //Initialize the backend instance, load any neccessary libraries
 Backend.prototype.init = function() {
-	//log("Backend.init");
+	//console.log("Backend.init");
 	//Older API compatibility:
 	if (this.connect)
 		return this.connect();
@@ -261,7 +264,7 @@ Backend.prototype.setup = function(settings) {
 //Sign in to the backend with the configured params
 Backend.prototype.signin = function(params) {
 	//By default requires nothing
-	//log("Backend.signin");
+	//console.log("Backend.signin");
 	this._signedIn = true;
 	this.notifySignInStatus(true);
 	//Return the same cookies unchanged
@@ -269,7 +272,7 @@ Backend.prototype.signin = function(params) {
 }
 //Sign out from the backend
 Backend.prototype.signout = function() {
-	//log("Backend.signout");
+	//console.log("Backend.signout");
 	this._signedIn = false;
 	this.notifySignInStatus(false);
 	return Promise.resolve();
@@ -512,7 +515,7 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId, taskl
 		//Note: This is super-clumsy if getChildren() is implemented non-cached: we query children, drop their data, then query again in move()->patch()
 		var childIds = [];
 		children.forEach(child => childIds.push(child.id));
-		//log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
+		//console.log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
 		return this.move(childIds, newParentId, newPrevId, tasklistId);
 	})
 }

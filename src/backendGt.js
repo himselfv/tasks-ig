@@ -6,6 +6,7 @@ function BackendGTasks() {
 	Backend.call(this);
 }
 BackendGTasks.prototype = Object.create(Backend.prototype);
+BackendGTasks.prototype.constructor = BackendGTasks;
 
 // Array of API discovery doc URLs for APIs used by the quickstart
 var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/tasks/v1/rest"];
@@ -19,7 +20,7 @@ function isChromeExtension() {
 }
 
 //Self-register
-registerBackend("Google Tasks", BackendGTasks);
+registerBackend(BackendGTasks, "Google Tasks");
 
 
 /*

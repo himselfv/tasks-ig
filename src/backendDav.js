@@ -9,10 +9,10 @@ function BackendDav() {
 	Backend.call(this);
 }
 BackendDav.prototype = Object.create(Backend.prototype);
-
+BackendDav.prototype.constructor = BackendDav;
 
 //Self-register -- DAV is always supported
-registerBackend("CalDAV", BackendDav);
+registerBackend(BackendDav, "CalDAV");
 
 
 /*

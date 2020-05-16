@@ -60,7 +60,7 @@ Stores/retrieves local storage entries as JSON
 */
 function getLocalStorageItem(key) {
 	var data = window.localStorage.getItem(key);
-	return (data) ? JSON.parse(data);
+	return (data) ? JSON.parse(data) : null;
 }
 function setLocalStorageItem(key, value) {
 	window.localStorage.setItem(key, JSON.stringify(value));
@@ -133,7 +133,7 @@ function editableGetTextNode(node) {
 	return node; //fallback
 }
 function editableSetCaret(node, start, end) {
-	//log("editableSetCaret(start="+start+", end="+end+")");
+	//console.log("editableSetCaret(start="+start+", end="+end+")");
 	var range = document.createRange();
     
 	var target = editableGetTextNode(node);
@@ -182,12 +182,12 @@ function editableGetCaret(node) {
 		return null;
 	if (range.endContainer.nodeType == Node.TEXT_NODE) {
 		//Simple case: we're in the text
-		//log("editableGetCaret => "+range.endOffset);
+		//console.log("editableGetCaret => "+range.endOffset);
 		return range.endOffset;
 	}
 		
 	//If we're outside the TEXT_NODE but inside the editable, try to return something anyway
-	log("editableGetCaret => in non-text: type="+range.endContainer.nodeType+", offset="+range.endOffset);
+	console.log("editableGetCaret => in non-text: type="+range.endContainer.nodeType+", offset="+range.endOffset);
 	//Go to the top level
 	let container = range.endContainer;
 	let offset = range.endOffset;
@@ -200,11 +200,11 @@ function editableGetCaret(node) {
 	let i = range.endOffset;
 	while (i >= 1) {
 		if (editable.childNodes[i-1].nodeType==Node.TEXT_NODE) {
-			log("editableGetCaret: caret is to the right");
+			console.log("editableGetCaret: caret is to the right");
 			return editable.childNodes[i-1].textContent.length; //caret is after the end of the text
 		}
 	}
-	log("editableGetCaret: caret is to the left/empty text");
+	console.log("editableGetCaret: caret is to the left/empty text");
 	return 0; //caret is before the start of the text or there's no text
 }
 
@@ -388,5 +388,5 @@ function dump(value, name) {
 	if (name)
 		console.log(name+': '+JSON.stringify(value));
 	else
-		log(name);
+		console.log(name);
 }

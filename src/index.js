@@ -55,10 +55,10 @@ function initUi() {
 
 
 /*
-Initializes a new backend instance from a given constructor.
+Creates a new backend instance from a given constructor. Returns immediately.
 Used both when loading an existing account or creating a new one.
 */
-function backendInit(backendCtor) {
+function backendCreate(backendCtor) {
 	if (typeof backendCtor == 'string') {
 		let constructor = window[backendCtor]; //a way to call function by string name
 		if (!constructor)
@@ -66,15 +66,21 @@ function backendInit(backendCtor) {
 		backendCtor = constructor;
 	}
 
-	console.log("Using backend: ", backendCtor.name);
+	console.log("Initializing backend: ", backendCtor.name);
 
 	backend = new backendCtor();
 	if (!backend)
-		return Promise.reject("Cannot create backend "+backendCtor.name);
+		throw "Cannot create backend "+backendCtor.name;
+	
+	//We store a few additional runtime properties with each account,
+	//under account.ui.
+	backend.ui = {};
+	backend.initialized = false;
+	
 	backend.onSignInStatus.push(updateSigninStatus);
 	registerChangeNotifications(backend);
 	backendActionsUpdate();
-	return backend.init().then(() => backend);
+	return backend;
 }
 
 
@@ -85,80 +91,100 @@ Account configuration is stored in localstorage; we try to load all accounts aut
 */
 //Loads the current list of accounts and tries to activate each
 function accountsLoad() {
+	console.log('accountsLoad');
 	accounts = [];
 	
 	//Each entry is a backend with a few additional properties:
 	//  id = Unique ID of this backend instance
 	//  error = Exception that led to the backend failing to initialize or signin
-	//  tasklists = Current list of task lists (to simplify reloading the combined list)
+	//  ui.tasklists = Current list of task lists (to simplify reloading the combined list)
 	
 	//Contains an ordered list of account IDs
 	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
+	console.log('accountsLoad: list=', accountList);
 	for (let i in accountList) {
 		if (!accountList[i]) continue;
 		
 		let accountData = getLocalStorageItem("tasksIg_account_"+accountList[i]) || {};
+		console.log('accountsLoad: account#',i,' = ',accountData);
 		//Each entry has:
 		//  backendName
 		//  params: any account params
 		
-		//Temporary use as account object until Backend is initialized
-		accountData.id = accountList[i]
-		accountData.initialized = false;
-		accountData.ui = {};
-		let accountNo = accounts.length;
-		accounts.push(accountData);
-
-		backendInit(accountData.backendName)
-		.then(backend => {
-			//TODO: Do not use accountNo, it can be changed by moveUp/moveDown while it's being initialized
-			//Once backend is initialized, store it instead
-			accounts[accountNo] = backend;
-			backend.id = accountData.id;
-			backend.ui = accountData.ui;
+		let account = backendCreate(accountData.backendName);
+		account.id = accountList[i]; //copy the id
+		accounts.push(account);
+		account.init()
+		.then(() => {
 			backend.initialized = true;
-			return backend.signin(accountData.params));
-		}
+			return backend.signin(accountData.params);
+		})
 		.catch(error => {
-			accounts[accountNo].error = error;
-			updateSigninStatus(accounts[accountNo], false);
+			account.error = error;
+			updateSigninStatus(account, false);
 		});
 		
 	}
 	
 	accountListChanged();
 }
-//Account must have .id and its prototype be based on the backend class
+//Permanently adds a new account based on its Backend() object and signin() params.
+//Assign it an .id
 function accountAdd(account, params) {
+	console.log('accountAdd', arguments);
+	if (!account || !account.constructor || !account.constructor.name) {
+		console.error('accountAdd: invalid account object: ', account);
+		retrun;
+	}
+	console.log('accountAdd: constructor=', account.constructor);
+	
+	account.id = newGuid();
+	
+	//Store the account data
 	var accountData = {};
-	accountData.backendName = account.prototype.functionName; //TODO: How?
+	accountData.backendName = account.constructor.name;
 	accountData.params = params;
 	setLocalStorageItem("tasksIg_account_"+account.id, accountData);
+	console.log('accountAdd: accountData=', accountData);
 	
+	//Store the account ID in the permanent account list
 	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
-	accountList.push(a)
+	accountList.push(account.id);
 	setLocalStorageItem("tasksIg_accounts", accountList);
+	console.log('accountAdd: accountList=', accountList);
 
-	accounts.push(account); //this one should already be signin in
+	//Add to runtime list
+	accounts.push(account); //signin() should already be initiated
 	accountListChanged();
 }
 //Deletes the account by its id.
 function accountDelete(id) {
 	//TODO: We don't sign out here ATM, maybe we should? We should then accept "account" instead
 	
+	//Delete the account data
 	window.localStorage.removeItem("tasksIg_account_"+id);
 	
+	//Delete from the permanent list
 	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
-	let i = accountList.findIndex(item => (item==entry));
+	let i = accountList.findIndex(item => (item==id));
     accountList.splice(i, 1);
 	setLocalStorageItem("tasksIg_accounts", accountList);
-	accountListChanged();
+	
+	//Delete from runtime list
+	i = accounts.findIndex(item => (item.id==id));
+	if (i >= 0) {
+		accounts.splice(i, 1);
+		accountListChanged();
+	}
 }
 //Switches places for accounts #i and #j in the ordered account list
 function accountSwap(i, j) {
-	//TODO: more index-safe inserts/deletions, perhaps with slices?
-	
 	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
+	if (!Number.isInteger(i) || !Number.isInteger(j) || (i < 0)  || (j < 0) || (i >= accountList.length) || (j >= accountList.Length)) {
+		console.error('accountSwap: invalid arguments: ', arguments);
+		return;
+	}
+	
 	var tmp = accountList[i];
 	accountList[i] = accountList[j];
 	accountList[j] = tmp;
@@ -175,32 +201,39 @@ function accountSwap(i, j) {
 function accountMoveUp(i) { if (i >= 0) return accountSwap(i, i-1); }
 function accountMoveDown(i) { return accountSwap(i, i+1); }
 
-//Called when the account list changes either due to initial loading, or addition/deletion/reordering
+//Called when the _runtime_ account list changes either due to initial loading, or addition/deletion/reordering
 function accountListChanged() {
+	console.log('accountsListChanged; accounts=', accounts);
 	//If we have no accounts at all, show account addition page,
 	//otherwise do nothing and wait for backends to initialize
-	if (accounts.keys().length <= 0) {
+	if (Object.keys(accounts).length <= 0) {
 		editorCancel();
 		tasklistClear();
-		backendSelectionShow({ cancellable: false; });
-	};
-	
-	backendListCancel(); //if present
-	reloadTaskLists(); //if e.g. the order of the lists has changed
+		backendSelectionShow();
+	} else {
+		backendSelectionCancel(); //if present
+		reloadTaskLists(); //if e.g. the order of the lists has changed
+	}
 }
 
 
 /*
 Backend selection page
+TODO: When we reuse this to select backends for the 2nd+ account,
+  * Add Cancel button only in those cases
+  * Track whether its opened forcefully or manually, and do not close it on backend appearance,
+    if it's open manually.
+  * If the existing backends are lost during the procedure, just remove "Cancel".
 */
 function backendSelectionShow() {
+	console.log('backendSelectionShow', arguments);
 	//Create activation buttons
 	document.getElementById('startPrompt').textContent = 
 		(backends.length > 0) ? "Access tasks in:"
 		: "No backends available, see error log for details";
 	backends.forEach(item => {
 		let btn = document.createElement("button");
-		btn.textContent = item.name;
+		btn.textContent = item.uiName || item.name;
 		btn.associatedBackend = item;
 		btn.onclick = handleBackendClicked;
 		startPage.appendChild(btn);
@@ -212,9 +245,11 @@ function backendSelectionCancel() {
 }
 function handleBackendClicked(event) {
 	backendClass = event.target.associatedBackend;
-	console.log("Authorizing with ", backendClass);
-	backendInit(backendClass.ctor)
-	.then(backend => {
+	console.log("Setting up backend", backendClass);
+	let backend = backendCreate(backendClass);
+	backend.init()
+	.then(() => {
+		console.log('Backend initialized');
 		if (!backend.settingsPage)
 			return backend.setup({});
 		settings = backend.settingsPage();
@@ -229,7 +264,7 @@ function handleBackendClicked(event) {
 			.catch(error => {
 				//Cannot connect => leave settings page open
 				//Special error handling because these errors are planned
-				console.log('Backend.setup() error: ', error);
+				console.log('Backend.setup() error:', error);
 				window.alert(error);
 				settingsPage.reenable();
 			});
@@ -237,16 +272,23 @@ function handleBackendClicked(event) {
 		return settingsPage.waitResult();
 	})
 	.then(setupResults => {
-		accountsAdd(backend, setupResults);
+		console.log('Backend.setup() success; params:', setupResults);
+		accountAdd(backend, setupResults);
 	})
 	.catch(error => {
-		//Usually "Cancelled", don't show to user
+		//For configuration-form scenarios we can also get here when the user cancels the form
 		console.log('Could not configure backend:', error);
+		if (!(error instanceof FormCancelError))
+			window.alert(error);
 		return null;
 	});
 }
 
 
+
+//A special rejection object that's returned when the window is cancelled --
+//check for it to distinguish from other errors
+function FormCancelError() {}
 
 /*
 Settings page
@@ -310,7 +352,7 @@ function settingsPageShow(settings, backendName) {
 	btnCancel.onclick = function() {
 		let event = new CustomEvent('cancel');
 		settingsPage.dispatchEvent(event);
-		settingsPage.reject("Cancelled");
+		settingsPage.reject(new FormCancelError());
 	}
 
 	return settingsPage;
@@ -433,7 +475,7 @@ Common activity and error handling.
 */
 var hadErrors = false;
 function printError(msg) {
-	log(msg);
+	console.log(msg);
 	if (typeof msg != 'string')
 		msg = JSON.stringify(msg);
 	var popup = document.getElementById('errorPopup');
@@ -462,14 +504,14 @@ var idlePromises = [];
 function pushJob(prom) {
 	jobCount += 1;
 	jobs.push(prom);
-	//log("job added, count="+jobCount);
+	//console.log("job added, count="+jobCount);
 	document.getElementById('activityIndicator').classList.add('working');
 	prom.then(result => {
 		jobCount -= 1;
 		let index = jobs.indexOf(prom);
 		if (index >= 0)
 			jobs.splice(index, 1);
-		//log("job completed, count="+jobCount);
+		//console.log("job completed, count="+jobCount);
 		if (jobCount <= 0) {
 			document.getElementById('activityIndicator').classList.remove('working');
 			while ((idlePromises.length > 0) && (jobCount <= 0))
@@ -598,8 +640,8 @@ function reloadTaskLists() {
 //Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
 function reloadAccountTaskLists(account) {
 	let prom = null;
-	if (!account.initialized || !account.isSignedIn)
-		prom = Promise.Resolve([]);
+	if (!account.initialized || !account.isSignedIn) {
+		prom = Promise.resolve([]);
 	} else
 		prom = backend.tasklistList();
 	
@@ -617,10 +659,10 @@ function tasklistBoxReload() {
 		if (!account)
 			continue;
 		
-		if (!account.initialized || !account.is !account.ui || !account.ui.tasklists) {
+		if (!account.initialized || !account.isSignedIn() || !account.ui || !account.ui.tasklists) {
 			//Add a "grayed line" representing the account and it's problems
 			let option = document.createElement("option");
-			option.text = account.id;
+			option.text = account.constructor.uiName || account.constructor.name;
 			if (account.error)
 				option.text = option.text+': '+account.error;
 			option.accountId = account.id;
@@ -756,7 +798,7 @@ var tasks = null;
       return Promise.resolve();
     }
     
-    log('Loading list: '+selectedValue);
+    console.log('Loading list: '+selectedValue);
     return backend.selectTaskList(selectedValue)
     .then(taskRecords => {
       tasks.clear();
@@ -896,7 +938,7 @@ var tasks = null;
     //This captures all TaskList keypresses so filter it
     var entry = elementGetOwnerTaskEntry(event.target);
     if (!entry) return; //not in an entry
-    //log(event);
+    //console.log(event);
     
     if (event.ctrlKey) {
       if (event.key=="ArrowUp") {
@@ -992,11 +1034,11 @@ var tasks = null;
   }
   //Called when the user moves out of the task title
   function taskEntryTitleFocusOut(event) {
-    //log("taskEntryTitleFocusOut: "+event.entry);
+    //console.log("taskEntryTitleFocusOut: "+event.entry);
     taskEntryTitleCommitNow(event.entry);
   }
   function taskEntryTitleTriggerClear() {
-    //log("taskEntryTitleTriggerClear");
+    //console.log("taskEntryTitleTriggerClear");
     if (taskEntryTitleCommitTimer) {
       clearTimeout(taskEntryTitleCommitTimer);
       taskEntryTitleCommitTimer = null;
@@ -1010,7 +1052,7 @@ var tasks = null;
     else if (entry != taskEntryTitleCommitEntry)
       return;
     
-    log("taskEntryTitleCommitNow");
+    console.log("taskEntryTitleCommitNow");
     taskEntryTitleTriggerClear();
     if (!entry) {
       timeoutPromiseResolve();
@@ -1019,7 +1061,7 @@ var tasks = null;
     
     var patch = {};
     patch.title = taskEntryNormalizeTitle(entry.getTitle());
-    //log('newText: "'+patch.title+'"');
+    //console.log('newText: "'+patch.title+'"');
     taskEntryTitleCommitEntry = null;
     
     var job = taskEntryNeedIds([entry])
@@ -1184,14 +1226,14 @@ var tasks = null;
     Add it to the end.
   */
   function taskEntryTab(entry) {
-    //log("taskEntryTab");
+    //console.log("taskEntryTab");
     if (!backend || !backend.move) return;
     taskEntryTitleCommitNow(entry); //commit any pending changes
     
     //Find immediate previous sibling on the same task level
     var prevEntry = entry.getPreviousSibling();
     if (!prevEntry) {
-      log("Already first sibling, can't shift right");
+      console.log("Already first sibling, can't shift right");
       return; //if we're the first sibling, can't Tab->
     }
     
@@ -1213,12 +1255,12 @@ var tasks = null;
     Make following siblings into children of this entry.
   */
   function taskEntryShiftTab(entry) {
-    //log("taskEntryShiftTab");
+    //console.log("taskEntryShiftTab");
    	if (!backend || !backend.move) return;
     taskEntryTitleCommitNow(entry); //commit any pending changes
     
     if (entry.getLevel() <= 0) {
-      log("Already top element, can't tab up");
+      console.log("Already top element, can't tab up");
       return;
     }
     var parentEntry = entry.getParent();
@@ -1329,7 +1371,7 @@ var tasks = null;
   Merge another entry with all of its contents and children into the given one
   */
   function taskMerge(entry_to, entry_what) {
-    //log("taskMerge");
+    //console.log("taskMerge");
     if (!backend || !backend.update || !backend.move || !backend.delete) return;
     if (!entry_to || !entry_what) return;
     
@@ -1364,7 +1406,7 @@ var tasks = null;
     	return backend.get(ids)
     })
     .then(results => {
-      //log("have entry data");
+      //console.log("have entry data");
       task_to = results[entryToId];
       task_what = results[entryWhatId];
       
@@ -1387,11 +1429,11 @@ var tasks = null;
       //TODO: We could do both updates batched
       return backend.patch(patch_to)
         .then(response => {
-          //log("patched entry to");
+          //console.log("patched entry to");
           //Move children first!
           return backend.moveChildren(entryWhatId, entryToId, newPrevChildId);
         }).then(response => {
-          //log("moved children")
+          //console.log("moved children")
           return backend.deleteWithChildren(entryWhatId);
         });
     });
@@ -1400,14 +1442,14 @@ var tasks = null;
   
   //Merges the next entry into this one
   function taskMergeForward(entry) {
-    //log("taskMergeForward");
+    //console.log("taskMergeForward");
     var entry_after = entry.getNext(); //at any level
     if (!entry_after) return;
     return taskMerge(entry, entry_after);
   }
   
   function taskMergeBackward(entry) {
-    //log("taskMergeBackward");
+    //console.log("taskMergeBackward");
     var entry_before = entry.getPrev(); //at any level
     if (!entry_before) return;
     return taskMerge(entry_before, entry);
@@ -1421,7 +1463,7 @@ var tasks = null;
     //if no parent is given the node will be added by default to the end of the list
     if (!prevEntry)
       prevEntry = tasks.last();
-    //log(prevEntry);
+    //console.log(prevEntry);
     
     //Insert new task entry
     var level = parentEntry ? (parentEntry.getLevel()+1) : 0;
@@ -1483,7 +1525,7 @@ var tasks = null;
     });
     //Move all children of the original task to the new task
     job = job.then(response => {
-      //log("running backend.moveChildren")
+      //console.log("running backend.moveChildren")
       return backend.moveChildren(prevTaskId, newTaskId, null);
     });
     return pushJob(job);
@@ -1494,8 +1536,8 @@ var tasks = null;
   Makes the first child their new parent.
   */
   function taskLiberateChildren(entry) {
-    //log("taskLiberateChildren:");
-    //log(entry);
+    //console.log("taskLiberateChildren:");
+    //console.log(entry);
     var children = entry.getChildren();
     if (!children || (children.length <= 0))
       return Promise.resolve();
@@ -1507,8 +1549,8 @@ var tasks = null;
     
     //Of the child tasks select the top one
     var firstChild = children.splice(0, 1)[0];
-    //log("taskLiberateChildren: Making this one new parent:");
-    //log(firstChild);
+    //console.log("taskLiberateChildren: Making this one new parent:");
+    //console.log(firstChild);
     
     //This entry is the only one that's visually changing nesting level
     firstChild.adjustLevel(-1, false); //non-recursive
@@ -1686,7 +1728,7 @@ function editorInit() {
 //Show the editor
 function editorOpen(taskId) {
 	if (!taskId) return;
-	log("Opening editor for task "+taskId);
+	console.log("Opening editor for task "+taskId);
 
 	//Title edits sometimes are not yet commited even though we've sent the request
 	var job = waitCurrentJobsCompleted()
@@ -1694,7 +1736,7 @@ function editorOpen(taskId) {
 	.then(results => backend.get(taskId))
 	.then(task => {
 		if (!task) {
-			log("Failed to load the requested task for editing");
+			console.log("Failed to load the requested task for editing");
 			editorTaskId = null;
 			return;
 		}
@@ -1769,7 +1811,7 @@ function editorSaveClose() {
 
 //Close the editor
 function editorCancel() {
-	log("Closing the editor");
+	console.log("Closing the editor");
 	editorPage.classList.add("hidden");
 	listPage.style.display = editorListPageBackup.display;
 	editorTaskId = null;
