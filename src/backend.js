@@ -282,7 +282,7 @@ Backend.prototype.isSignedIn = function() {
 }
 //Notifies the subscribers about the signin change
 Backend.prototype.notifySignInStatus = function(status) {
-	this.onSignInStatus.notify(status);
+	this.onSignInStatus.notify(this, status);
 }
 
 

@@ -159,6 +159,7 @@ function accountAdd(account, params) {
 }
 //Deletes the account by its id.
 function accountDelete(id) {
+	console.log('accountDelete:', id);
 	//TODO: We don't sign out here ATM, maybe we should? We should then accept "account" instead
 	
 	//Delete the account data
@@ -448,20 +449,21 @@ function settingsPageCollectResults() {
 Account list page
 */
 function handleSignoutClick(event) {
-	backend.signout().catch(handleError);
-	backend = null;
-	window.localStorage.removeItem("tasksIg_ui_backend");
-	window.localStorage.removeItem("tasksIg_ui_backendParams");
+	backend.signout()
+	.then(() => {
+		accountDelete(backend.id);
+	})
+	.catch(handleError);
 }
 
 // Called when the signed in status changes, whether after a button click or automatically
 function updateSigninStatus(account, isSignedIn) {
-	//TODO: Reload this account's tasklist + reload the tasklistList
-	
+	console.log('updateSigninStatus: ', account, isSignedIn);
+	//TODO:	
 	//If we're on the list from this account, switch away
 	//If we're editing a task from this account, cancel
 	
-	reloadTaskLists(); //in any case
+	reloadAccountTaskLists(account);
 }
 function backendActionsUpdate() {
 	element("accountResetBtn").classList.toggle("hidden", !backend.reset);
@@ -634,24 +636,28 @@ var listSelectBox = document.getElementById('listSelectBox');
 
 //Starts the task list reload process for all accounts. The UI will be updated dynamically
 function reloadTaskLists() {
+	console.log('reloadTaskLists');
 	for (let i in accounts)
 		reloadAccountTaskLists(accounts[i]);
 }
 //Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
 function reloadAccountTaskLists(account) {
+	console.log('reloadAccountTaskLists:', account);
 	let prom = null;
 	if (!account.initialized || !account.isSignedIn) {
+		console.log('Not initialized/not signed in, no lists');
 		prom = Promise.resolve([]);
 	} else
 		prom = backend.tasklistList();
 	
-	prom.then(taskLists => {
-		account.ui.tasklists = [];
+	prom.then(tasklists => {
+		account.ui.tasklists = tasklists;
 		tasklistBoxReload();
 	});
 	return prom;
 }
 function tasklistBoxReload() {
+	console.log('tasklistBoxReload');
 	var oldSelection = listSelectBox.value;
 	nodeRemoveAllChildren(listSelectBox); //clear the list
 	for (let i in accounts) {
