@@ -24,6 +24,10 @@ A backend must be an object, its constructor correct -- it will be used to recre
   Derived.prototype = Object.create(Base.prototype); //or new Base(), if running Base() breaks nothing
   Derived.prototype.constructor = Derived;
 */
+function inheritBackend(fromWhat, what) {
+	what.prototype = Object.create(fromWhat.prototype);
+	what.prototype.constructor = what;
+}
 
 
 /*

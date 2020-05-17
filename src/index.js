@@ -457,11 +457,17 @@ function handleSignoutClick(event) {
 // Called when the signed in status changes, whether after a button click or automatically
 function updateSigninStatus(account, isSignedIn) {
 	console.log('updateSigninStatus: ', account, isSignedIn);
+	//If we're on the list from this account, switch away -- will happen automatically from reloadAccountTaskLists()
 	//TODO:	
-	//If we're on the list from this account, switch away
 	//If we're editing a task from this account, cancel
 	
+	let selected = selectedTaskList();
 	reloadAccountTaskLists(account);
+
+	//If we were on the "account status" message, update
+	let newSelected = selectedTaskList();
+	if ((selected.account == newSelected.account) && (selected.tasklist == newSelected.tasklist) && (!selected.tasklist))
+		tasklistReloadSelected(); //will update the message
 }
 function backendActionsUpdate() {
 	element("accountResetBtn").classList.toggle("hidden", !backend.reset);
@@ -670,9 +676,11 @@ function tasklistBoxReload() {
 			let option = document.createElement("option");
 			option.text = account.constructor.uiName || account.constructor.name;
 			if (account.error)
-				option.text = option.text+': '+account.error;
+				option.text = option.text+' (error)';
+			else if (!account.isSignedIn())
+				option.text = option.text+' (signing in)';
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
-				option.text = option.text+' (no lists, add from menu)';
+				option.text = option.text+' (no lists)';
 			option.value = JSON.stringify({ account: account.id, tasklist: null });
 			option.classList.add("grayed");
 			listSelectBox.add(option);
@@ -763,9 +771,6 @@ function tasklistActionsUpdate() {
 }
 
 
-
-
-
 /*
 Task list
 Most procedures here update both the backend and the UI.
@@ -827,12 +832,19 @@ function tasklistReloadSelected() {
 		tasks.root.classList.add('hidden');
 		message.classList.remove('hidden');
 		nodeRemoveAllChildren(message);
-		if (selected.account.error)
-			message.innerHTML = 'Could not initialize the backend '+(selected.account.uiName || selected.account.name)
+		console.log(selected.account);
+		console.log(selected.account.error);
+		console.log(!selected.account.error);
+		if (selected.account.error) {
+			console.log('meh1');
+			message.innerHTML = 'Could not initialize the backend '+(selected.account.constructor.uiName || selected.account.constructor.name)
 				+'.<br />Error: '+selected.account.error;
 			//TODO: Link to try reinitialize / link to edit settings
-		else if (!selected.account.isSignedIn())
+		}
+		else if (!selected.account.isSignedIn()) {
+			console.log('meh2');
 			message.innerHTML = 'Waiting for this account to complete sign in. If this takes too long, perhaps there are problems';
+		}
 		else if (!!selected.account.ui && isArrayEmpty(selected.account.ui.tasklists)) {
 			message.innerHTML = 'No task lists in this account. '; //
 			let a = document.createElement('a');
@@ -1666,8 +1678,13 @@ function tasksActionsUpdate() {
   }
 
   //Moves the task and all of its children to a different tasklist
-  function taskMoveToList(entry, newTaskListId) {
-    //Warning! This function has to play nice to taskPatchMoveToList and only use cached task data.
+  function taskMoveToList(entry, newTasklist) {
+    //If we're given a (account, list) object, split it
+    if (!!newTaskList.account) {
+        newBackend = newTasklist.account;
+        newTasklist = newTasklist.tasklist;
+    } else
+    	newBackend = null;
     
     var whenTaskId = entry.whenHaveId(); //before we .delete() it
     
@@ -1677,18 +1694,17 @@ function tasksActionsUpdate() {
     tasks.delete(entry);
     
     var job = whenTaskId
-    	.then(taskId => backend.moveToList(taskId, newTaskListId));
+    	.then(taskId => backend.moveToList(taskId, newTasklist, newBackend));
     return pushJob(job);
   }
 
   //Edits the task and immediately moves it and all of its children to a different tasklist
-  //WARNING: At the moment, all IDs must be explicitly set
-  function taskPatchMoveToList(patch, newTaskListId) {
-    //To avoid a pointless update of the task in the original list we play unfair:
-    //1. Update the current task locally
-    //2. Post it to another list and delete from this one
-    backend.cache.patch(patch); //patch locally
-    return taskMoveToList(tasks.find(patch.id), newTaskListId);
+  function taskPatchMoveToList(patch, newTaskList) {
+    //Previously this function tried to optimize by only patching the cache,
+    //and then expecting that backend.moveToList() is a copy+delete, and it uses data from cache.
+    //Both assumptions are wrong in general case, so no optimization:
+    return taskPatch(patch)
+    .then(() => taskMoveToList(tasks.find(patch.id), newTaskListId));
   }
 
 
@@ -1765,18 +1781,19 @@ function tasksActionsUpdate() {
 	
 */
 function Editor() {
-	this.page = document.getElementById("editor");
-	this.taskList = document.getElementById("editorTaskList");
+	this.page = document.getElementById("editorPage");
+	this.taskListBox = document.getElementById("editorTaskList");
 	this.saveBtn = document.getElementById("editorSave");
 	this.cancelBtn = document.getElementById("editorCancel");
 	this.deleteBtn = document.getElementById("editorDelete");
 	this.taskId = null;
 	this.listPageBackup = {}; //overwritten properties of listPage
 	
-	this.taskList.onchange = this.taskListChanged;
-	this.saveBtn.onclick = this.saveClose;
-	this.cancelBtn.onclick = this.cancel;
-	this.deleteBtn.onclick = this.deleteBtnClick;
+	//Preserve proper "this" by lambdas
+	this.taskListBox.onchange = () => { this.taskListChanged(); };
+	this.saveBtn.onclick = () => { this.saveClose(); };
+	this.cancelBtn.onclick = () => { this.cancel(); };
+	this.deleteBtn.onclick = () => { this.deleteBtnClick(); };
 }
 
 //Show the editor
@@ -1798,10 +1815,10 @@ Editor.prototype.open = function(taskId) {
 		document.getElementById("editorTaskTitle").innerText = task.title;
 		document.getElementById("editorTaskTitleBox").checked = (task.completed != null);
 		document.getElementById("editorTaskTitleP").classList.toggle("completed", task.completed != null);
-		document.getElementById("editorTaskList").value = selectedTaskList().tasklist;
 		document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
 		document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
 		document.getElementById("editorMoveNotice").style.display = "none";
+		this.setSelectedTaskList(selectedTaskList())
 
 		this.taskId = taskId;
 
@@ -1812,7 +1829,7 @@ Editor.prototype.open = function(taskId) {
 	pushJob(job);
 }
 Editor.prototype.taskListBoxReload = function() {
-	nodeRemoveAllChildren(this.askList);
+	nodeRemoveAllChildren(this.taskListBox);
 	for (let i in accounts) {
 		let account = accounts[i];
 		if (!account || !account.ui || !account.ui.tasklists)
@@ -1820,17 +1837,42 @@ Editor.prototype.taskListBoxReload = function() {
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
 			let option = document.createElement("option");
-			option.accountId = account.id;
-			option.value = tasklist.id;
+			option.value = JSON.stringify({ account: account.id, tasklist: tasklist.id });
 			option.text = tasklist.title;
-			this.taskList.add(option);
+			this.taskListBox.add(option);
 		}
+	}
 }
+Editor.prototype.selectedTaskList = function() {
+	let value = this.taskListBox.value;
+	if (!!value) {
+		value = JSON.parse(value);
+		//Convert account ID to account object
+		if (!!value.account)
+			value.account = accountFind(value.account);
+	}
+	console.log('Editor.selectedTaskList() ->', value);
+	return value;
+}
+//Does not notify taskListChanged()
+Editor.prototype.setSelectedTaskList = function(tasklist) {
+	console.log('Editor.setSelectedTaskList:', tasklist);
+	//Convert account object -> account ID
+	if (!!tasklist.account && !(typeof tasklist.account == 'string')) //just in case we're already given the ID
+		tasklist.account = tasklist.account.id;
+	tasklist = JSON.stringify(tasklist);
+	if (this.taskListBox.value == tasklist)
+		return; //nothing to change
+	this.taskListBox.value = tasklist;
+
 }
 //Called when the user selects a new list to move task to
 Editor.prototype.taskListChanged = function() {
+	console.log('taskListChanged');
+	console.log(this);
 	if (!this.taskId) return;
-	if (document.getElementById("editorTaskList").value != selectedTaskList().tasklist)
+	console.log('taskListChanged: this=', this.selectedTaskList(), ', base=', selectedTaskList());
+	if (this.selectedTaskList() != selectedTaskList())
 		document.getElementById("editorMoveNotice").style.display = "block";
 	else
 		document.getElementById("editorMoveNotice").style.display = "none";
@@ -1850,8 +1892,8 @@ Editor.prototype.saveClose = function() {
 
 	var job = null;
 
-	var newTaskList = document.getElementById("editorTaskList").value;
-	if (newTaskList == selectedTaskList().tasklist)
+	var newTaskList = this.selectedTaskList();
+	if (newTaskList == selectedTaskList())
 		//Simple version, just edit the task
 		job = taskPatch(patch);
 	else
