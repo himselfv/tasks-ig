@@ -488,11 +488,13 @@ function updateSigninStatus(account, isSignedIn) {
 
 	//If we were on the "account status" message, update
 	let newSelected = selectedTaskList();
-	if ((selected.account == newSelected.account) && (selected.tasklist == newSelected.tasklist) && (!selected.tasklist))
+	if ((selected.account == newSelected.account) && (selected.tasklist == newSelected.tasklist) && (!selected.tasklist)) {
 		tasklistReloadSelected(); //will update the message
+		backendActionsUpdate();
+	}
 }
 function backendActionsUpdate() {
-	element("accountResetBtn").classList.toggle("hidden", !backend.reset);
+	element("accountResetBtn").classList.toggle("hidden", !backend || !backend.reset);
 	tasklistActionsUpdate();
 }
 
