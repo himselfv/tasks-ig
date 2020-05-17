@@ -82,10 +82,15 @@ option.grayed {
   /*flex-grow: 5;*/
 }
 
-#listContent {
+#listContent,
+#listMessage { /* both fill 100% height */
   width: 100%;
   flex: 1;
   overflow: auto; /* disable to "unstick" header   */
+}
+#listMessage {
+  text-align: center;
+  margin-top: 1em;
 }
 
 #listFooter {

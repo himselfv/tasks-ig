@@ -813,21 +813,43 @@ function tasklistReloadSelected() {
 	if (oldFocus)
 		oldFocus = { id: oldFocus.getId(), pos: oldFocus.getCaret() };
 
-	if (!backend) {
-		console.log('tasklistReloadSelected: no account selected');
-		return;
-	}
-
-	backend.selectTaskList(null); //clear the cache
-	var selectedList = selectedTaskList();
-	if (!selectedList || !selectedList.tasklist) {
-		tasks.clear();
-		tasksFocusChanged();
+	tasks.clear();
+	
+	var selected = selectedTaskList();
+	if (!backend || !selected) {
+		console.log('tasklistReloadSelected: no tasklist entry selected');
 		return Promise.resolve();
 	}
 
-	console.log('Loading list: ', selectedList);
-	return backend.selectTaskList(selectedList.tasklist)
+	console.log('Loading list: ', selected);
+	backend.selectTaskList(null); //clear the cache
+	
+	let message = document.getElementById('listMessage');
+	if (!selected.tasklist) {
+		tasks.root.classList.add('hidden');
+		message.classList.remove('hidden');
+		nodeRemoveAllChildren(message);
+		if (selected.account.error)
+			message.innerHTML = 'Could not initialize the backend '+(selected.account.uiName || selected.account.name)
+				+'.<br />Error: '+selected.account.error;
+			//TODO: Link to try reinitialize / link to edit settings
+		else if (!selected.account.isSignedIn())
+			message.innerHTML = 'Waiting for this account to complete sign in. If this takes too long, perhaps there are problems';
+		else if (!!selected.account.ui && isArrayEmpty(selected.account.ui.tasklists)) {
+			message.innerHTML = 'No task lists in this account. '; //
+			let a = document.createElement('a');
+			a.href = "#";
+			a.textContent = 'Add a task list.';
+			a.addEventListener("click", tasklistAdd);
+			message.appendChild(a);
+		} else
+			message.innerHTML = 'Tasklist not selected'
+		return Promise.resolve();
+	}
+	message.classList.add('hidden');
+	tasks.root.classList.remove('hidden');
+
+	return backend.selectTaskList(selected.tasklist)
 	.then(taskRecords => {
 		tasks.clear();
 		tasks.appendTaskChildren(null, 0, taskRecords);
