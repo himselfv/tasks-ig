@@ -8,7 +8,6 @@ var accounts = [];
 
 var startPage = document.getElementById('startPage');
 var listPage = document.getElementById('listPage');
-var editorPage = document.getElementById('editorPage');
 var settingsPage = document.getElementById('settingsPage');
 
 var mainmenu = null;
@@ -49,7 +48,6 @@ function initUi() {
 	taskmenu.add("", tasklistReloadSelected, "Refresh");
 	
     tasklistInit();
-    editorInit();
     accountsLoad();
 }
 
@@ -209,7 +207,7 @@ function accountListChanged() {
 	//If we have no accounts at all, show account addition page,
 	//otherwise do nothing and wait for backends to initialize
 	if (Object.keys(accounts).length <= 0) {
-		editorCancel();
+		editor.cancel();
 		tasklistClear();
 		backendSelectionShow();
 	} else {
@@ -782,7 +780,7 @@ So everywhere instead of task IDs we should use promises to have task IDs. Even 
 are by then deleted, promises should still be fulfilled if anyone holds them.
 
 Note: any data that we don't have stored locally in the nodes we should only update synchronously.
-(See: taskMerge, editorOpen)
+(See: taskMerge, editor.open)
 */
 
 var tasks = null;
@@ -890,7 +888,7 @@ function tasksActionsUpdate() {
   */
   function taskEntryEdit(entry) {
     taskEntryTitleCommitNow(entry); //commit any pending changes
-    entry.whenHaveId().then(taskId => editorOpen(taskId));
+    entry.whenHaveId().then(taskId => editor.open(taskId));
   }
   //Called when the editor button for the entry had been clicked
   function taskEntryEditClicked(event) {
@@ -1764,25 +1762,25 @@ function tasksActionsUpdate() {
 
 
 /*
-Editor
+	
 */
-var editor = document.getElementById("editor");
-var editorTaskList = document.getElementById("editorTaskList");
-var editorSaveBtn = document.getElementById("editorSave");
-var editorCancelBtn = document.getElementById("editorCancel");
-var editorDeleteBtn = document.getElementById("editorDelete");
-var editorTaskId = null;
-var editorListPageBackup = {}; //overwritten properties of listPage
-
-function editorInit() {
-	editorTaskList.onchange = editorTaskListChanged;
-	editorSaveBtn.onclick = editorSaveClose;
-	editorCancelBtn.onclick = editorCancel;
-	editorDeleteBtn.onclick = editorDelete;
+function Editor() {
+	this.page = document.getElementById("editor");
+	this.taskList = document.getElementById("editorTaskList");
+	this.saveBtn = document.getElementById("editorSave");
+	this.cancelBtn = document.getElementById("editorCancel");
+	this.deleteBtn = document.getElementById("editorDelete");
+	this.taskId = null;
+	this.listPageBackup = {}; //overwritten properties of listPage
+	
+	this.taskList.onchange = this.taskListChanged;
+	this.saveBtn.onclick = this.saveClose;
+	this.cancelBtn.onclick = this.cancel;
+	this.deleteBtn.onclick = this.deleteBtnClick;
 }
 
 //Show the editor
-function editorOpen(taskId) {
+Editor.prototype.open = function(taskId) {
 	if (!taskId) return;
 	console.log("Opening editor for task "+taskId);
 
@@ -1793,10 +1791,10 @@ function editorOpen(taskId) {
 	.then(task => {
 		if (!task) {
 			console.log("Failed to load the requested task for editing");
-			editorTaskId = null;
+			this.taskId = null;
 			return;
 		}
-		editorTaskListBoxReload();
+		this.taskListBoxReload();
 		document.getElementById("editorTaskTitle").innerText = task.title;
 		document.getElementById("editorTaskTitleBox").checked = (task.completed != null);
 		document.getElementById("editorTaskTitleP").classList.toggle("completed", task.completed != null);
@@ -1805,17 +1803,16 @@ function editorOpen(taskId) {
 		document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
 		document.getElementById("editorMoveNotice").style.display = "none";
 
-		editorTaskId = taskId;
+		this.taskId = taskId;
 
-		editorListPageBackup.display = listPage.style.display;
+		this.listPageBackup.display = listPage.style.display;
 		listPage.style.display = "none";
-		editorPage.classList.remove("hidden");
+		this.page.classList.remove("hidden");
 	});
 	pushJob(job);
 }
-
-function editorTaskListBoxReload() {
-	nodeRemoveAllChildren(editorTaskList);
+Editor.prototype.taskListBoxReload = function() {
+	nodeRemoveAllChildren(this.askList);
 	for (let i in accounts) {
 		let account = accounts[i];
 		if (!account || !account.ui || !account.ui.tasklists)
@@ -1826,13 +1823,13 @@ function editorTaskListBoxReload() {
 			option.accountId = account.id;
 			option.value = tasklist.id;
 			option.text = tasklist.title;
-			editorTaskList.add(option);
+			this.taskList.add(option);
 		}
 }
 }
 //Called when the user selects a new list to move task to
-function editorTaskListChanged() {
-	if (!editorTaskId) return;
+Editor.prototype.taskListChanged = function() {
+	if (!this.taskId) return;
 	if (document.getElementById("editorTaskList").value != selectedTaskList().tasklist)
 		document.getElementById("editorMoveNotice").style.display = "block";
 	else
@@ -1840,13 +1837,13 @@ function editorTaskListChanged() {
 }
 
 //Save the task data currently in the editor
-function editorSaveClose() {
-	if (!editorTaskId) {
-		editorCancel();
+Editor.prototype.saveClose = function() {
+	if (!this.taskId) {
+		this.cancel();
 		return;
 	}
 
-	var patch = { "id": editorTaskId };
+	var patch = { "id": this.taskId };
 	taskResSetCompleted(patch, document.getElementById("editorTaskTitleBox").checked);
 	patch.due = document.getElementById("editorTaskDate").valueAsDate; //null is fine!
 	patch.notes = document.getElementById("editorTaskNotes").value;
@@ -1861,27 +1858,29 @@ function editorSaveClose() {
 		//Complicated version, edit and move
 		job = taskPatchMoveToList(patch, newTaskList);
 
-	job = job.then(response => editorCancel());
+	job = job.then(response => this.cancel());
 	pushJob(job);
 }
 
 //Close the editor
-function editorCancel() {
+Editor.prototype.cancel = function() {
 	console.log("Closing the editor");
-	editorPage.classList.add("hidden");
-	listPage.style.display = editorListPageBackup.display;
-	editorTaskId = null;
+	this.page.classList.add("hidden");
+	listPage.style.display = this.listPageBackup.display;
+	this.taskId = null;
 	document.getElementById("editorMoveNotice").style.display = "none";
 }
 
-function editorDelete() {
-	if (!editorTaskId)
+Editor.prototype.deleteBtnClick = function() {
+	if (!this.taskId)
 		return;
 	pushJob(
-		taskDelete(tasks.find(editorTaskId))
-		.then(response => editorCancel())
+		taskDelete(tasks.find(this.taskId))
+		.then(response => this.cancel())
 	);
 }
+
+var editor = new Editor();
 
 
 /*
