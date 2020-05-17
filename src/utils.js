@@ -225,6 +225,11 @@ function nodeRemoveAllChildren(node) {
 	while (node.firstChild)
     	node.removeChild(node.firstChild);
 }
+function nodeRemoveChildrenByTagName(node, tagName) {
+	let elements = node.getElementsByTagName(tagName);
+	while (elements.length > 0) //the collection is live
+		node.removeChild(elements[elements.length-1]);
+}
 
 //Returns getBoundingClientRect(), only relative not to the offsetParent but to a given parent node
 //Pass null to retrieve the absolute bounding rect

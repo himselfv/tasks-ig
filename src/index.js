@@ -233,6 +233,7 @@ function backendSelectionShow() {
 	document.getElementById('startPrompt').textContent = 
 		(backends.length > 0) ? "Access tasks in:"
 		: "No backends available, see error log for details";
+	nodeRemoveChildrenByTagName(startPage, 'button');
 	backends.forEach(item => {
 		let btn = document.createElement("button");
 		btn.textContent = item.uiName || item.name;
@@ -367,9 +368,7 @@ function settingsPageClose() {
 function settingsPageReload(settings) {
 	//console.log('settingsPageReload:', settings);
 	let content = document.getElementById('settingsContent');
-	while (content.firstChild) {
-		content.removeChild(content.lastChild);
-	}
+	nodeRemoveAllChildren(content);
 	for (let key in settings) {
 		let param = settings[key];
 		
@@ -533,6 +532,10 @@ function waitIdle() {
 		return new Promise((resolve, reject) => { idlePromises.push(resolve); })
 }
 //Same but recevies a function pointer
+function waitCurrentJobsCompleted() {
+	return Promise.all(jobs);
+}
+
 function addIdleJob(job) {
 	if (jobCount <= 0) {
 		job(); //synchronously
@@ -542,10 +545,6 @@ function addIdleJob(job) {
 }
 //Returns a promise that fires when all operations queued AT THE MOMENT OF THE REQUEST have completed.
 //New operations may be queued by the time it fires.
-function waitCurrentJobsCompleted() {
-	return Promise.all(jobs);
-}
-
 function handleBeforeUnload(event) {
 	//Show the confirmation popup if the changes are still pending
 	//These days most browsers ignore the message contents + only show the popup if you have interacted with the page
