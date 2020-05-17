@@ -210,15 +210,14 @@ BackendLocal.prototype._getList = function(id) {
 }
 BackendLocal.prototype._getListIds = function(id) {
 	return this._getList(id).then(items => {
-		console.log(items);
+		//console.log('_getListIds:', items);
 		let results = [];
 		items.forEach(item => results.push(item.id));
-		console.log(results);
 		return results;
 	});
 }
 BackendLocal.prototype._setList = function(id, list) {
-	//console.log("_setList: id="+id+", list="+JSON.stringify(list));
+	//console.log("_setList: id=", id, "list=", JSON.stringify(list));
 	if (!id || !list) throw "_setList: id="+id+", list="+list;
 	return this._set("list_"+id, list);
 }
@@ -229,7 +228,7 @@ BackendLocal.prototype._getItem = function(id) {
 	return this._get("item_"+id); //null is okay
 }
 BackendLocal.prototype._setItem = function(id, item) {
-	//console.log("_setItem: id="+id+", item="+JSON.stringify(item));
+	//console.log("_setItem: id=", id, "item=", JSON.stringify(item));
 	if (!id || !item) throw "_setItem: id="+id+", item="+item;
 	return this._set("item_"+id, item);
 }

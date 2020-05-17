@@ -197,6 +197,11 @@ function accountSwap(i, j) {
 }
 function accountMoveUp(i) { if (i >= 0) return accountSwap(i, i-1); }
 function accountMoveDown(i) { return accountSwap(i, i+1); }
+//Returns a runtime account object based on its ID
+function accountFind(id) {
+	let i = accounts.findIndex(item => (item.id==id));
+	return (i >= 0) ? accounts[i] : null;
+}
 
 //Called when the _runtime_ account list changes either due to initial loading, or addition/deletion/reordering
 function accountListChanged() {
@@ -607,7 +612,7 @@ var reportedChanges = {
 function processReportedChanges() {
 	var prom = Promise.resolve();
 	if (reportedChanges.tasklists)
-		prom = prom.then(results => tasklistBoxesReload()); //TODO: Does not return a promise!
+		prom = prom.then(results => reloadAccountTaskLists(backend));
 	let selectedList = selectedTaskList();
 	if (!selectedList)
 		reportedChanges.tasks = []; //no list active, we don't care
@@ -627,6 +632,7 @@ function processReportedChanges() {
 
 /*
 Task list selection box
+Each entry's .value is a JSON.stringify({ account: accountId, tasklist: tasklistId }).
 */
 var listSelectBox = document.getElementById('listSelectBox');
 
@@ -640,11 +646,11 @@ function reloadTaskLists() {
 function reloadAccountTaskLists(account) {
 	console.log('reloadAccountTaskLists:', account);
 	let prom = null;
-	if ( !account.isSignedIn) {
+	if (!account.isSignedIn) {
 		console.log('Not initialized/not signed in, no lists');
 		prom = Promise.resolve([]);
 	} else
-		prom = backend.tasklistList();
+		prom = account.tasklistList();
 	
 	prom.then(tasklists => {
 		account.ui.tasklists = tasklists;
@@ -670,8 +676,7 @@ function tasklistBoxReload() {
 				option.text = option.text+': '+account.error;
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
 				option.text = option.text+' (no lists, add from menu)';
-			option.accountId = account.id;
-			option.value = "";
+			option.value = JSON.stringify({ account: account.id, tasklist: null });
 			option.classList.add("grayed");
 			listSelectBox.add(option);
 			continue;
@@ -680,7 +685,7 @@ function tasklistBoxReload() {
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
 			let option = document.createElement("option");
-			option.value = {account: account, list: tasklist.id};
+			option.value = JSON.stringify({ account: account.id, tasklist: tasklist.id });
 			option.text = tasklist.title;
 			listSelectBox.add(option);
 		}
@@ -699,6 +704,7 @@ function tasklistBoxReload() {
 	
 	listSelectBox.value = oldSelection;
 	if ((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0)) {
+		console.log('tasklistBoxReload: Old selection', oldSelection, 'is lost, selecting the first item');
 		listSelectBox.selectedIndex = 0;
 		return selectedTaskListChanged(); //in this case we have to
 	}
@@ -717,11 +723,23 @@ function selectedTaskListTitle() {
 }
 //Returns the { account: account, tasklist: tasklist } structure or null.
 function selectedTaskList() {
-	return listSelectBox.value;
+	let value = listSelectBox.value;
+	if (!!value) {
+		value = JSON.parse(value);
+		//Convert account ID to account object
+		if (!!value.account)
+			value.account = accountFind(value.account);
+	}
+	return value;
 }
-//Selects the { account: account, tasklist: tasklist } entry.
+//Selects the { account: accountId, tasklist: tasklistId } entry.
 //noNotify: Do not call changed() -- we're simply restoring the control state
 function setSelectedTaskList(tasklist, noNotify) {
+	console.log('setSelectedTaskList:', arguments);
+	//Convert account object -> account ID
+	if (!!tasklist.account && !(typeof tasklist.account == 'string')) //just in case we're already given the ID
+		tasklist.account = tasklist.account.id;
+	tasklist = JSON.stringify(tasklist);
 	if (listSelectBox.value == tasklist)
 		return; //nothing to change
 	listSelectBox.value = tasklist;
@@ -729,8 +747,8 @@ function setSelectedTaskList(tasklist, noNotify) {
 }
 function selectedTaskListChanged() {
 	tasklist = selectedTaskList();
-	if (!!tasklist && !!tasklist.backend)
-		backend = tasklistId.backend;
+	if (!!tasklist && !!tasklist.account)
+		backend = tasklist.account;
 	else
 		backend = null;
 	tasklistActionsUpdate();
@@ -739,6 +757,7 @@ function selectedTaskListChanged() {
 //Update available tasklist actions depending on the selected tasklist and available backend functions
 function tasklistActionsUpdate() {
 	var tasklist = selectedTaskList();
+	console.log('tasklistActionsUpdate:', tasklist, backend);
 	element("listAddBtn").classList.toggle("hidden",    !backend || !backend.tasklistAdd);
 	element("listRenameBtn").classList.toggle("hidden", !backend || !backend.tasklistUpdate || !tasklist);
 	element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
@@ -769,73 +788,80 @@ Note: any data that we don't have stored locally in the nodes we should only upd
 
 var tasks = null;
 
-  function tasklistInit() {
-    tasks = new TaskList(document.getElementById('listContent'));
-    tasks.addEventListener("focuschanged", tasksFocusChanged);
-    tasks.addEventListener("dragstart", taskEntryDragStart);
-    tasks.addEventListener("dragend", taskEntryDragEnd);
-    tasks.addEventListener("dragmove", taskEntryDragMove);
-    tasks.addEventListener("titlechanged", taskEntryTitleChanged);
-    tasks.addEventListener("titlefocusout", taskEntryTitleFocusOut);
-    tasks.addEventListener("editclicked", taskEntryEditClicked);
-    tasks.addEventListener("checked", taskEntryChecked);
-    tasks.addEventListener("keydown", taskListKeyDown, {capture: true});
-  }
-  
-  function tasklistClear() {
-    if (backend)
-      backend.selectTaskList(null); //clear the cache
-    tasks.clear();
-  }
-  
-  //Reloads the currently selected task list. Tries to preserve focus. Returns a promise.
-  function tasklistReloadSelected() {
+function tasklistInit() {
+	tasks = new TaskList(document.getElementById('listContent'));
+	tasks.addEventListener("focuschanged", tasksFocusChanged);
+	tasks.addEventListener("dragstart", taskEntryDragStart);
+	tasks.addEventListener("dragend", taskEntryDragEnd);
+	tasks.addEventListener("dragmove", taskEntryDragMove);
+	tasks.addEventListener("titlechanged", taskEntryTitleChanged);
+	tasks.addEventListener("titlefocusout", taskEntryTitleFocusOut);
+	tasks.addEventListener("editclicked", taskEntryEditClicked);
+	tasks.addEventListener("checked", taskEntryChecked);
+	tasks.addEventListener("keydown", taskListKeyDown, {capture: true});
+}
+
+function tasklistClear() {
+	if (backend)
+		backend.selectTaskList(null); //clear the cache
+	tasks.clear();
+}
+
+//Reloads the currently selected task list. Tries to preserve focus. Returns a promise.
+function tasklistReloadSelected() {
 	console.log('tasklistReloadSelected');
-  	var oldFocus = tasks.getFocusedEntry();
-  	if (oldFocus)
-      oldFocus = { id: oldFocus.getId(), pos: oldFocus.getCaret() };
-  	
-    backend.selectTaskList(null); //clear the cache
-    var selectedValue = selectedTaskList();
-    if (!selectedValue) {
-      tasks.clear();
-      tasksFocusChanged();
-      return Promise.resolve();
-    }
-    
-    console.log('Loading list: '+selectedValue);
-    return backend.selectTaskList(selectedValue)
-    .then(taskRecords => {
-      tasks.clear();
-      tasks.appendTaskChildren(null, 0, taskRecords);
-      //Sometimes tasks get orphaned due to bugs; show these at root (better than eternally keeping them hidden)
-      tasks.appendOrphans(taskRecords);
-      if (oldFocus) {
-      	  let focusTask = tasks.find(oldFocus.id);
-      	  if (focusTask)
-      	  	  focusTask.setCaret(oldFocus.pos);
-      } else
-      	tasksFocusChanged();
-    });
-  }
-  
-  //Called when the focused task changes
-  function tasksFocusChanged() {
-    tasksActionsUpdate();
-  }
-  //Updates available task actions depending on the selected task and backend functionality
-  function tasksActionsUpdate() {
-  	var entry = tasks.getFocusedEntry();
-  	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert);
-  	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
-  	element("taskTabBtn").classList.toggle("hidden", !backend || !backend.move || !entry);
-  	element("taskShiftTabBtn").classList.toggle("hidden", !backend || !backend.move ||!entry);
-  	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
-  	element("taskCopyJSON").classList.toggle("hidden", !entry);
-  	element("taskExportToFile").classList.toggle("hidden", !entry);
-  	element("taskEditFocused").classList.toggle("hidden", !backend || !backend.update || !entry);
-  	element("taskDeleteRecursive").classList.toggle("hidden", !backend || !backend.move ||!entry);
-  }
+	var oldFocus = tasks.getFocusedEntry();
+	if (oldFocus)
+		oldFocus = { id: oldFocus.getId(), pos: oldFocus.getCaret() };
+
+	if (!backend) {
+		console.log('tasklistReloadSelected: no account selected');
+		return;
+	}
+
+	backend.selectTaskList(null); //clear the cache
+	var selectedList = selectedTaskList();
+	if (!selectedList || !selectedList.tasklist) {
+		tasks.clear();
+		tasksFocusChanged();
+		return Promise.resolve();
+	}
+
+	console.log('Loading list: ', selectedList);
+	return backend.selectTaskList(selectedList.tasklist)
+	.then(taskRecords => {
+		tasks.clear();
+		tasks.appendTaskChildren(null, 0, taskRecords);
+		//Sometimes tasks get orphaned due to bugs; show these at root (better than eternally keeping them hidden)
+		tasks.appendOrphans(taskRecords);
+		if (oldFocus) {
+			let focusTask = tasks.find(oldFocus.id);
+			if (focusTask)
+				focusTask.setCaret(oldFocus.pos);
+		} else
+			tasksFocusChanged();
+	});
+}
+
+//Called when the focused task changes
+function tasksFocusChanged() {
+	console.log('tasksFocusChanged');
+	tasksActionsUpdate();
+}
+//Updates available task actions depending on the selected task and backend functionality
+function tasksActionsUpdate() {
+	console.log('tasksActionUpdate');
+	var entry = tasks.getFocusedEntry();
+	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert);
+	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
+	element("taskTabBtn").classList.toggle("hidden", !backend || !backend.move || !entry);
+	element("taskShiftTabBtn").classList.toggle("hidden", !backend || !backend.move ||!entry);
+	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
+	element("taskCopyJSON").classList.toggle("hidden", !entry);
+	element("taskExportToFile").classList.toggle("hidden", !entry);
+	element("taskEditFocused").classList.toggle("hidden", !backend || !backend.update || !entry);
+	element("taskDeleteRecursive").classList.toggle("hidden", !backend || !backend.move ||!entry);
+}
 
 
   /*
@@ -1661,9 +1687,9 @@ var tasks = null;
     var job = backend.tasklistAdd(title)
     .then(result => {
       newTasklistId = result.id;
-      return tasklistBoxesReload()
+      return reloadAccountTaskLists(backend)
     }).then(response => {
-      setSelectedTaskList(newTasklistId);
+      setSelectedTaskList({account: backend, tasklist: newTasklistId});
     });
     pushJob(job);
   }
@@ -1674,12 +1700,14 @@ var tasks = null;
     var title = prompt("Enter new name for this task list:", oldTitle);
     if (!title || (title == oldTitle))
       return;
+    var tasklist = selectedTaskList();
+    if (!tasklist || !tasklist.tasklist) return;
     var patch = {
-      'id': selectedTaskList(),
+      'id': tasklist.tasklist,
       'title': title,
     };
     var job = backend.tasklistPatch(patch)
-    	.then(result => tasklistBoxesReload());
+    	.then(result => reloadAccountTaskLists(backend));
     pushJob(job);
   }
   
@@ -1689,12 +1717,14 @@ var tasks = null;
       window.alert("This task list is not empty. Please delete all tasks before deleting the task list.");
       return;
     }
-    var tasklistId = selectedTaskList();
+    
+    var tasklist = selectedTaskList();
+    if (!tasklist || !tasklist.tasklist) return;
     var title = selectedTaskListTitle();
     if (!confirm('Are you SURE you want to delete task list "'+title+'"?'))
       return;
-    var job = backend.tasklistDelete(tasklistId)
-    .then(result => tasklistBoxesReload())
+    var job = tasklist.account.tasklistDelete(tasklist.tasklist)
+    .then(result => reloadAccountTaskLists(tasklist.account))
     .then(response => selectedTaskListChanged());
     pushJob(job);
   }
@@ -1749,7 +1779,7 @@ function editorOpen(taskId) {
 		document.getElementById("editorTaskTitle").innerText = task.title;
 		document.getElementById("editorTaskTitleBox").checked = (task.completed != null);
 		document.getElementById("editorTaskTitleP").classList.toggle("completed", task.completed != null);
-		document.getElementById("editorTaskList").value = selectedTaskList();
+		document.getElementById("editorTaskList").value = selectedTaskList().tasklist;
 		document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
 		document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
 		document.getElementById("editorMoveNotice").style.display = "none";
@@ -1782,7 +1812,7 @@ function editorTaskListBoxReload() {
 //Called when the user selects a new list to move task to
 function editorTaskListChanged() {
 	if (!editorTaskId) return;
-	if (document.getElementById("editorTaskList").value != selectedTaskList())
+	if (document.getElementById("editorTaskList").value != selectedTaskList().tasklist)
 		document.getElementById("editorMoveNotice").style.display = "block";
 	else
 		document.getElementById("editorMoveNotice").style.display = "none";
@@ -1803,7 +1833,7 @@ function editorSaveClose() {
 	var job = null;
 
 	var newTaskList = document.getElementById("editorTaskList").value;
-	if (newTaskList == selectedTaskList())
+	if (newTaskList == selectedTaskList().tasklist)
 		//Simple version, just edit the task
 		job = taskPatch(patch);
 	else
