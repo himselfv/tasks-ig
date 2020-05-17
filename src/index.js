@@ -60,7 +60,7 @@ function backendCreate(backendCtor) {
 	if (typeof backendCtor == 'string') {
 		let constructor = window[backendCtor]; //a way to call function by string name
 		if (!constructor)
-			return Promise.reject("Backend not found: "+backendCtor);
+			throw "Backend not found: "+backendCtor;
 		backendCtor = constructor;
 	}
 
@@ -80,6 +80,20 @@ function backendCreate(backendCtor) {
 	return backend;
 }
 
+
+//Returns a fake backend to be used in place of one that can't even be instantiated
+function FakeBackend(name, error) {
+	this.error = error;
+	this.isSignedIn = function() { return false; }
+	this.init = function() { return Promise.reject(this.error); }
+	//Support signout() to let the user remove the permanently bugged out backends
+	this.signout = function() { return Promise.resolve(); }
+	this.ui = {};
+	//Set uiName, otherwise our fake backend will look like "Object" in all menus
+	this.prototype = Object.create(FakeBackend.prototype);
+	this.prototype.constructor = () => {};
+	this.prototype.constructor.name = name;
+}
 
 /*
 Account list
@@ -108,12 +122,20 @@ function accountsLoad() {
 		//  backendName
 		//  params: any account params
 		
-		let account = backendCreate(accountData.backendName);
+		let account = null;
+		let error = 'Cannot create backend: '+accountData.backendName;
+		try {
+			account = backendCreate(accountData.backendName);
+		} catch (err) {
+			error = err;
+		}
+		if (!account)
+			account = new FakeBackend(accountData.backendName, error);
 		account.id = accountList[i]; //copy the id
 		accounts.push(account);
 		account.init()
 		.then(() => {
-			return backend.signin(accountData.params);
+			return account.signin(accountData.params);
 		})
 		.catch(error => {
 			account.error = error;
@@ -208,7 +230,7 @@ function accountListChanged() {
 	//otherwise do nothing and wait for backends to initialize
 	if (Object.keys(accounts).length <= 0) {
 		editor.cancel();
-		tasklistClear();
+		tasks.clear();
 		backendSelectionShow();
 	} else {
 		backendSelectionCancel(); //if present
@@ -649,7 +671,7 @@ function reloadTaskLists() {
 function reloadAccountTaskLists(account) {
 	console.log('reloadAccountTaskLists:', account);
 	let prom = null;
-	if (!account.isSignedIn) {
+	if (!account.isSignedIn()) {
 		console.log('Not initialized/not signed in, no lists');
 		prom = Promise.resolve([]);
 	} else
@@ -803,12 +825,6 @@ function tasklistInit() {
 	tasks.addEventListener("keydown", taskListKeyDown, {capture: true});
 }
 
-function tasklistClear() {
-	if (backend)
-		backend.selectTaskList(null); //clear the cache
-	tasks.clear();
-}
-
 //Reloads the currently selected task list. Tries to preserve focus. Returns a promise.
 function tasklistReloadSelected() {
 	console.log('tasklistReloadSelected');
@@ -825,26 +841,20 @@ function tasklistReloadSelected() {
 	}
 
 	console.log('Loading list: ', selected);
-	backend.selectTaskList(null); //clear the cache
+	if (backend.selectTaskList)
+		backend.selectTaskList(null); //clear the cache
 	
 	let message = document.getElementById('listMessage');
 	if (!selected.tasklist) {
 		tasks.root.classList.add('hidden');
 		message.classList.remove('hidden');
 		nodeRemoveAllChildren(message);
-		console.log(selected.account);
-		console.log(selected.account.error);
-		console.log(!selected.account.error);
-		if (selected.account.error) {
-			console.log('meh1');
+		if (selected.account.error)
 			message.innerHTML = 'Could not initialize the backend '+(selected.account.constructor.uiName || selected.account.constructor.name)
 				+'.<br />Error: '+selected.account.error;
 			//TODO: Link to try reinitialize / link to edit settings
-		}
-		else if (!selected.account.isSignedIn()) {
-			console.log('meh2');
+		else if (!selected.account.isSignedIn())
 			message.innerHTML = 'Waiting for this account to complete sign in. If this takes too long, perhaps there are problems';
-		}
 		else if (!!selected.account.ui && isArrayEmpty(selected.account.ui.tasklists)) {
 			message.innerHTML = 'No task lists in this account. '; //
 			let a = document.createElement('a');
@@ -1869,7 +1879,6 @@ Editor.prototype.setSelectedTaskList = function(tasklist) {
 //Called when the user selects a new list to move task to
 Editor.prototype.taskListChanged = function() {
 	console.log('taskListChanged');
-	console.log(this);
 	if (!this.taskId) return;
 	console.log('taskListChanged: this=', this.selectedTaskList(), ', base=', selectedTaskList());
 	if (this.selectedTaskList() != selectedTaskList())
