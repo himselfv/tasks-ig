@@ -663,6 +663,28 @@ Each entry's .value is a JSON.stringify({ account: accountId, tasklist: tasklist
 */
 var listSelectBox = document.getElementById('listSelectBox');
 
+//Note: You can't compare these as objects. For easy comparison compare as String(a) == String(b)
+function TaskListHandle(account, tasklist) {
+	this.account = account;
+	this.tasklist = tasklist;
+}
+TaskListHandle.prototype.toString = function() {
+	let account = this.account;
+	if (!!account && !(typeof account == 'string')) //just in case we're already given the ID
+		account = account.id;
+	return JSON.stringify({account: account, tasklist: this.tasklist});
+}
+TaskListHandle.fromString = function(value) {
+	if (!value)
+		return null;
+	value = JSON.parse(value);
+	//Convert account ID to account object
+	if (!!value.account)
+		value.account = accountFind(value.account);
+	return new TaskListHandle(value.account, value.tasklist);
+}
+
+
 //Starts the task list reload process for all accounts. The UI will be updated dynamically
 function reloadTaskLists() {
 	console.log('reloadTaskLists');
@@ -705,7 +727,7 @@ function tasklistBoxReload() {
 				option.text = option.text+' (signing in)';
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
 				option.text = option.text+' (no lists)';
-			option.value = JSON.stringify({ account: account.id, tasklist: null });
+			option.value = String(new TaskListHandle(account.id, null));
 			option.classList.add("grayed");
 			listSelectBox.add(option);
 			continue;
@@ -714,7 +736,7 @@ function tasklistBoxReload() {
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
 			let option = document.createElement("option");
-			option.value = JSON.stringify({ account: account.id, tasklist: tasklist.id });
+			option.value = String(new TaskListHandle(account.id,  tasklist.id));
 			option.text = tasklist.title;
 			listSelectBox.add(option);
 		}
@@ -753,22 +775,15 @@ function selectedTaskListTitle() {
 //Returns the { account: account, tasklist: tasklist } structure or null.
 function selectedTaskList() {
 	let value = listSelectBox.value;
-	if (!!value) {
-		value = JSON.parse(value);
-		//Convert account ID to account object
-		if (!!value.account)
-			value.account = accountFind(value.account);
-	}
+	if (!!value)
+		value = TaskListHandle.fromString(value);
 	return value;
 }
 //Selects the { account: accountId, tasklist: tasklistId } entry.
 //noNotify: Do not call changed() -- we're simply restoring the control state
 function setSelectedTaskList(tasklist, noNotify) {
 	console.log('setSelectedTaskList:', arguments);
-	//Convert account object -> account ID
-	if (!!tasklist.account && !(typeof tasklist.account == 'string')) //just in case we're already given the ID
-		tasklist.account = tasklist.account.id;
-	tasklist = JSON.stringify(tasklist);
+	tasklist = String(tasklist);
 	if (listSelectBox.value == tasklist)
 		return; //nothing to change
 	listSelectBox.value = tasklist;
@@ -1692,7 +1707,7 @@ function tasksActionsUpdate() {
   //Moves the task and all of its children to a different tasklist
   function taskMoveToList(entry, newTasklist) {
     //If we're given a (account, list) object, split it
-    if (!!newTaskList.account) {
+    if (!!newTasklist.account) {
         newBackend = newTasklist.account;
         newTasklist = newTasklist.tasklist;
     } else
@@ -1711,12 +1726,12 @@ function tasksActionsUpdate() {
   }
 
   //Edits the task and immediately moves it and all of its children to a different tasklist
-  function taskPatchMoveToList(patch, newTaskList) {
+  function taskPatchMoveToList(patch, newTasklist) {
     //Previously this function tried to optimize by only patching the cache,
     //and then expecting that backend.moveToList() is a copy+delete, and it uses data from cache.
     //Both assumptions are wrong in general case, so no optimization:
     return taskPatch(patch)
-    .then(() => taskMoveToList(tasks.find(patch.id), newTaskListId));
+    .then(() => taskMoveToList(tasks.find(patch.id), newTasklist));
   }
 
 
@@ -1736,7 +1751,7 @@ function tasksActionsUpdate() {
       newTasklistId = result.id;
       return reloadAccountTaskLists(backend)
     }).then(response => {
-      setSelectedTaskList({account: backend, tasklist: newTasklistId});
+      setSelectedTaskList(new TaskListHandle(backend, newTasklistId));
     });
     pushJob(job);
   }
@@ -1857,22 +1872,15 @@ Editor.prototype.taskListBoxReload = function() {
 }
 Editor.prototype.selectedTaskList = function() {
 	let value = this.taskListBox.value;
-	if (!!value) {
-		value = JSON.parse(value);
-		//Convert account ID to account object
-		if (!!value.account)
-			value.account = accountFind(value.account);
-	}
+	if (!!value)
+		value = TaskListHandle.fromString(value);
 	console.log('Editor.selectedTaskList() ->', value);
 	return value;
 }
 //Does not notify taskListChanged()
 Editor.prototype.setSelectedTaskList = function(tasklist) {
 	console.log('Editor.setSelectedTaskList:', tasklist);
-	//Convert account object -> account ID
-	if (!!tasklist.account && !(typeof tasklist.account == 'string')) //just in case we're already given the ID
-		tasklist.account = tasklist.account.id;
-	tasklist = JSON.stringify(tasklist);
+	tasklist = String(tasklist);
 	if (this.taskListBox.value == tasklist)
 		return; //nothing to change
 	this.taskListBox.value = tasklist;
@@ -1883,7 +1891,7 @@ Editor.prototype.taskListChanged = function() {
 	console.log('taskListChanged');
 	if (!this.taskId) return;
 	console.log('taskListChanged: this=', this.selectedTaskList(), ', base=', selectedTaskList());
-	if (this.selectedTaskList() != selectedTaskList())
+	if (String(this.selectedTaskList()) != String(selectedTaskList()))
 		document.getElementById("editorMoveNotice").style.display = "block";
 	else
 		document.getElementById("editorMoveNotice").style.display = "none";
@@ -1904,7 +1912,7 @@ Editor.prototype.saveClose = function() {
 	var job = null;
 
 	var newTaskList = this.selectedTaskList();
-	if (newTaskList == selectedTaskList())
+	if (String(newTaskList) == String(selectedTaskList()))
 		//Simple version, just edit the task
 		job = taskPatch(patch);
 	else
