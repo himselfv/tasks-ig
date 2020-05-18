@@ -430,15 +430,35 @@ Editor
 
 
 /*
-Start page
+Account list page
 */
-#startPage { /* a .page */
+#accountListPage {
+  flex-direction: row;
+  padding: 0.2em;
+}
+#accountListPage select {
+  flex-grow: 1; /* stretch */
+}
+#accountListControls {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.accountListControlsSpacer {
+  flex-grow: 1;
+}
+
+
+/*
+Backend selection page
+*/
+#backendSelectPage { /* a .page */
   justify-content: center;
   align-items: center;
   text-align: center;
   min-height: 100vh;
 }
-#startPage button {
+#backendSelectPage button {
   min-width: 180px;
   padding: 2px 5px;
   text-align: center;

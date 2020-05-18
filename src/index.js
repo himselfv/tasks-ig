@@ -18,6 +18,7 @@ function initUi() {
 
 	mainmenu = dropdownInit('mainmenu');
 	mainmenu.button.title = "Task list action";
+	mainmenu.add('accountsBtn', accountsPageOpen, "Accounts...");
 	mainmenu.add('menuReloadBtn', reloadTaskLists, "Reload");
 	mainmenu.add('listAddBtn', tasklistAdd, "Add list...");
 	mainmenu.add('listRenameBtn', tasklistRename, "Rename list...");
@@ -238,6 +239,34 @@ function accountListChanged() {
 
 
 /*
+Account list page
+*/
+function accountsPageOpen() {
+	new AccountListPage();
+}
+function AccountListPage() {
+	CustomPage.call(this, document.getElementById('accountListPage'));
+	
+	this.closeBtn = document.getElementById('accountListClose');
+	this.closeBtn.onclick = () => { this.close(); };
+	
+	document.getElementById('accountListAdd').onclick = () => { this.accountAddClick();};
+	document.getElementById('accountListDelete').onclick = () => { this.accountDeleteClick();};
+	document.getElementById('accountListMoveUp').onclick = () => { this.accountMoveUpClick();};
+	document.getElementById('accountListMoveDown').onclick = () => { this.accountMoveDownClick();};
+	
+	this.page.classList.remove('hidden');
+	this.reload();
+}
+AccountListPage.prototype.reload = function() {
+}
+AccountListPage.prototype.close = function() {
+	this.page.classList.add("hidden");
+}
+
+
+
+/*
 Backend selection page
 TODO: When we reuse this to select backends for the 2nd+ account,
   * Add Cancel button only in those cases
@@ -249,7 +278,7 @@ var backendSelectPage = document.getElementById('backendSelectPage');
 function backendSelectionShow() {
 	console.log('backendSelectionShow', arguments);
 	//Create activation buttons
-	document.getElementById('startPrompt').textContent = 
+	document.getElementById('backendSelectPrompt').textContent = 
 		(backends.length > 0) ? "Access tasks in:"
 		: "No backends available, see error log for details";
 	nodeRemoveChildrenByTagName(backendSelectPage, 'button');
