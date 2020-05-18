@@ -392,6 +392,68 @@ function buttonNew(id, onclick, title) {
 }
 
 
+
+/*
+Custom page object.
+Provides a promise which will be resolved (with collected results) or rejected (on cancel).
+Clients have to override 'ok' event and page.resolve() if they are satisfied.
+*/
+//A special rejection object that's returned when the window is cancelled --
+//check for it to distinguish from other errors
+function FormCancelError() {}
+
+function CustomPage(pageElement) {
+	//The HTML base element can be created from scratch or reused
+	this.page = pageElement;
+	
+	//Calling either of these closes the page
+	this.promise = new Promise((_resolve, _reject) => {
+		this.resolve = _resolve;
+		this.reject = _reject;
+	});
+
+	//Cleanup
+	this.promise
+	.catch(() => {})
+	.then(() => {
+		this.promise = null; //prevent further access
+		this.resolve = null;
+		this.reject = null;
+		this.close();
+	});
+}
+//Clients can wait for the page to be either OK'd or Cancelled
+CustomPage.prototype.waitResult = function() {
+	return this.promise;
+};
+CustomPage.prototype.addEventListener = function() {
+	this.page.addEventListener.apply(this.page, arguments);
+}
+CustomPage.prototype.removeEventListener = function() {
+	this.page.removeEventListener.apply(this.page, arguments);
+}
+//Clients can subscribe to events which the descendants can raise
+CustomPage.prototype.dispatchEvent = function(name, args) {
+	let event = new CustomEvent(name);
+	for (let key in args)
+		event[key] = args[key];
+	this.page.dispatchEvent(event);
+}
+//Two predefined events are OK and Cancel, you only have to raise these as handlers
+CustomPage.prototype.okClick = function() {
+	this.dispatchEvent('ok', { results: this.collectResults(), });
+}
+//Override to verify input and collect it for passing outside
+CustomPage.prototype.collectResults = function() {
+	return null;
+}
+CustomPage.prototype.cancelClick = function() {
+	this.dispatchEvent('cancel');
+	//Automatically rejects the form with FormCancelError
+	this.reject(new FormCancelError());
+}
+
+
 /*
 Debug
 */
