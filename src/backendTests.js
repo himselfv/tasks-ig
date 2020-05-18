@@ -72,3 +72,46 @@ if (Math.random() < 0.5) {
 	}
 	newTestBackend(BackendTestBase, BackendDoesNotRegister, "Does not register");
 }
+
+
+//Presents a lot of settings
+function BackendSettingsTest() {
+	BackendTestBase.call(this);
+}
+newTestBackend(BackendTestBase, BackendSettingsTest, "Settings test");
+/*
+		title: 'Login';	//Optional, default: param id
+		hint: null;		//Optional hint
+		type: 'text'/'password'/'number'/'bool'/['list', 'of', 'choices']
+		default: value;
+*/
+BackendSettingsTest.prototype.settingsPage = function() {
+	return	{
+		textTest: { type: 'text', },
+		passwordTest: { type: 'password', },
+		numberTest: { type: 'number', },
+		boolTest: { type: 'bool', },
+		listTest: { type: ['Option 1', 'Option 2', 'Option 3'], },
+		customTitleTest: { type: 'text', title: 'Custom title', },
+		defaultTextTest: { type: 'text', default: 'default text value', },
+		defaultPasswordTest: { type: 'password', default: 'default password value', },
+		defaultNumberValue: { type: 'number', default: 1234, },
+		defaultBoolValue: { type: 'bool', default: true, },
+		defaultListValue: { type: ['Option 1', 'Option 2', 'Option 3'], default: 'Option 2', },
+		descTest: { type: 'text', hint: 'Setting description, can contain <b>HTML</b> <i>tags</i>.', },
+		noneTypeTest: { title: '', hint: 'Null types should have no input fields, only show the title and the description. '
+			+'The default value should still be passed.', default: 'noneTypeTestDefaultValue', },
+		actuallySignin: {
+			type: 'bool',
+			hint: 'Set this to true for the backend to accept your signin',
+		},
+	};
+}
+BackendSettingsTest.prototype.signin = function(params) {
+	console.log('BackendSettingsTest.signin:', params);
+	if (!params || !params.actuallySignin) {
+		console.log('no');
+		return Promise.reject("BackendSettingsTest: Values passed to signin() are available in the console. Set 'actuallySignin' to true to sign in.");
+	}
+	return this.__proto__.__proto__.signin.call(this, params);
+}

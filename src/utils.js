@@ -24,8 +24,8 @@ function loadScript(scriptId, scriptSrc) {
 			script.addEventListener("load", () => { if (!script.readyState) script.readyState = "complete"; });
 			document.body.append(script);
 		}
-		console.log(script);
-		console.log(script.readyState);
+		//console.log(script);
+		//console.log(script.readyState);
 		script.addEventListener("load", () => { console.log('loaded script'); resolve(); } );
 	});
 }
@@ -52,6 +52,15 @@ function newGuid() {
         u+=(c=='-'||c=='4')?c:v.toString(16);rb=i%8==0?Math.random()*0xffffffff|0:rb>>4;
     }
     return u;
+}
+
+
+/*
+Inheritance
+*/
+function inherit(fromWhat, what) {
+	what.prototype = Object.create(fromWhat.prototype);
+	what.prototype.constructor = what;
 }
 
 

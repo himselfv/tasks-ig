@@ -8,7 +8,6 @@ var accounts = [];
 
 var startPage = document.getElementById('startPage');
 var listPage = document.getElementById('listPage');
-var settingsPage = document.getElementById('settingsPage');
 
 var mainmenu = null;
 var taskmenu = null;
@@ -275,11 +274,13 @@ function handleBackendClicked(event) {
 		console.log('Backend initialized');
 		if (!backend.settingsPage)
 			return backend.setup({});
-		settings = backend.settingsPage();
+		let settings = backend.settingsPage();
 		if (!settings)
 			return backend.setup({});
-		settingsPage = settingsPageShow(settings, backendClass.name);
+		settingsPage = new SettingsPage(settings, backendClass.name);
 		settingsPage.addEventListener('ok', function(event) {
+			//Disable the OK button for the time being
+			settingsPage.disable();
 			return backend.setup(event.results)
 			.then(backendResults => {
 				settingsPage.resolve(backendResults);
@@ -308,90 +309,110 @@ function handleBackendClicked(event) {
 }
 
 
-
 //A special rejection object that's returned when the window is cancelled --
 //check for it to distinguish from other errors
 function FormCancelError() {}
+
+/*
+Custom form.
+*/
+function CustomPage(pageElement) {
+	//The HTML base element can be created from scratch or reused
+	this.page = pageElement;
+	
+	//Calling either of these closes the page
+	this.promise = new Promise((_resolve, _reject) => {
+		this.resolve = _resolve;
+		this.reject = _reject;
+	});
+
+	//Cleanup
+	this.promise
+	.catch(() => {})
+	.then(() => {
+		this.promise = null; //prevent further access
+		this.resolve = null;
+		this.reject = null;
+		this.close();
+	});
+}
+//Clients can wait for the page to be either OK'd or Cancelled
+CustomPage.prototype.waitResult = function() {
+	return this.promise;
+};
+CustomPage.prototype.addEventListener = function() {
+	this.page.addEventListener.apply(this.page, arguments);
+}
+CustomPage.prototype.removeEventListener = function() {
+	this.page.removeEventListener.apply(this.page, arguments);
+}
+//Clients can subscribe to events which the descendants can raise
+CustomPage.prototype.dispatchEvent = function(name, args) {
+	let event = new CustomEvent(name);
+	for (let key in args)
+		event[key] = args[key];
+	this.page.dispatchEvent(event);
+}
+//Two predefined events are OK and Cancel, you only have to raise these as handlers
+CustomPage.prototype.okClick = function() {
+	this.dispatchEvent('ok', { results: this.collectResults(), });
+}
+//Override to verify input and collect it for passing outside
+CustomPage.prototype.collectResults = function() {
+	return null;
+}
+CustomPage.prototype.cancelClick = function() {
+	this.dispatchEvent('cancel');
+	//Automatically rejects the form with FormCancelError
+	this.reject(new FormCancelError());
+}
+
+
 
 /*
 Settings page
 Activate with settingsPageShow(), then check the data in 'ok' event handler
 and close with close().
 */
-function settingsPageShow(settings, backendName) {
+function SettingsPage(settings, backendName) {
+	//console.log('SettingsPage()', arguments);
 	//We could've created the page from scratch but we'll reuse the precreated one
-	//console.log('settingsPageShow');
+	CustomPage.call(this, document.getElementById('settingsPage'));
+	this.btnOk = document.getElementById('settingsOk');
+	this.btnCancel = document.getElementById('settingsCancel');
+	this.btnOk.onclick = () => this.okClick();
+	this.btnCancel.onclick = () => this.cancelClick();
 	
 	if (!backendName)
 		backendName = 'Connection';
 	let pageTitle = document.getElementById('settingsPageTitle');
 	pageTitle.textContent = backendName + ' settings:';
 	
-	settingsPageReload(settings);
-	settingsPage.classList.remove("hidden");
-	
-	//Clients can wait for the page to be either OK'd or Cancelled
-	settingsPage.waitResult = function() { return settingsPage.promise };
-	
-	//Calling either of these closes the page
-	settingsPage.promise = new Promise((_resolve, _reject) => {
-		settingsPage.resolve = _resolve;
-		settingsPage.reject = _reject;
-	});
-	//Cleanup
-	settingsPage.promise
-	.catch(() => {})
-	.then(() => {
-		settingsPage.promise = null; //prevent further access
-		settingsPage.resolve = null;
-		settingsPage.reject = null;
-		settingsPageClose();
-	});
-	
-	let btnOk = document.getElementById('settingsOk');
-	let btnCancel = document.getElementById('settingsCancel');
-	
-	//Clicking OK temporarily disables the page while event handlers try the new settings
-	//Event handlers should reenable() the page if an attempt resulted in neither Success nor final Cancel.
-	settingsPage.disable = function() {
-		btnOk.disabled = true;
-		//Cancel button is always available
-	};
-	settingsPage.reenable = function() {
-		btnOk.disabled = false;
-	}
-	settingsPage.reenable(); //enable for starters
-	
-	btnOk.onclick = function() {
-		//Disable the OK button for the time being
-		settingsPage.disable();
-		//Call events
-		let event = new CustomEvent('ok');
-		event.results = settingsPageCollectResults();
-		settingsPage.dispatchEvent(event);
-		//We're disabled until someone reenables us
-		//Event handles have to call resolve() explicitly because they might need to wait
-	}
-	btnCancel.onclick = function() {
-		let event = new CustomEvent('cancel');
-		settingsPage.dispatchEvent(event);
-		settingsPage.reject(new FormCancelError());
-	}
-
-	return settingsPage;
+	this.reload(settings);
+	this.page.classList.remove("hidden");
+	this.reenable(); //enable for starters
 }
-function settingsPageClose() {
-	//console.log('settingsPageClose');
-	settingsPageReload({});
-	settingsPage.classList.add("hidden");
+inherit(CustomPage, SettingsPage);
+//Clicking OK temporarily disables the page while event handlers try the new settings
+//Event handlers should reenable() the page if an attempt resulted in neither Success nor final Cancel.
+SettingsPage.prototype.disable = function() {
+	this.btnOk.disabled = true;
+	//Cancel button is always available
+};
+SettingsPage.prototype.reenable = function() {
+	this.btnOk.disabled = false;
 }
-function settingsPageReload(settings) {
-	//console.log('settingsPageReload:', settings);
+SettingsPage.prototype.close = function() {
+	//console.log('SettingsPage.close()');
+	this.reload({});
+	this.page.classList.add("hidden");
+}
+SettingsPage.prototype.reload = function(settings) {
+	//console.log('SettingsPage.reload:', settings);
 	let content = document.getElementById('settingsContent');
 	nodeRemoveAllChildren(content);
 	for (let key in settings) {
 		let param = settings[key];
-		
 		let row = document.createElement("div");
 		row.classList.add("settingsRow");
 		content.appendChild(row);
@@ -411,7 +432,7 @@ function settingsPageReload(settings) {
 			paramValue = document.createElement('input');
 			paramValue.type = 'datetime-local';
 		}
-		else if (param.type == 'book') {
+		else if (param.type == 'bool') {
 			paramValue = document.createElement('input');
 			paramValue.type = 'checkbox';
 		}
@@ -429,7 +450,10 @@ function settingsPageReload(settings) {
 			paramValue.id = 'settingsValue-'+key;
 			paramValue.dataId = key;
 			if ('default' in param)
-				paramValue.value = param.default;
+				if (param.type == 'bool')
+					paramValue.checked = param.default;
+				else
+					paramValue.value = param.default;
 		}
 		
 		//console.log(paramName);
@@ -451,12 +475,19 @@ function settingsPageReload(settings) {
 		}
 	}
 }
-function settingsPageCollectResults() {
+SettingsPage.prototype.collectResults = function() {
 	let results = {};
 	let content = document.getElementById('settingsContent');
 	let inputs = content.getElementsByTagName('input');
 	for (let i=0; i<inputs.length; i++)
-		results[inputs[i].dataId] = inputs[i].value;
+	{
+		let value = null;
+		if (inputs[i].type == 'checkbox')
+			value = inputs[i].checked;
+		else
+			value = inputs[i].value;
+		results[inputs[i].dataId] = value;
+	}
 	inputs = content.getElementsByTagName('select');
 	for (let i=0; i<inputs.length; i++)
 		results[inputs[i].dataId] = inputs[i].value;

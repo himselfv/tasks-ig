@@ -242,7 +242,7 @@ Backend.prototype.init = function() {
 Returns a {dict} of parameters to ask from the user before signin(). Example:
 	login: {
 		title: 'Login';	//Optional, default: param id
-		desc: null;		//Optional hint
+		hint: null;		//Optional hint
 		type: 'text'/'password'/'number'/'bool'/['list', 'of', 'choices']
 		default: value;
 	}
