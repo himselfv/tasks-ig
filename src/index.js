@@ -6,7 +6,6 @@ Security considerations in some contexts require:
 var options = options || {}; //see config.js
 var accounts = [];
 
-var startPage = document.getElementById('startPage');
 var listPage = document.getElementById('listPage');
 
 var mainmenu = null;
@@ -246,24 +245,25 @@ TODO: When we reuse this to select backends for the 2nd+ account,
     if it's open manually.
   * If the existing backends are lost during the procedure, just remove "Cancel".
 */
+var backendSelectPage = document.getElementById('backendSelectPage');
 function backendSelectionShow() {
 	console.log('backendSelectionShow', arguments);
 	//Create activation buttons
 	document.getElementById('startPrompt').textContent = 
 		(backends.length > 0) ? "Access tasks in:"
 		: "No backends available, see error log for details";
-	nodeRemoveChildrenByTagName(startPage, 'button');
+	nodeRemoveChildrenByTagName(backendSelectPage, 'button');
 	backends.forEach(item => {
 		let btn = document.createElement("button");
 		btn.textContent = item.uiName || item.name;
 		btn.associatedBackend = item;
 		btn.onclick = handleBackendClicked;
-		startPage.appendChild(btn);
+		backendSelectPage.appendChild(btn);
 	});
-	startPage.classList.remove("hidden");
+	backendSelectPage.classList.remove("hidden");
 }
 function backendSelectionCancel() {
-	startPage.classList.add("hidden");
+	backendSelectPage.classList.add("hidden");
 }
 function handleBackendClicked(event) {
 	backendClass = event.target.associatedBackend;
