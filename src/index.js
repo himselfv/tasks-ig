@@ -229,7 +229,7 @@ function accountListChanged() {
 		editor.cancel();
 		tasks.clear();
 		//Start the "add account" sequence
-		StartNewAccountUi();
+		StartNewAccountUi({ hasCancel: false, });
 		//Since new accounts can't arrive except from its completion, there's no need to manually abort it in "else"
 	} else {
 		reloadTaskLists(); //if e.g. the order of the lists has changed
@@ -338,40 +338,27 @@ AccountListPage.prototype.addClick = function() {
 
 
 
-//Opens new account creation UI. Returns the promise that's resolved with new account, or rejected on cancel.
-function StartNewAccountUi() {
-	let addBackendPage = new BackendSelectPage({ hasCancel: false, });
-	addBackendPage.addEventListener('ok', (event) => {
-		console.log('addBackendPage.ok:', event);
-		addBackendPage.resolve(event.results);
-	});
-	return addBackendPage.waitResult();
-}
 
 /*
 Backend selection page
-TODO: When we reuse this to select backends for the 2nd+ account,
-  * Add Cancel button only in those cases
-  * Track whether its opened forcefully or manually, and do not close it on backend appearance,
-    if it's open manually.
-  * If the existing backends are lost during the procedure, just remove "Cancel".
 */
 function BackendSelectPage(params) {
 	console.log('BackendSelectPage()', params);
 	CustomPage.call(this, document.getElementById('backendSelectPage'));
 	
 	this.hasCancel = params.hasCancel;
+	this.prompt = params.prompt;
+	
 	this.reload();
 	this.page.classList.remove("hidden");
 }
 inherit(CustomPage, BackendSelectPage);
 BackendSelectPage.prototype.reload = function() {
 	document.getElementById('backendSelectPrompt').textContent = 
-		(backends.length > 0) ? "Access tasks in:"
+		(backends.length > 0) ? this.prompt
 		: "No backends available, see error log for details";
 	
 	nodeRemoveChildrenByTagName(this.page, 'button');
-	
 	backends.forEach(item => {
 		let btn = document.createElement("button");
 		btn.textContent = item.uiName || item.name;
@@ -381,6 +368,9 @@ BackendSelectPage.prototype.reload = function() {
 	});
 	
 	if (this.hasCancel) {
+		let sep = document.createElement("p");
+		sep.classList.add("backendSelectSeparator");
+		backendSelectPage.appendChild(sep);
 		let btn = document.createElement("button");
 		btn.textContent = 'Cancel';
 		btn.onclick = () => { this.cancelClick(); };
@@ -435,6 +425,24 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 		return null;
 	});
 }
+
+/*
+New account UI
+*/
+
+//Opens new account creation UI. Returns the promise that's resolved with new account, or rejected on cancel.
+function StartNewAccountUi(params) {
+	params.prompt = "Access tasks in:";
+	let addBackendPage = new BackendSelectPage(params);
+	
+	
+	addBackendPage.addEventListener('ok', (event) => {
+		console.log('addBackendPage.ok:', event);
+		addBackendPage.resolve(event.results);
+	});
+	return addBackendPage.waitResult();
+}
+
 
 
 /*
