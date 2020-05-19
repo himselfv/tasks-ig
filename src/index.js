@@ -247,9 +247,9 @@ function accountsPageOpen() {
 function AccountListPage() {
 	CustomPage.call(this, document.getElementById('accountListPage'));
 	
-	this.closeBtn = document.getElementById('accountListClose');
-	this.closeBtn.onclick = () => { this.close(); };
+	this.content = document.getElementById('accountList');
 	
+	document.getElementById('accountListClose').onclick = () => { this.close(); };
 	document.getElementById('accountListAdd').onclick = () => { this.accountAddClick();};
 	document.getElementById('accountListDelete').onclick = () => { this.accountDeleteClick();};
 	document.getElementById('accountListMoveUp').onclick = () => { this.accountMoveUpClick();};
@@ -259,6 +259,14 @@ function AccountListPage() {
 	this.reload();
 }
 AccountListPage.prototype.reload = function() {
+	nodeRemoveAllChildren(this.content);
+	for (let i in accounts) {
+		let account = accounts[i];
+		let item = document.createElement('option');
+		item.value = account.id;
+		item.textContent = account.uiName();
+		this.content.appendChild(item);
+	}
 }
 AccountListPage.prototype.close = function() {
 	this.page.classList.add("hidden");
@@ -720,7 +728,7 @@ function tasklistBoxReload() {
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists || isArrayEmpty(account.ui.tasklists)) {
 			//Add a "grayed line" representing the account and it's problems
 			let option = document.createElement("option");
-			option.text = account.constructor.uiName || account.constructor.name;
+			option.text = account.uiName();
 			if (account.error)
 				option.text = option.text+' (error)';
 			else if (!account.isSignedIn())
@@ -867,7 +875,7 @@ function tasklistReloadSelected() {
 		message.classList.remove('hidden');
 		nodeRemoveAllChildren(message);
 		if (selected.account.error)
-			message.innerHTML = 'Could not initialize the backend '+(selected.account.constructor.uiName || selected.account.constructor.name)
+			message.innerHTML = 'Could not initialize the backend '+selected.account.uiName()
 				+'.<br />Error: '+selected.account.error;
 			//TODO: Link to try reinitialize / link to edit settings
 		else if (!selected.account.isSignedIn())

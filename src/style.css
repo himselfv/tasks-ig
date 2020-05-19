@@ -434,10 +434,11 @@ Account list page
 */
 #accountListPage {
   flex-direction: row;
-  padding: 0.2em;
+  padding: 0.4em;
 }
 #accountListPage select {
   flex-grow: 1; /* stretch */
+  margin-right: 0.2em;
 }
 #accountListControls {
   display: flex;

@@ -288,6 +288,12 @@ Backend.prototype.isSignedIn = function() {
 Backend.prototype.notifySignInStatus = function(status) {
 	this.onSignInStatus.notify(this, status);
 }
+//Once logged in, returns the UI name for this account
+Backend.prototype.uiName = function() {
+	//By default just returns the backend name. Fall back to this if not logged in / no better ideas.
+	return this.constructor.uiName || this.constructor.name;
+}
+
 
 
 /*
