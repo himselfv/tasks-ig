@@ -452,6 +452,9 @@ CustomPage.prototype.cancelClick = function() {
 	//Automatically rejects the form with FormCancelError
 	this.reject(new FormCancelError());
 }
+//Closes the page when it's completed or cancelled. Override to provide.
+CustomPage.prototype.close = function() {
+}
 
 
 /*

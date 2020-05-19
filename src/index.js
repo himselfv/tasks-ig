@@ -228,9 +228,15 @@ function accountListChanged() {
 	if (Object.keys(accounts).length <= 0) {
 		editor.cancel();
 		tasks.clear();
-		backendSelectionShow();
+		//Start the "add account" sequence
+		let autoAddBackendPage = new BackendSelectPage({ hasCancel: false, });
+		autoAddBackendPage.addEventListener('ok', () => {
+			console.log('asd');
+			autoAddBackendPage.resolve();
+		});
+
+		//Since new accounts can't arrive except from its completion, there's no need to manually abort it in "else"
 	} else {
-		backendSelectionCancel(); //if present
 		reloadTaskLists(); //if e.g. the order of the lists has changed
 	}
 }
@@ -248,7 +254,7 @@ function AccountListPage() {
 	this.content = document.getElementById('accountList');
 	this.content.onchange = () => { this.selectedAccountChanged(); };
 	
-	document.getElementById('accountListClose').onclick = () => { this.close(); };
+	document.getElementById('accountListClose').onclick = () => { this.cancelClick(); };
 	document.getElementById('accountListAdd').onclick = () => { this.accountAddClick();};
 	document.getElementById('accountListDelete').onclick = () => { this.accountDeleteClick();};
 	document.getElementById('accountListMoveUp').onclick = () => { this.accountMoveUpClick();};
@@ -257,6 +263,7 @@ function AccountListPage() {
 	this.page.classList.remove('hidden');
 	this.reload();
 }
+inherit(CustomPage, AccountListPage);
 AccountListPage.prototype.reload = function() {
 	nodeRemoveAllChildren(this.content);
 	for (let i in accounts) {
@@ -333,28 +340,42 @@ TODO: When we reuse this to select backends for the 2nd+ account,
     if it's open manually.
   * If the existing backends are lost during the procedure, just remove "Cancel".
 */
-var backendSelectPage = document.getElementById('backendSelectPage');
-function backendSelectionShow() {
-	console.log('backendSelectionShow', arguments);
-	//Create activation buttons
+function BackendSelectPage(params) {
+	console.log('BackendSelectPage()', params);
+	CustomPage.call(this, document.getElementById('backendSelectPage'));
+	
+	this.hasCancel = params.hasCancel;
+	this.reload();
+	this.page.classList.remove("hidden");
+}
+inherit(CustomPage, BackendSelectPage);
+BackendSelectPage.prototype.reload = function() {
 	document.getElementById('backendSelectPrompt').textContent = 
 		(backends.length > 0) ? "Access tasks in:"
 		: "No backends available, see error log for details";
-	nodeRemoveChildrenByTagName(backendSelectPage, 'button');
+	
+	nodeRemoveChildrenByTagName(this.page, 'button');
+	
 	backends.forEach(item => {
 		let btn = document.createElement("button");
 		btn.textContent = item.uiName || item.name;
 		btn.associatedBackend = item;
-		btn.onclick = handleBackendClicked;
+		btn.onclick = () => { this.backendClicked(btn); };
 		backendSelectPage.appendChild(btn);
 	});
-	backendSelectPage.classList.remove("hidden");
+	
+	if (this.hasCancel) {
+		let btn = document.createElement("button");
+		btn.textContent = 'Cancel';
+		btn.onclick = () => { this.cancelClick(); };
+		backendSelectPage.appendChild(btn);
+	}
 }
-function backendSelectionCancel() {
-	backendSelectPage.classList.add("hidden");
+BackendSelectPage.prototype.close = function() {
+	this.page.classList.add("hidden");
 }
-function handleBackendClicked(event) {
-	backendClass = event.target.associatedBackend;
+BackendSelectPage.prototype.backendClicked = function(btn) {
+	backendClass = btn.associatedBackend;
 	console.log("Setting up backend", backendClass);
 	let backend = backendCreate(backendClass);
 	backend.init()
@@ -386,6 +407,9 @@ function handleBackendClicked(event) {
 	.then(setupResults => {
 		console.log('Backend.setup() success; params:', setupResults);
 		accountAdd(backend, setupResults);
+		this.okClick(); //for now just run the default completion routine
+		//TODO: maybe split this into a "backend selection" which will run okClicked() over the selected backend
+		//  + "add backend process" which will handle that to open settings etc and conditionally resolve()?
 	})
 	.catch(error => {
 		//For configuration-form scenarios we can also get here when the user cancels the form
