@@ -176,8 +176,8 @@ function accountAdd(account, params) {
 }
 //Deletes the account by its id.
 function accountDelete(id) {
+	//NB: account.signout() if you can before passing it here, to close any session cookies
 	console.log('accountDelete:', id);
-	//TODO: We don't sign out here ATM, maybe we should? We should then accept "account" instead
 	
 	//Delete the account data
 	window.localStorage.removeItem("tasksIg_account_"+id);
@@ -214,8 +214,6 @@ function accountSwap(i, j) {
 	accountList[j] = tmp;
 	accountListChanged(); //the order has changed
 }
-function accountMoveUp(i) { if (i >= 0) return accountSwap(i, i-1); }
-function accountMoveDown(i) { return accountSwap(i, i+1); }
 //Returns a runtime account object based on its ID
 function accountFind(id) {
 	let i = accounts.findIndex(item => (item.id==id));
@@ -248,6 +246,7 @@ function AccountListPage() {
 	CustomPage.call(this, document.getElementById('accountListPage'));
 	
 	this.content = document.getElementById('accountList');
+	this.content.onchange = () => { this.selectedAccountChanged(); };
 	
 	document.getElementById('accountListClose').onclick = () => { this.close(); };
 	document.getElementById('accountListAdd').onclick = () => { this.accountAddClick();};
@@ -267,9 +266,61 @@ AccountListPage.prototype.reload = function() {
 		item.textContent = account.uiName();
 		this.content.appendChild(item);
 	}
+	//We could try to restore the selection but we atm don't do reloads while open
+	this.selectedAccountChanged();
 }
 AccountListPage.prototype.close = function() {
 	this.page.classList.add("hidden");
+}
+AccountListPage.prototype.selectedAccountChanged = function() {
+	let selectedId = this.content.value;
+	document.getElementById('accountListDelete').disabled = (!selectedId);
+	document.getElementById('accountListMoveUp').disabled = (!selectedId || (this.content.selectedIndex <= 0));
+	document.getElementById('accountListMoveDown').disabled = (!selectedId || (this.content.selectedIndex >= this.content.options.length-1));
+}
+AccountListPage.prototype.accountMoveUpClick = function() {
+	let index = this.content.selectedIndex;
+	if ((index <= 0) || (index > this.content.options.length-1))
+		return;
+	//First move the visuals
+	this.content.insertBefore(this.content.options[index], this.content.options[index-1]);
+	//Now the accounts
+	accountSwap(selectedIndex, selectedIndex-1);
+}
+AccountListPage.prototype.accountMoveDownClick = function() {
+	let index = this.content.selectedIndex;
+	if ((index < 0) || (index >= this.content.options.length-1))
+		return;
+	//First move the visuals
+	this.content.insertBefore(this.content.options[index+1], this.content.options[index]);
+	//Now the accounts
+	accountSwap(selectedIndex+1, selectedIndex);
+}
+AccountListPage.prototype.accountDeleteClick = function() {
+	let index = this.content.selectedIndex;
+	if ((index < 0) || (index > this.content.options.length-1))
+		return;
+	
+	let account = accounts[index];
+	if (!confirm('Do you really want to sign out of the account '+account.uiName()+' and forget about it?'))
+		return;
+	
+	let doDelete = true;
+	account.signout()
+	.catch(error => {
+		if (!confirm('Cannot properly sign out of the account "'+account.uiName()+"\":\r\n\""+error+"\"\r\n\r\nForget it anyway?"))
+			doDelete = false;
+	})
+	.then(() => {
+		if (doDelete)
+			accountDelete(account.id);
+	});
+	
+	//If this had been our last account, close this dialog.
+	//The "new account setup" will probably automatically pop up once the UI learns about no accounts,
+	//and this dialog should not remain open underneath.
+	if (this.content.options.length == 0)
+		this.reject(new FormCancelError());
 }
 
 

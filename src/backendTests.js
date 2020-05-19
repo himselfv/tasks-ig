@@ -43,14 +43,25 @@ BackendNeverInit.prototype.init = function() {
 }
 
 
-//Takes a while to signin()
-function BackendLongSignin() {
+//Takes a while to init()
+function BackendLongInit() {
 	BackendTestBase.call(this);
 }
-newTestBackend(BackendTestBase, BackendLongSignin, "Long sign-in");
-BackendLongSignin.prototype.init = function() {
+newTestBackend(BackendTestBase, BackendLongInit, "Long init");
+BackendLongInit.prototype.init = function() {
 	return new Promise(resolve => setTimeout(resolve, 5000));
 }
+
+
+//Fails signout()
+function BackendFailSignout() {
+	BackendTestBase.call(this);
+}
+newTestBackend(BackendTestBase, BackendFailSignout, "Fail sign-out");
+BackendFailSignout.prototype.signout = function() {
+	return Promise.reject('Sorry, I failed signout');
+}
+
 
 
 //Loads, but disconnects after a while by itself
