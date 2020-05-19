@@ -229,12 +229,7 @@ function accountListChanged() {
 		editor.cancel();
 		tasks.clear();
 		//Start the "add account" sequence
-		let autoAddBackendPage = new BackendSelectPage({ hasCancel: false, });
-		autoAddBackendPage.addEventListener('ok', () => {
-			console.log('asd');
-			autoAddBackendPage.resolve();
-		});
-
+		StartNewAccountUi();
 		//Since new accounts can't arrive except from its completion, there's no need to manually abort it in "else"
 	} else {
 		reloadTaskLists(); //if e.g. the order of the lists has changed
@@ -255,29 +250,30 @@ function AccountListPage() {
 	this.content.onchange = () => { this.selectedAccountChanged(); };
 	
 	document.getElementById('accountListClose').onclick = () => { this.cancelClick(); };
-	document.getElementById('accountListAdd').onclick = () => { this.accountAddClick();};
-	document.getElementById('accountListDelete').onclick = () => { this.accountDeleteClick();};
-	document.getElementById('accountListMoveUp').onclick = () => { this.accountMoveUpClick();};
-	document.getElementById('accountListMoveDown').onclick = () => { this.accountMoveDownClick();};
+	document.getElementById('accountListAdd').onclick = () => { this.addClick();};
+	document.getElementById('accountListDelete').onclick = () => { this.deleteClick();};
+	document.getElementById('accountListMoveUp').onclick = () => { this.moveUpClick();};
+	document.getElementById('accountListMoveDown').onclick = () => { this.moveDownClick();};
 	
 	this.page.classList.remove('hidden');
 	this.reload();
 }
 inherit(CustomPage, AccountListPage);
+AccountListPage.prototype.close = function() {
+	this.page.classList.add("hidden");
+}
 AccountListPage.prototype.reload = function() {
 	nodeRemoveAllChildren(this.content);
-	for (let i in accounts) {
-		let account = accounts[i];
-		let item = document.createElement('option');
-		item.value = account.id;
-		item.textContent = account.uiName();
-		this.content.appendChild(item);
-	}
+	for (let i in accounts)
+		this.content.appendChild(this.entryFromAccount(accounts[i]));
 	//We could try to restore the selection but we atm don't do reloads while open
 	this.selectedAccountChanged();
 }
-AccountListPage.prototype.close = function() {
-	this.page.classList.add("hidden");
+AccountListPage.prototype.entryFromAccount = function(account) {
+	let item = document.createElement('option');
+	item.value = account.id;
+	item.textContent = account.uiName();
+	return item;
 }
 AccountListPage.prototype.selectedAccountChanged = function() {
 	let selectedId = this.content.value;
@@ -285,7 +281,7 @@ AccountListPage.prototype.selectedAccountChanged = function() {
 	document.getElementById('accountListMoveUp').disabled = (!selectedId || (this.content.selectedIndex <= 0));
 	document.getElementById('accountListMoveDown').disabled = (!selectedId || (this.content.selectedIndex >= this.content.options.length-1));
 }
-AccountListPage.prototype.accountMoveUpClick = function() {
+AccountListPage.prototype.moveUpClick = function() {
 	let index = this.content.selectedIndex;
 	if ((index <= 0) || (index > this.content.options.length-1))
 		return;
@@ -294,7 +290,7 @@ AccountListPage.prototype.accountMoveUpClick = function() {
 	//Now the accounts
 	accountSwap(selectedIndex, selectedIndex-1);
 }
-AccountListPage.prototype.accountMoveDownClick = function() {
+AccountListPage.prototype.moveDownClick = function() {
 	let index = this.content.selectedIndex;
 	if ((index < 0) || (index >= this.content.options.length-1))
 		return;
@@ -303,7 +299,7 @@ AccountListPage.prototype.accountMoveDownClick = function() {
 	//Now the accounts
 	accountSwap(selectedIndex+1, selectedIndex);
 }
-AccountListPage.prototype.accountDeleteClick = function() {
+AccountListPage.prototype.deleteClick = function() {
 	let index = this.content.selectedIndex;
 	if ((index < 0) || (index > this.content.options.length-1))
 		return;
@@ -319,8 +315,10 @@ AccountListPage.prototype.accountDeleteClick = function() {
 			doDelete = false;
 	})
 	.then(() => {
-		if (doDelete)
+		if (doDelete) {
 			accountDelete(account.id);
+			this.content.options[index].remove();
+		}
 	});
 	
 	//If this had been our last account, close this dialog.
@@ -329,8 +327,26 @@ AccountListPage.prototype.accountDeleteClick = function() {
 	if (this.content.options.length == 0)
 		this.reject(new FormCancelError());
 }
+AccountListPage.prototype.addClick = function() {
+	StartNewAccountUi({ hasCancel:true, })
+	.then(account => {
+		let item = this.entryFromAccount(account);
+		//Currently new accounts always go to the end of the list:
+		this.content.appendChild(item);
+	});
+}
 
 
+
+//Opens new account creation UI. Returns the promise that's resolved with new account, or rejected on cancel.
+function StartNewAccountUi() {
+	let addBackendPage = new BackendSelectPage({ hasCancel: false, });
+	addBackendPage.addEventListener('ok', (event) => {
+		console.log('addBackendPage.ok:', event);
+		addBackendPage.resolve(event.results);
+	});
+	return addBackendPage.waitResult();
+}
 
 /*
 Backend selection page
@@ -407,7 +423,7 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 	.then(setupResults => {
 		console.log('Backend.setup() success; params:', setupResults);
 		accountAdd(backend, setupResults);
-		this.okClick(); //for now just run the default completion routine
+		this.okClick(backend); //for now just run the default completion routine
 		//TODO: maybe split this into a "backend selection" which will run okClicked() over the selected backend
 		//  + "add backend process" which will handle that to open settings etc and conditionally resolve()?
 	})

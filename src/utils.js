@@ -440,8 +440,10 @@ CustomPage.prototype.dispatchEvent = function(name, args) {
 	this.page.dispatchEvent(event);
 }
 //Two predefined events are OK and Cancel, you only have to raise these as handlers
-CustomPage.prototype.okClick = function() {
-	this.dispatchEvent('ok', { results: this.collectResults(), });
+CustomPage.prototype.okClick = function(results) {
+	//Either pass the results or override the collection proc
+	if (!results) this.collectResults();
+	this.dispatchEvent('ok', { results: results, });
 }
 //Override to verify input and collect it for passing outside
 CustomPage.prototype.collectResults = function() {
