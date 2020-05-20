@@ -448,6 +448,12 @@ Account list page
 .accountListControlsSpacer {
   flex-grow: 1;
 }
+#accountListReset {
+  color: red;
+}
+#accountListReset:disabled {
+  color: gray;
+}
 
 
 /*

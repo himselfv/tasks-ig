@@ -390,6 +390,7 @@ function accountListChanged() {
 		//Start the "add account" sequence
 		StartNewAccountUi({ hasCancel: false, });
 		//Since new accounts can't arrive except from its completion, there's no need to manually abort it in "else"
+		tasklistBoxReload();
 	} else {
 		reloadTaskLists(); //if e.g. the order of the lists has changed
 	}
@@ -430,8 +431,11 @@ function AccountsPage() {
 	document.getElementById('accountListClose').onclick = () => { this.cancelClick(); };
 	document.getElementById('accountListAdd').onclick = () => { this.addClick();};
 	document.getElementById('accountListDelete').onclick = () => { this.deleteClick();};
+	document.getElementById('accountListReset').onclick = () => { this.resetClick();};
 	document.getElementById('accountListMoveUp').onclick = () => { this.moveUpClick();};
 	document.getElementById('accountListMoveDown').onclick = () => { this.moveDownClick();};
+	
+	document.getElementById('accountListReset').classList.toggle('hidden', !options.debug);
 	
 	this.page.classList.remove('hidden');
 	this.reload();
@@ -457,6 +461,7 @@ AccountsPage.prototype.updateAccountActions = function() {
 	let selectedId = this.content.value;
 	console.log('AccountsPage.updateAccountActions', selectedId);
 	document.getElementById('accountListDelete').disabled = (!selectedId);
+	document.getElementById('accountListReset').disabled = (!selectedId || !options.debug || !accounts[this.content.selectedIndex].reset);
 	document.getElementById('accountListMoveUp').disabled = (!selectedId || (this.content.selectedIndex <= 0));
 	document.getElementById('accountListMoveDown').disabled = (!selectedId || (this.content.selectedIndex >= this.content.options.length-1));
 }
@@ -517,6 +522,26 @@ AccountsPage.prototype.addClick = function() {
 		this.content.appendChild(item);
 		this.updateAccountActions(); //The one above may now moveDown
 	});
+}
+AccountsPage.prototype.resetClick = function() {
+	let index = this.content.selectedIndex;
+	if ((index < 0) || (index > this.content.options.length-1))
+		return;
+	accountReset(accounts[index]);
+}
+//Used both from AccountsPage (for specific account) and from main menu (no param)
+function accountReset(account) {
+	if (!account) account = backend;
+	if (!account || !account.reset) return;
+	if (!confirm("WARNING. This will delete all your tasks and task lists and RESET this account:\r\n\r\n"
+		+ account.uiName()+"\r\n\r\n"
+		+'Do you want to continue?'))
+		return;
+	if (!confirm('Are you SURE you want to delete ALL your task lists and tasks in account "'+account.uiName()+'"?'))
+	return;
+	var job = account.reset()
+		.then(() => reloadTaskLists());
+	pushJob(job);
 }
 
 
@@ -615,7 +640,6 @@ New account UI
 function StartNewAccountUi(params) {
 	params.prompt = "Access tasks in:";
 	let addBackendPage = new BackendSelectPage(params);
-	
 	
 	addBackendPage.addEventListener('ok', (event) => {
 		console.log('addBackendPage.ok:', event);
@@ -753,8 +777,6 @@ SettingsPage.prototype.collectResults = function() {
 
 
 
-
-
 /*
 Task list selection box
 Each entry's .value is a JSON.stringify({ account: accountId, tasklist: tasklistId }).
@@ -788,6 +810,8 @@ function reloadTaskLists() {
 	console.log('reloadTaskLists');
 	for (let i in accounts)
 		reloadAccountTaskLists(accounts[i]);
+	if (accounts.length <= 0)
+		tasklistBoxReload(); //no accounts => no one will trigger visuals
 }
 //Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
 function reloadAccountTaskLists(account) {
@@ -909,7 +933,7 @@ function tasklistActionsUpdate() {
 }
 //Update available account actions depending on the selected account/tasklist and its state and available functions
 function accountActionsUpdate() {
-	console.log('accountActionsUpdate', backend, backend.reset);
+	console.log('accountActionsUpdate', backend);
 	element("accountResetBtn").classList.toggle("hidden", !backend || !backend.reset);
 }
 
@@ -1899,18 +1923,6 @@ function tasklistDelete() {
 	pushJob(job);
 }
 
-function accountReset() {
-	if (!backend || !backend.reset) return;
-	if (!confirm("WARNING. This will delete all your tasks and task lists and RESET this account:\r\n\r\n"
-		+ backend.uiName()+"\r\n\r\n"
-		+'Do you want to continue?'))
-		return;
-	if (!confirm('Are you SURE you want to delete ALL your task lists and tasks in account "'+backend.uiName()+'"?'))
-	return;
-	var job = backend.reset()
-		.then(() => reloadTaskLists());
-	pushJob(job);
-}
 
 
 /*
