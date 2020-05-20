@@ -406,6 +406,11 @@ function CustomPage(pageElement) {
 	//The HTML base element can be created from scratch or reused
 	this.page = pageElement;
 	
+	//Dummy element to use its EventTarget.
+	//We don't want to use this.page's event target as this.page might be permanent
+	//and handlers attached to this CustomPage() will remain after CustomPage() destructs.
+	this.eventTarget = document.createElement('div');
+	
 	//Calling either of these closes the page
 	this.promise = new Promise((_resolve, _reject) => {
 		this.resolve = _resolve;
@@ -416,6 +421,7 @@ function CustomPage(pageElement) {
 	this.promise
 	.catch(() => {})
 	.then(() => {
+		console.log('CustomPage promise over');
 		this.promise = null; //prevent further access
 		this.resolve = null;
 		this.reject = null;
@@ -427,17 +433,17 @@ CustomPage.prototype.waitResult = function() {
 	return this.promise;
 };
 CustomPage.prototype.addEventListener = function() {
-	this.page.addEventListener.apply(this.page, arguments);
+	this.eventTarget.addEventListener.apply(this.eventTarget, arguments);
 }
 CustomPage.prototype.removeEventListener = function() {
-	this.page.removeEventListener.apply(this.page, arguments);
+	this.eventTarget.removeEventListener.apply(this.eventTarget, arguments);
 }
 //Clients can subscribe to events which the descendants can raise
 CustomPage.prototype.dispatchEvent = function(name, args) {
 	let event = new CustomEvent(name);
 	for (let key in args)
 		event[key] = args[key];
-	this.page.dispatchEvent(event);
+	this.eventTarget.dispatchEvent(event);
 }
 //Two predefined events are OK and Cancel, you only have to raise these as handlers
 CustomPage.prototype.okClick = function(results) {

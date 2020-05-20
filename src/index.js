@@ -442,6 +442,7 @@ function AccountsPage() {
 }
 inherit(CustomPage, AccountsPage);
 AccountsPage.prototype.close = function() {
+	console.log('AccountsPage.close');
 	this.page.classList.add("hidden");
 }
 AccountsPage.prototype.reload = function() {
@@ -506,13 +507,14 @@ AccountsPage.prototype.deleteClick = function() {
 			this.content.options[index].remove();
 			this.updateAccountActions(); //onchanged() won't get called automatically
 		}
+		//If this had been our last account, close this dialog.
+		//The "new account setup" will probably automatically pop up once the UI learns about no accounts,
+		//and this dialog should not remain open underneath.
+		if (this.content.options.length == 0) {
+			console.log('AccountsPage: no accounts left, cancelling the page');
+			this.reject(new FormCancelError());
+		}
 	});
-	
-	//If this had been our last account, close this dialog.
-	//The "new account setup" will probably automatically pop up once the UI learns about no accounts,
-	//and this dialog should not remain open underneath.
-	if (this.content.options.length == 0)
-		this.reject(new FormCancelError());
 }
 AccountsPage.prototype.addClick = function() {
 	StartNewAccountUi({ hasCancel:true, })
