@@ -18,13 +18,15 @@ function initUi() {
 
 	mainmenu = dropdownInit('mainmenu');
 	mainmenu.button.title = "Task list action";
-	mainmenu.add('accountsBtn', accountsPageOpen, "Accounts...");
 	mainmenu.add('menuReloadBtn', reloadTaskLists, "Reload");
 	mainmenu.add('listAddBtn', tasklistAdd, "Add list...");
 	mainmenu.add('listRenameBtn', tasklistRename, "Rename list...");
 	mainmenu.add('listDeleteBtn', tasklistDelete, "Delete list");
-	mainmenu.add('accountResetBtn', accountReset, "Reset account");
-	mainmenu.add('signoutBtn', handleSignoutClick, "Sign Out");
+	//This is a dangerous nuke account option; hide it from general users:
+	if (options.debug)
+		mainmenu.add('accountResetBtn', accountReset, "Reset account");
+	mainmenu.addSeparator();
+	mainmenu.add('accountsBtn', accountsPageOpen, "Accounts...");
 	
 	element('listContent').addEventListener("click", tasklistClick);
 	element('listContent').addEventListener("dblclick", tasklistDblClick);
@@ -52,6 +54,163 @@ function initUi() {
 
 
 /*
+Common activity and error handling.
+*/
+var hadErrors = false;
+function printError(msg) {
+	console.log(msg);
+	if (typeof msg != 'string')
+		msg = JSON.stringify(msg);
+	var popup = document.getElementById('errorPopup');
+	var popupText = popup.innerText;
+	if (popupText != '') popupText = popupText + '\r\n';
+	popup.innerText = (popupText+msg);
+	popup.classList.remove("hidden");
+	document.getElementById('activityIndicator').classList.add('error');
+	hadErrors = true;
+}
+function handleError(reason) {
+	if (reason.result) {
+		if (reason.result.error)
+			printError('Error: ' + reason.result.error.message);
+		else
+			printError(reason.result);
+	}
+	else
+		printError(reason);
+}
+
+//Pass any promises to track their execution + catch errors.
+var jobCount = 0;
+var jobs = [];
+var idlePromises = [];
+function pushJob(prom) {
+	jobCount += 1;
+	jobs.push(prom);
+	//console.log("job added, count="+jobCount);
+	document.getElementById('activityIndicator').classList.add('working');
+	prom.then(result => {
+		jobCount -= 1;
+		let index = jobs.indexOf(prom);
+		if (index >= 0)
+			jobs.splice(index, 1);
+		//console.log("job completed, count="+jobCount);
+		if (jobCount <= 0) {
+			document.getElementById('activityIndicator').classList.remove('working');
+			while ((idlePromises.length > 0) && (jobCount <= 0))
+				idlePromises.splice(0, 1)();
+		}
+	});
+	prom.catch(handleError);
+	return prom;
+}
+//Returns a promise that fires only when NO jobs are remaining in the queue
+//=> all queued actions have completed AND no new actions are pending.
+function waitIdle() {
+	if (jobCount <= 0)
+		return Promise.resolve();
+	else
+		return new Promise((resolve, reject) => { idlePromises.push(resolve); })
+}
+//Same but recevies a function pointer
+function waitCurrentJobsCompleted() {
+	return Promise.all(jobs);
+}
+
+function addIdleJob(job) {
+	if (jobCount <= 0) {
+		job(); //synchronously
+		return Promise.resolve(); //if anyone expects us to
+	}
+	waitIdle().then(() => job());
+}
+//Returns a promise that fires when all operations queued AT THE MOMENT OF THE REQUEST have completed.
+//New operations may be queued by the time it fires.
+function handleBeforeUnload(event) {
+	//Show the confirmation popup if the changes are still pending
+	//These days most browsers ignore the message contents + only show the popup if you have interacted with the page
+	var message = ""; //empty string! not null!
+	if (hadErrors)
+		message = "Some changes to your tasks might have failed.";
+	else if ((jobCount >= 1) || (idlePromises.length > 0))
+		message = "Some changes to your tasks are still pending. If you close the page now they may be lost";
+	if (message) { //two ways of requesting confirmation:
+		event.preventDefault();
+		event.returnValue = message;
+	}
+	return message;
+}
+
+
+/*
+Change notifications
+Since we update the UI without waiting for the backend to confirm changes,
+we cannot react to change notifications immediately.
+1. That might be callbacks for our own actions (backends should not send them but they may)
+2. Local state of things might be ahead of the server:
+      Locally:  A->B-> [currently transmitting] ->C->D-> [visible in UI]
+      Server notifies: B->F  [can't and shouldn't react!]
+
+Therefore we only mark changed items for review and update them when our state fully
+catches up with the server.
+By that time things might've changed further so we'll need to requery everything then.
+*/
+function registerChangeNotifications(backend) {
+	backend.onTasklistAdded.push((tasklist) => {
+		reportedChanges.tasklists = true;
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTasklistEdited.push((tasklist) => {
+		reportedChanges.tasklists = true;
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTasklistDeleted.push((tasklist) => {
+		reportedChanges.tasklists = true;
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTaskAdded.push((task, tasklistId) => {
+		reportedChanges.tasks.push(task.id);
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTaskEdited.push((task) => {
+		reportedChanges.tasks.push(task.id);
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTaskDeleted.push((taskId) => {
+		reportedChanges.tasks.push(taskId);
+		addIdleJob(processReportedChanges);
+	});
+	backend.onTaskMoved.push((taskId, where) => {
+		reportedChanges.tasks.push(taskId);
+		addIdleJob(processReportedChanges);
+	});
+}
+var reportedChanges = {
+	tasklists: false,
+	tasks: []
+}
+function processReportedChanges() {
+	var prom = Promise.resolve();
+	if (reportedChanges.tasklists)
+		prom = prom.then(results => reloadAccountTaskLists(backend));
+	let selectedList = selectedTaskList();
+	if (!selectedList)
+		reportedChanges.tasks = []; //no list active, we don't care
+	if (reportedChanges.tasks.length > 0) {
+		/*
+		We have to requery the current list to see
+		1. Which tasks now go after which
+		2. Which tasks have been moved elsewhere
+		But comparing two task trees is cumbersome so do it the dumb way for now:
+		  Just reload everything + try to preserve focus.
+		*/
+		prom = prom.then(results => tasklistReloadSelected());
+	}
+	pushJob(prom);
+}
+
+
+/*
 Creates a new backend instance from a given constructor. Returns immediately.
 Used both when loading an existing account or creating a new one.
 */
@@ -75,7 +234,6 @@ function backendCreate(backendCtor) {
 	
 	backend.onSignInStatus.push(updateSigninStatus);
 	registerChangeNotifications(backend);
-	backendActionsUpdate();
 	return backend;
 }
 
@@ -237,14 +395,33 @@ function accountListChanged() {
 	}
 }
 
+// Called when the signed in status changes, whether after a button click or automatically
+function updateSigninStatus(account, isSignedIn) {
+	console.log('updateSigninStatus: ', account, isSignedIn);
+	//If we're on the list from this account, switch away -- will happen automatically from reloadAccountTaskLists()
+	//TODO:	If we're editing a task from this account, cancel
+	
+	let selected = selectedTaskList();
+	reloadAccountTaskLists(account);
+
+	//If we were on the "account status" message, update
+	let newSelected = selectedTaskList();
+	if ((selected.account == newSelected.account) && (selected.tasklist == newSelected.tasklist) && (!selected.tasklist)) {
+		tasklistReloadSelected(); //will update the message
+		accountActionsUpdate();
+	}
+}
+
+
 
 /*
 Account list page
+Allows to add, remove, reorder accounts, in the future perhaps reorder/hide task lists inside accounts.
 */
 function accountsPageOpen() {
-	new AccountListPage();
+	new AccountsPage();
 }
-function AccountListPage() {
+function AccountsPage() {
 	CustomPage.call(this, document.getElementById('accountListPage'));
 	
 	this.content = document.getElementById('accountList');
@@ -259,31 +436,31 @@ function AccountListPage() {
 	this.page.classList.remove('hidden');
 	this.reload();
 }
-inherit(CustomPage, AccountListPage);
-AccountListPage.prototype.close = function() {
+inherit(CustomPage, AccountsPage);
+AccountsPage.prototype.close = function() {
 	this.page.classList.add("hidden");
 }
-AccountListPage.prototype.reload = function() {
+AccountsPage.prototype.reload = function() {
 	nodeRemoveAllChildren(this.content);
 	for (let i in accounts)
 		this.content.appendChild(this.entryFromAccount(accounts[i]));
 	//We could try to restore the selection but we atm don't do reloads while open
 	this.updateAccountActions();
 }
-AccountListPage.prototype.entryFromAccount = function(account) {
+AccountsPage.prototype.entryFromAccount = function(account) {
 	let item = document.createElement('option');
 	item.value = account.id;
 	item.textContent = account.uiName();
 	return item;
 }
-AccountListPage.prototype.updateAccountActions = function() {
+AccountsPage.prototype.updateAccountActions = function() {
 	let selectedId = this.content.value;
-	console.log('AccountListPage.updateAccountActions', selectedId);
+	console.log('AccountsPage.updateAccountActions', selectedId);
 	document.getElementById('accountListDelete').disabled = (!selectedId);
 	document.getElementById('accountListMoveUp').disabled = (!selectedId || (this.content.selectedIndex <= 0));
 	document.getElementById('accountListMoveDown').disabled = (!selectedId || (this.content.selectedIndex >= this.content.options.length-1));
 }
-AccountListPage.prototype.moveUpClick = function() {
+AccountsPage.prototype.moveUpClick = function() {
 	let index = this.content.selectedIndex;
 	if ((index <= 0) || (index > this.content.options.length-1))
 		return;
@@ -293,7 +470,7 @@ AccountListPage.prototype.moveUpClick = function() {
 	accountSwap(index, index-1);
 	this.updateAccountActions(); //Positions have changed
 }
-AccountListPage.prototype.moveDownClick = function() {
+AccountsPage.prototype.moveDownClick = function() {
 	let index = this.content.selectedIndex;
 	if ((index < 0) || (index >= this.content.options.length-1))
 		return;
@@ -303,7 +480,7 @@ AccountListPage.prototype.moveDownClick = function() {
 	accountSwap(index+1, index);
 	this.updateAccountActions(); //Positions have changed
 }
-AccountListPage.prototype.deleteClick = function() {
+AccountsPage.prototype.deleteClick = function() {
 	let index = this.content.selectedIndex;
 	if ((index < 0) || (index > this.content.options.length-1))
 		return;
@@ -332,7 +509,7 @@ AccountListPage.prototype.deleteClick = function() {
 	if (this.content.options.length == 0)
 		this.reject(new FormCancelError());
 }
-AccountListPage.prototype.addClick = function() {
+AccountsPage.prototype.addClick = function() {
 	StartNewAccountUi({ hasCancel:true, })
 	.then(account => {
 		let item = this.entryFromAccount(account);
@@ -341,8 +518,6 @@ AccountListPage.prototype.addClick = function() {
 		this.updateAccountActions(); //The one above may now moveDown
 	});
 }
-
-
 
 
 /*
@@ -448,7 +623,6 @@ function StartNewAccountUi(params) {
 	});
 	return addBackendPage.waitResult();
 }
-
 
 
 /*
@@ -578,196 +752,7 @@ SettingsPage.prototype.collectResults = function() {
 }
 
 
-/*
-Account list page
-*/
-function handleSignoutClick(event) {
-	backend.signout()
-	.then(() => {
-		accountDelete(backend.id);
-	})
-	.catch(handleError);
-}
 
-// Called when the signed in status changes, whether after a button click or automatically
-function updateSigninStatus(account, isSignedIn) {
-	console.log('updateSigninStatus: ', account, isSignedIn);
-	//If we're on the list from this account, switch away -- will happen automatically from reloadAccountTaskLists()
-	//TODO:	
-	//If we're editing a task from this account, cancel
-	
-	let selected = selectedTaskList();
-	reloadAccountTaskLists(account);
-
-	//If we were on the "account status" message, update
-	let newSelected = selectedTaskList();
-	if ((selected.account == newSelected.account) && (selected.tasklist == newSelected.tasklist) && (!selected.tasklist)) {
-		tasklistReloadSelected(); //will update the message
-		backendActionsUpdate();
-	}
-}
-function backendActionsUpdate() {
-	element("accountResetBtn").classList.toggle("hidden", !backend || !backend.reset);
-	tasklistActionsUpdate();
-}
-
-
-
-/*
-Common activity and error handling.
-*/
-var hadErrors = false;
-function printError(msg) {
-	console.log(msg);
-	if (typeof msg != 'string')
-		msg = JSON.stringify(msg);
-	var popup = document.getElementById('errorPopup');
-	var popupText = popup.innerText;
-	if (popupText != '') popupText = popupText + '\r\n';
-	popup.innerText = (popupText+msg);
-	popup.classList.remove("hidden");
-	document.getElementById('activityIndicator').classList.add('error');
-	hadErrors = true;
-}
-function handleError(reason) {
-	if (reason.result) {
-		if (reason.result.error)
-			printError('Error: ' + reason.result.error.message);
-		else
-			printError(reason.result);
-	}
-	else
-		printError(reason);
-}
-
-//Pass any promises to track their execution + catch errors.
-var jobCount = 0;
-var jobs = [];
-var idlePromises = [];
-function pushJob(prom) {
-	jobCount += 1;
-	jobs.push(prom);
-	//console.log("job added, count="+jobCount);
-	document.getElementById('activityIndicator').classList.add('working');
-	prom.then(result => {
-		jobCount -= 1;
-		let index = jobs.indexOf(prom);
-		if (index >= 0)
-			jobs.splice(index, 1);
-		//console.log("job completed, count="+jobCount);
-		if (jobCount <= 0) {
-			document.getElementById('activityIndicator').classList.remove('working');
-			while ((idlePromises.length > 0) && (jobCount <= 0))
-				idlePromises.splice(0, 1)();
-		}
-	});
-	prom.catch(handleError);
-	return prom;
-}
-//Returns a promise that fires only when NO jobs are remaining in the queue
-//=> all queued actions have completed AND no new actions are pending.
-function waitIdle() {
-	if (jobCount <= 0)
-		return Promise.resolve();
-	else
-		return new Promise((resolve, reject) => { idlePromises.push(resolve); })
-}
-//Same but recevies a function pointer
-function waitCurrentJobsCompleted() {
-	return Promise.all(jobs);
-}
-
-function addIdleJob(job) {
-	if (jobCount <= 0) {
-		job(); //synchronously
-		return Promise.resolve(); //if anyone expects us to
-	}
-	waitIdle().then(() => job());
-}
-//Returns a promise that fires when all operations queued AT THE MOMENT OF THE REQUEST have completed.
-//New operations may be queued by the time it fires.
-function handleBeforeUnload(event) {
-	//Show the confirmation popup if the changes are still pending
-	//These days most browsers ignore the message contents + only show the popup if you have interacted with the page
-	var message = ""; //empty string! not null!
-	if (hadErrors)
-		message = "Some changes to your tasks might have failed.";
-	else if ((jobCount >= 1) || (idlePromises.length > 0))
-		message = "Some changes to your tasks are still pending. If you close the page now they may be lost";
-	if (message) { //two ways of requesting confirmation:
-		event.preventDefault();
-		event.returnValue = message;
-	}
-	return message;
-}
-
-
-/*
-Change notifications
-Since we update the UI without waiting for the backend to confirm changes,
-we cannot react to change notifications immediately.
-1. That might be callbacks for our own actions (backends should not send them but they may)
-2. Local state of things might be ahead of the server:
-      Locally:  A->B-> [currently transmitting] ->C->D-> [visible in UI]
-      Server notifies: B->F  [can't and shouldn't react!]
-
-Therefore we only mark changed items for review and update them when our state fully
-catches up with the server.
-By that time things might've changed further so we'll need to requery everything then.
-*/
-function registerChangeNotifications(backend) {
-	backend.onTasklistAdded.push((tasklist) => {
-		reportedChanges.tasklists = true;
-		addIdleJob(processReportedChanges);
-	});
-	backend.onTasklistEdited.push((tasklist) => {
-		reportedChanges.tasklists = true;
-		addIdleJob(processReportedChanges);
-	});
-	backend.onTasklistDeleted.push((tasklist) => {
-		reportedChanges.tasklists = true;
-		addIdleJob(processReportedChanges);
-	});
-	backend.onTaskAdded.push((task, tasklistId) => {
-		reportedChanges.tasks.push(task.id);
-		addIdleJob(processReportedChanges);
-	});
-	backend.onTaskEdited.push((task) => {
-		reportedChanges.tasks.push(task.id);
-		addIdleJob(processReportedChanges);
-	});
-	backend.onTaskDeleted.push((taskId) => {
-		reportedChanges.tasks.push(taskId);
-		addIdleJob(processReportedChanges);
-	});
-	backend.onTaskMoved.push((taskId, where) => {
-		reportedChanges.tasks.push(taskId);
-		addIdleJob(processReportedChanges);
-	});
-}
-var reportedChanges = {
-	tasklists: false,
-	tasks: []
-}
-function processReportedChanges() {
-	var prom = Promise.resolve();
-	if (reportedChanges.tasklists)
-		prom = prom.then(results => reloadAccountTaskLists(backend));
-	let selectedList = selectedTaskList();
-	if (!selectedList)
-		reportedChanges.tasks = []; //no list active, we don't care
-	if (reportedChanges.tasks.length > 0) {
-		/*
-		We have to requery the current list to see
-		1. Which tasks now go after which
-		2. Which tasks have been moved elsewhere
-		But comparing two task trees is cumbersome so do it the dumb way for now:
-		  Just reload everything + try to preserve focus.
-		*/
-		prom = prom.then(results => tasklistReloadSelected());
-	}
-	pushJob(prom);
-}
 
 
 /*
@@ -908,6 +893,7 @@ function selectedTaskListChanged() {
 		backend = tasklist.account;
 	else
 		backend = null;
+	accountActionsUpdate();
 	tasklistActionsUpdate();
 	return tasklistReloadSelected();
 }
@@ -920,6 +906,11 @@ function tasklistActionsUpdate() {
 	element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
 	element("tasksExportAllToFile").classList.toggle("hidden", !tasklist);
 	tasksActionsUpdate();
+}
+//Update available account actions depending on the selected account/tasklist and its state and available functions
+function accountActionsUpdate() {
+	console.log('accountActionsUpdate', backend, backend.reset);
+	element("accountResetBtn").classList.toggle("hidden", !backend || !backend.reset);
 }
 
 
@@ -986,12 +977,15 @@ function tasklistReloadSelected() {
 		else if (!selected.account.isSignedIn())
 			message.innerHTML = 'Waiting for this account to complete sign in. If this takes too long, perhaps there are problems';
 		else if (!!selected.account.ui && isArrayEmpty(selected.account.ui.tasklists)) {
-			message.innerHTML = 'No task lists in this account. '; //
-			let a = document.createElement('a');
-			a.href = "#";
-			a.textContent = 'Add a task list.';
-			a.addEventListener("click", tasklistAdd);
-			message.appendChild(a);
+			message.innerHTML = 'No task lists in this account. ';
+			if (!!selected.account.tasklistAdd) {
+				let a = document.createElement('a');
+				a.href = "#";
+				a.textContent = 'Add a task list.';
+				a.addEventListener("click", tasklistAdd);
+				message.appendChild(a);
+			} else
+				message.innerHTML = message.innerHTML + "\r\nTask lists cannot be added to this account.";
 		} else
 			message.innerHTML = 'Tasklist not selected'
 		return Promise.resolve();
@@ -1848,77 +1842,79 @@ function tasksActionsUpdate() {
   }
 
 
-  /*
-  Tasklist and account actions
-  */
-  
-  function tasklistAdd() {
-  	if (!backend || !backend.tasklistAdd) return;
-    var title = prompt("Enter a name for the new task list:", "");
-    if (!title)
-      return;
-    
-    var newTasklistId = null;
-    var job = backend.tasklistAdd(title)
-    .then(result => {
-      newTasklistId = result.id;
-      return reloadAccountTaskLists(backend)
-    }).then(response => {
-      setSelectedTaskList(new TaskListHandle(backend, newTasklistId));
-    });
-    pushJob(job);
-  }
-  
-  function tasklistRename() {
-  	if (!backend || !backend.tasklistUpdate) return;
-    var oldTitle = selectedTaskListTitle();
-    var title = prompt("Enter new name for this task list:", oldTitle);
-    if (!title || (title == oldTitle))
-      return;
-    var tasklist = selectedTaskList();
-    if (!tasklist || !tasklist.tasklist) return;
-    var patch = {
-      'id': tasklist.tasklist,
-      'title': title,
-    };
-    var job = backend.tasklistPatch(patch)
-    	.then(result => reloadAccountTaskLists(backend));
-    pushJob(job);
-  }
-  
-  function tasklistDelete() {
-  	if (!backend || !backend.tasklistDelete) return;
-    if (tasks.first() != null) {
-      window.alert("This task list is not empty. Please delete all tasks before deleting the task list.");
-      return;
-    }
-    
-    var tasklist = selectedTaskList();
-    if (!tasklist || !tasklist.tasklist) return;
-    var title = selectedTaskListTitle();
-    if (!confirm('Are you SURE you want to delete task list "'+title+'"?'))
-      return;
-    var job = tasklist.account.tasklistDelete(tasklist.tasklist)
-    .then(result => reloadAccountTaskLists(tasklist.account))
-    .then(response => selectedTaskListChanged());
-    pushJob(job);
-  }
-  
-  function accountReset() {
-  	if (!backend || !backend.reset) return;
-    if (!confirm('WARNING. This will delete all your tasks and task lists and RESET your account. Do you want to continue?'))
-      return;
-    if (!confirm('Are you SURE you want to delete ALL your task lists and tasks?'))
-      return;
-    var job = backend.reset()
-    	.then(() => reloadTaskLists());
-    pushJob(job);
-  }
+/*
+Tasklist and account actions
+*/
 
+function tasklistAdd() {
+	if (!backend || !backend.tasklistAdd) return;
+	var title = prompt("Enter a name for the new task list in '"+backend.uiName()+"':", "");
+	if (!title)
+		return;
+
+	var newTasklistId = null;
+	var job = backend.tasklistAdd(title)
+	.then(result => {
+		newTasklistId = result.id;
+		return reloadAccountTaskLists(backend)
+	})
+	.then(response => {
+		setSelectedTaskList(new TaskListHandle(backend, newTasklistId));
+	});
+	pushJob(job);
+}
+
+function tasklistRename() {
+	if (!backend || !backend.tasklistUpdate) return;
+	var oldTitle = selectedTaskListTitle();
+	var title = prompt("Enter new name for this task list:", oldTitle);
+	if (!title || (title == oldTitle))
+		return;
+	var tasklist = selectedTaskList();
+	if (!tasklist || !tasklist.tasklist) return;
+	var patch = {
+		'id': tasklist.tasklist,
+		'title': title,
+	};
+	var job = backend.tasklistPatch(patch)
+		.then(result => reloadAccountTaskLists(backend));
+	pushJob(job);
+}
+
+function tasklistDelete() {
+	if (!backend || !backend.tasklistDelete) return;
+	if (tasks.first() != null) {
+		window.alert("This task list is not empty. Please delete all tasks before deleting the task list.");
+		return;
+	}
+
+	var tasklist = selectedTaskList();
+	if (!tasklist || !tasklist.tasklist) return;
+	var title = selectedTaskListTitle();
+	if (!confirm('Are you SURE you want to delete task list "'+title+'"?'))
+		return;
+	var job = tasklist.account.tasklistDelete(tasklist.tasklist)
+	.then(result => reloadAccountTaskLists(tasklist.account))
+	.then(response => selectedTaskListChanged());
+	pushJob(job);
+}
+
+function accountReset() {
+	if (!backend || !backend.reset) return;
+	if (!confirm("WARNING. This will delete all your tasks and task lists and RESET this account:\r\n\r\n"
+		+ backend.uiName()+"\r\n\r\n"
+		+'Do you want to continue?'))
+		return;
+	if (!confirm('Are you SURE you want to delete ALL your task lists and tasks in account "'+backend.uiName()+'"?'))
+	return;
+	var job = backend.reset()
+		.then(() => reloadTaskLists());
+	pushJob(job);
+}
 
 
 /*
-	
+Editor page
 */
 function Editor() {
 	this.page = document.getElementById("editorPage");
