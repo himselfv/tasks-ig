@@ -90,9 +90,11 @@ BackendDav.prototype.signout = function() {
 	return Promise.resolve();
 }
 BackendDav.prototype.uiName = function() {
-	let uiName = Backend.uiName.call(this);
-	if (!!this.username)
-		uiName = this.username + ' ('+uiName+')'
+	let uiName = Backend.prototype.uiName.call(this);
+	//For DAV it makes more sense to display the resource, not username
+	//All usernames accessing the same resource will normally see the same list
+	if (!!this.server)
+		uiName = uiName + ' ('+this.server+')'
 	return uiName;
 }
 

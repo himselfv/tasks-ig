@@ -421,7 +421,6 @@ function CustomPage(pageElement) {
 	this.promise
 	.catch(() => {})
 	.then(() => {
-		console.log('CustomPage promise over');
 		this.promise = null; //prevent further access
 		this.resolve = null;
 		this.reject = null;

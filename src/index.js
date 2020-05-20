@@ -600,7 +600,7 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 		let settings = backend.settingsPage();
 		if (!settings)
 			return backend.setup({});
-		settingsPage = new SettingsPage(settings, backendClass.name);
+		settingsPage = new SettingsPage(settings, backend.uiName());
 		settingsPage.addEventListener('ok', function(event) {
 			//Disable the OK button for the time being
 			settingsPage.disable();

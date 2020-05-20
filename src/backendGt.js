@@ -116,7 +116,7 @@ BackendGTasks.prototype.signin = function(params) {
 		this._initialized = true;
 		if (!isChromeExtension())
 			//Listen for sign-in state changes.
-			gapi.auth2.getAuthInstance().isSignedIn.listen(updateSigninStatus);
+			gapi.auth2.getAuthInstance().isSignedIn.listen(this.notifySignInStatus);
 		//Handle the initial sign-in state.
 		this.notifySignInStatus(this.isSignedIn());
 		if (isChromeExtension())
@@ -133,10 +133,42 @@ BackendGTasks.prototype.signout = function() {
 	else
 		return gapi.auth2.getAuthInstance().signOut();
 }
+BackendGTasks.prototype.notifySignInStatus = function(status) {
+	//Try to retrieve the chrome user info for account naming. Do it here, before people are notified of signin.
+	let prom = null;
+	if (!status)
+		prom = Promise.resolve(null)
+	else
+		prom = this.getUserEmail();
+	prom.then(userEmail => {
+		this.userEmail = userEmail; //maybe undefined
+		//inherited notification
+		Backend.prototype.notifySignInStatus.call(this, status);
+	});
+}
 BackendGTasks.prototype.isSignedIn = function() {
 	if (isChromeExtension())
 		return this.chromeIsSignedIn();
 	return (this._initialized) ? (gapi.auth2.getAuthInstance().isSignedIn.get()) : false;
+}
+//Retrieves email/userId of the currently signed in user, to use in UI. Called after every sign in.
+BackendGTasks.prototype.getUserEmail = function() {
+	if (!this.isSignedIn())
+		return Promise.resolve();
+	if (isChromeExtension())
+		return this.chromeGetUserEmail();
+	//Standalone GTasks:
+	//  https://developers.google.com/identity/sign-in/web/people
+	let profile = gapi.auth2.currentUser.get().getBasicProfile();
+	if (profile)
+		return Promise.resolve(profile.getEmail());
+	return Promise.resolve();
+}
+BackendGTasks.prototype.uiName = function() {
+	let uiName = Backend.prototype.uiName.call(this);
+	if (this.isSignedIn() && !!this.userEmail)
+		uiName = uiName + ' ('+this.userEmail+')';
+	return uiName;
 }
 
 
@@ -160,6 +192,23 @@ BackendGTasks.prototype.chromeClientLogin = function() {
 			apiKey: tasks_api_key,
 			discoveryDocs: DISCOVERY_DOCS,
 		}); //but no scope or clientId
+	})
+}
+//Retrieves the chrome user email. Delivers either the userinfo or null.
+//  https://developer.chrome.com/apps/identity#method-getProfileUserInfo
+//Querying chrome user info requires identity.email manifest permission, otherwise empty object will be returned
+BackendGTasks.prototype.chromeGetUserEmail = function() {
+	return new Promise((resolve, reject) => {
+		if (!chrome.identity.getProfileUserInfo)
+			resolve(); //API not supported, skip
+		console.log('BackendGTasks: will try to get chrome user info');
+		chrome.identity.getProfileUserInfo(null, (userinfo) => {
+			console.log('BackendGTasks: got chrome user info', userinfo);
+			if (!!userinfo && !!userinfo.email)
+				resolve(userinfo.email);
+			else
+				resolve();
+		});
 	});
 }
 BackendGTasks.prototype.chromeSignIn = function() {
