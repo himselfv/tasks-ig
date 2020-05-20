@@ -92,6 +92,7 @@ function FakeBackend(name, error) {
 	this.prototype = Object.create(FakeBackend.prototype);
 	this.prototype.constructor = () => {};
 	this.prototype.constructor.name = name;
+	this.uiName = function() { return this.constructor.name; }
 }
 
 /*
@@ -209,9 +210,9 @@ function accountSwap(i, j) {
 	setLocalStorageItem("tasksIg_accounts", accountList);
 	
 	//Also switch the loaded account slots
-	tmp = accountList[i];
-	accountList[i] = accountList[j];
-	accountList[j] = tmp;
+	tmp = accounts[i];
+	accounts[i] = accounts[j];
+	accounts[j] = tmp;
 	accountListChanged(); //the order has changed
 }
 //Returns a runtime account object based on its ID
@@ -247,7 +248,7 @@ function AccountListPage() {
 	CustomPage.call(this, document.getElementById('accountListPage'));
 	
 	this.content = document.getElementById('accountList');
-	this.content.onchange = () => { this.selectedAccountChanged(); };
+	this.content.onchange = () => { this.updateAccountActions(); };
 	
 	document.getElementById('accountListClose').onclick = () => { this.cancelClick(); };
 	document.getElementById('accountListAdd').onclick = () => { this.addClick();};
@@ -267,7 +268,7 @@ AccountListPage.prototype.reload = function() {
 	for (let i in accounts)
 		this.content.appendChild(this.entryFromAccount(accounts[i]));
 	//We could try to restore the selection but we atm don't do reloads while open
-	this.selectedAccountChanged();
+	this.updateAccountActions();
 }
 AccountListPage.prototype.entryFromAccount = function(account) {
 	let item = document.createElement('option');
@@ -275,8 +276,9 @@ AccountListPage.prototype.entryFromAccount = function(account) {
 	item.textContent = account.uiName();
 	return item;
 }
-AccountListPage.prototype.selectedAccountChanged = function() {
+AccountListPage.prototype.updateAccountActions = function() {
 	let selectedId = this.content.value;
+	console.log('AccountListPage.updateAccountActions', selectedId);
 	document.getElementById('accountListDelete').disabled = (!selectedId);
 	document.getElementById('accountListMoveUp').disabled = (!selectedId || (this.content.selectedIndex <= 0));
 	document.getElementById('accountListMoveDown').disabled = (!selectedId || (this.content.selectedIndex >= this.content.options.length-1));
@@ -288,7 +290,8 @@ AccountListPage.prototype.moveUpClick = function() {
 	//First move the visuals
 	this.content.insertBefore(this.content.options[index], this.content.options[index-1]);
 	//Now the accounts
-	accountSwap(selectedIndex, selectedIndex-1);
+	accountSwap(index, index-1);
+	this.updateAccountActions(); //Positions have changed
 }
 AccountListPage.prototype.moveDownClick = function() {
 	let index = this.content.selectedIndex;
@@ -297,7 +300,8 @@ AccountListPage.prototype.moveDownClick = function() {
 	//First move the visuals
 	this.content.insertBefore(this.content.options[index+1], this.content.options[index]);
 	//Now the accounts
-	accountSwap(selectedIndex+1, selectedIndex);
+	accountSwap(index+1, index);
+	this.updateAccountActions(); //Positions have changed
 }
 AccountListPage.prototype.deleteClick = function() {
 	let index = this.content.selectedIndex;
@@ -318,6 +322,7 @@ AccountListPage.prototype.deleteClick = function() {
 		if (doDelete) {
 			accountDelete(account.id);
 			this.content.options[index].remove();
+			this.updateAccountActions(); //onchanged() won't get called automatically
 		}
 	});
 	
@@ -333,6 +338,7 @@ AccountListPage.prototype.addClick = function() {
 		let item = this.entryFromAccount(account);
 		//Currently new accounts always go to the end of the list:
 		this.content.appendChild(item);
+		this.updateAccountActions(); //The one above may now moveDown
 	});
 }
 
@@ -567,7 +573,7 @@ SettingsPage.prototype.collectResults = function() {
 	inputs = content.getElementsByTagName('select');
 	for (let i=0; i<inputs.length; i++)
 		results[inputs[i].dataId] = inputs[i].value;
-	//console.log(results);
+	//console.log('SettingsPage.collectResults:', results);
 	return results;
 }
 

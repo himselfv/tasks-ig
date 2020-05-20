@@ -62,6 +62,8 @@ BackendDav.prototype.signin = function(settings) {
 		password: settings.password,
 	});
 	this.xhr = new DavDigestTransport(credentials);
+	this.server = settings.server;
+	this.username = settings.username;
 	
 	return dav.createAccount({ server: settings.server, xhr: this.xhr })
 		.catch(error =>
@@ -86,6 +88,12 @@ BackendDav.prototype.signout = function() {
 		this.notifySignInStatus(false);
 	}
 	return Promise.resolve();
+}
+BackendDav.prototype.uiName = function() {
+	let uiName = Backend.uiName.call(this);
+	if (!!this.username)
+		uiName = this.username + ' ('+uiName+')'
+	return uiName;
 }
 
 
