@@ -1229,7 +1229,7 @@ function tasksActionsUpdate() {
     } else if (event.key=="Backspace") {
       //If we're at the beginning, delete this entry and merge its title and notes into the previous one.
       var caretPos = entry.getCaret();
-      if (options.noMergeByBackspace && (caretPos == 0) && window.getSelection().isCollapsed) {
+      if (!options.noMergeByBackspace && (caretPos == 0) && window.getSelection().isCollapsed) {
         event.preventDefault();
         taskMergeBackward(entry);
       }
