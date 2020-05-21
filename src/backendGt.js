@@ -356,19 +356,13 @@ BackendGTasks.prototype.getMultiple = function(taskIds, tasklistId) {
 //Task()s are similar to GTasks Task resources, but may contain additional fields --
 //this has to be cleaned up before sending
 //https://developers.google.com/tasks/v1/reference/tasks#resource
-BackendGTasks.prototype.GTASK_FIELDS = [
+BackendGTasks.prototype.TASK_FIELDS = [
 	'kind', 'id', 'etag', 'selfLink', 'title', 'notes', 'status', 'parent', 'position',
 	'updated', 'completed', 'due', 'deleted', 'hidden', 'links'];
 
 //Works with patch()es and full update()s:
 BackendGTasks.prototype.taskToResource = function(task) {
-	taskRes = {};
-	//Copy only the GTasks supported fields
-	for (key in task)
-		if (key in this.GTASK_FIELDS)
-			taskRes[key] = task[key];
-	//Normalize fields
-	taskResNormalize(taskRes);
+	let taskRes = Backend.prototype.taskToResource.call(this, task);
 	//GTasks only supports "completed" and "needsAction"
 	if ((typeof taskRes.status != 'undefined') && (taskRes.status != 'completed'))
 		taskRes.status = 'needsAction';

@@ -777,9 +777,10 @@ Moving and copying ICS files between calendars.
   But this is fine, because you can break older revisions in the same way by just deleting the parent anyway.
 */
 BackendDav.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
+	console.log('BackendDav.moveToList');
 	//Optimize moves between DAVs. Other moves => default treatment
 	if (newBackend && !(newBackend instanceof BackendDav))
-		return Backend.prototype.moveToList(oldTask, newTasklistId, newBackend);
+		return Backend.prototype.moveToList.call(this, oldTask, newTasklistId, newBackend);
 	if (!newBackend) newBackend = this;
 	
 	/*

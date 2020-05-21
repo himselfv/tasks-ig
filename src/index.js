@@ -1843,6 +1843,7 @@ function tasksActionsUpdate() {
 
   //Moves the task and all of its children to a different tasklist
   function taskMoveToList(entry, newTasklist) {
+  	console.log('taskMoveToList', entry, newTasklist);
     //If we're given a (account, list) object, split it
     if (!!newTasklist.account) {
         newBackend = newTasklist.account;
@@ -1858,7 +1859,11 @@ function tasksActionsUpdate() {
     tasks.delete(entry);
     
     var job = whenTaskId
-    	.then(taskId => backend.moveToList(taskId, newTasklist, newBackend));
+    .then(taskId => {
+    	console.log('taskPatchMoveToList: moving', taskId, 'to newList=', newTasklist, ', newBackend=', newBackend);
+    	console.log('current backend:', backend);
+    	backend.moveToList(taskId, newTasklist, newBackend);
+    });
     return pushJob(job);
   }
 
@@ -1867,6 +1872,7 @@ function tasksActionsUpdate() {
     //Previously this function tried to optimize by only patching the cache,
     //and then expecting that backend.moveToList() is a copy+delete, and it uses data from cache.
     //Both assumptions are wrong in general case, so no optimization:
+    console.log('taskPatchMoveToList', patch, newTasklist);
     return taskPatch(patch)
     .then(() => taskMoveToList(tasks.find(patch.id), newTasklist));
   }

@@ -135,8 +135,10 @@ TaskList.prototype.appendTasksWithChildren = function(tasks, level, taskRecords)
 	for (let i=0; i < tasks.length; i++) {
 		this.appendTask(tasks[i], level);
 		//prevent some dumb endless recursions
-		if (!tasks[i].id || (tasks[i].id==tasks[i].parent))
+		if (!tasks[i].id || (tasks[i].id==tasks[i].parent)) {
 			console.log('TaskList: task ID is weird, preventing recursion');
+			continue;
+		}
 		this.appendTaskChildren(tasks[i].id, level+1, taskRecords); //Add children
 	}
 }

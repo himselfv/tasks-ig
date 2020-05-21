@@ -295,7 +295,6 @@ Backend.prototype.uiName = function() {
 }
 
 
-
 /*
 Common
 */
@@ -332,6 +331,30 @@ Backend.prototype.tasklistPatch = function(tasklist) {
 //Caution! Deletes the task list with the given id
 //Implement to enable task list deletion.
 
+
+
+/*
+Many backends use Task() resources more or less directly.
+Tasks moving between backends may have additional properties which need to be stripped
+before JSONinfying them or passing to APIs.
+Override this to perform any last-minute stripping down, normalization and adjustment
+on insert()/update()/patch().
+*/
+Backend.prototype.TASK_FIELDS = [ //override if your API supports more/less fields
+	'id', 'title', 'notes', 'status', 'parent', 'position',
+	'updated', 'completed', 'due', 'deleted', 'hidden', 'links'];
+Backend.prototype.taskToResource = function(task) {
+	//console.debug('Backend.taskToResource', task);
+	let taskRes = {};
+	//Copy only the GTasks supported fields
+	for (key in task)
+		if (this.TASK_FIELDS.indexOf(key) != -1)
+			taskRes[key] = task[key];
+	//Normalize fields
+	taskResNormalize(taskRes);
+	//console.debug('Backend.taskToResource -> ', taskRes);
+	return taskRes;
+}
 
 
 /*
@@ -731,6 +754,7 @@ If you're sure, position with newBackend.move() manually.
 */
 Backend.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
 	console.debug('Backend.moveToList:',arguments);
+	console.log(this);
 	if (!newBackend) newBackend = this;
 	if (!newTasklistId || (newTasklistId == this.selectedTaskList))
 		return Promise.resolve();
@@ -743,8 +767,8 @@ Backend.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
 			pairs = {}
 			pairs[oldTask.id] = { task: oldTask, parent: null, previous: null };
 			return this.copyToList(pairs, newTasklistId, newBackend, true);
-		});
-	//	.then(response => this.delete(oldTask, oldTasklistId)); //TODO: Enable
+		})
+		.then(response => this.delete(oldTask, oldTasklistId));
 }
 
 
