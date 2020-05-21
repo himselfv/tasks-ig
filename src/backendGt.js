@@ -423,6 +423,8 @@ BackendGTasks.prototype.insertMultiple = function (tasks, tasklistId) {
 		for(let _id in response.result) {
 			this.responseCheck(response.result[_id]);
 			results[_id] = response.result[_id].result;
+			if (tasklistId == this.selectedTaskList)
+				this.cache.add(response.result[_id].result);
 		}
 		return results;
 	});
@@ -489,6 +491,8 @@ BackendGTasks.prototype.move = function (taskIds, newParentId, newPrevId) {
 				'id': thisResponse.result.id,
 				'parent': newParentId,
 				'position': thisResponse.result.position,
+				'etag': thisResponse.result.etag,
+				'updated': thisResponse.result.updated,
 			});
 		});
 	});

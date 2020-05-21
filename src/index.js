@@ -996,7 +996,7 @@ function tasklistReloadSelected() {
 				+'.<br />Error: '+selected.account.error;
 			//TODO: Link to try reinitialize / link to edit settings
 		else if (!selected.account.isSignedIn())
-			message.innerHTML = 'Waiting for this account to complete sign in. If this takes too long, perhaps there are problems';
+			message.innerHTML = 'Signing in...<br />If this takes too long, perhaps there are problems';
 		else if (!!selected.account.ui && isArrayEmpty(selected.account.ui.tasklists)) {
 			message.innerHTML = 'No task lists in this account. ';
 			if (!!selected.account.tasklistAdd) {
