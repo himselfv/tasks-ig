@@ -38,10 +38,15 @@ function gapiLoad() {
 		});
 	});
 }
+//GAPI returns errors as Object{ error: string }, we want direct strings
+function gapiUnwrapError(error) {
+	return (!!error && !!error.error) ? error.error : error;
+}
 BackendGTasks.prototype.init = function() {
 	return insertGoogleAPIs()
 		//Load the auth2 library and API client library.
-		.then(result => gapiLoad());
+		.then(result => gapiLoad())
+		.catch(error => throw gapiUnwrapError(error));
 }
 
 
@@ -97,7 +102,7 @@ BackendGTasks.prototype.clientLogin = function(params) {
 	} else {
 		//Nb: Make sure not to return hardcoded params from signin()
 		if (!params || (!params.clientId && !params.apiKey))
-			params = this.getHardcodedParams;
+			params = this.getHardcodedParams();
 		if (!params || !params.clientId || !params.apiKey)
 			return Promise.reject("Google ClientID or API Key not set");
 		
@@ -123,6 +128,7 @@ BackendGTasks.prototype.signin = function(params) {
 			return;
 		return gapi.auth2.getAuthInstance().signIn();
 	})
+	.catch(error => throw gapiUnwrapError(error))
 	//Return the params passed
 	.then(() => params);
 }
@@ -159,7 +165,8 @@ BackendGTasks.prototype.getUserEmail = function() {
 		return this.chromeGetUserEmail();
 	//Standalone GTasks:
 	//  https://developers.google.com/identity/sign-in/web/people
-	let profile = gapi.auth2.currentUser.get().getBasicProfile();
+	let auth2 = gapi.auth2.getAuthInstance();
+	let profile = auth2.currentUser.get().getBasicProfile();
 	if (profile)
 		return Promise.resolve(profile.getEmail());
 	return Promise.resolve();

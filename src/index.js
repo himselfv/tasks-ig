@@ -936,7 +936,9 @@ function tasklistActionsUpdate() {
 //Update available account actions depending on the selected account/tasklist and its state and available functions
 function accountActionsUpdate() {
 	console.log('accountActionsUpdate', backend);
-	element("accountResetBtn").classList.toggle("hidden", !backend || !backend.reset);
+	let accountResetBtn = element("accountResetBtn");
+	if (accountResetBtn) //missing in non-debug
+		accountResetBtn.classList.toggle("hidden", !backend || !backend.reset);
 }
 
 
