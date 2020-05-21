@@ -915,3 +915,20 @@ Backend.prototype.getAllChildren = function (parentId, tasklistId) {
 	return Promise.resolve(list);
 }
 
+
+//Dummy backend is used in place of misbehaving backends.
+//It does nothing and only allows you to sign out/delete it.
+function DummyBackend(name, error) {
+	Backend.call(this);
+	this.error = error; //store for init() reject
+	//Pretend to be a backend named "name", otherwise it'll look like "DummyBackend" in UI
+	this.__proto__ = Object.create(DummyBackend.prototype);
+	this.__proto__.constructor = {}; // not a function, so that we can overwrite .name
+	this.__proto__.constructor.name = name;
+	console.log(this);
+}
+inheritBackend(Backend, DummyBackend);
+DummyBackend.prototype.init = function() { return Promise.reject(this.error); }
+DummyBackend.prototype.isSignedIn = function() { return false; }
+//Support signout() to let the user remove the permanently bugged out backends
+DummyBackend.prototype.signout = function() { return Promise.resolve(); }

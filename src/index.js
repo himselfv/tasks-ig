@@ -236,22 +236,13 @@ function backendCreate(backendCtor) {
 	registerChangeNotifications(backend);
 	return backend;
 }
-
-
-//Returns a fake backend to be used in place of one that can't even be instantiated
-function FakeBackend(name, error) {
-	this.error = error;
-	this.isSignedIn = function() { return false; }
-	this.init = function() { return Promise.reject(this.error); }
-	//Support signout() to let the user remove the permanently bugged out backends
-	this.signout = function() { return Promise.resolve(); }
-	this.ui = {};
-	//Set uiName, otherwise our fake backend will look like "Object" in all menus
-	this.prototype = Object.create(FakeBackend.prototype);
-	this.prototype.constructor = () => {};
-	this.prototype.constructor.name = name;
-	this.uiName = function() { return this.constructor.name; }
+function backendCreateDummy(backendName, error) {
+	let backend = new DummyBackend(backendName, error);
+	backend.error = error;
+	backend.ui = {};
+	return backend;
 }
+
 
 /*
 Account list
@@ -288,7 +279,7 @@ function accountsLoad() {
 			error = err;
 		}
 		if (!account)
-			account = new FakeBackend(accountData.backendName, error);
+			account = backendCreateDummy(accountData.backendName, error);
 		account.id = accountList[i]; //copy the id
 		accounts.push(account);
 		account.init()
