@@ -125,7 +125,7 @@ These helpers normalize these things.
 */
 function toArray(tasks) {
 	if (typeof tasks == 'undefined') return tasks;
-	if (!Array.isArray(task))
+	if (!Array.isArray(tasks))
 		tasks = [tasks];
 	return tasks;
 }

@@ -471,7 +471,7 @@ BackendGTasks.prototype.move = function (taskIds, newParentId, newPrevId) {
 	if (taskIds.length <= 1)
 		batch = jobs[0].then(response => {
 			let results = {};
-			results[taskIds[0]] = response.result;
+			results[taskIds[0]] = response;
 			return { result: results };
 		});
 	else {
@@ -481,7 +481,7 @@ BackendGTasks.prototype.move = function (taskIds, newParentId, newPrevId) {
 	}
 	
 	batch = batch.then(response => {
-		//log("backend.move: results here, patching cache");
+		//console.debug("backend.move: results here, patching cache");
 		Object.keys(response.result).forEach(oldId => {
 			let thisResponse = response.result[oldId];
 			this.responseCheck(thisResponse);
