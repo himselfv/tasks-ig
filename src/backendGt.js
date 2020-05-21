@@ -448,7 +448,7 @@ BackendGTasks.prototype.delete = function (taskIds, tasklistId) {
 
 // Moves all given tasks under a new parent in the same task list,
 // inserting them in the given order after a given task (null = at the top).
-BackendGTasks.prototype._move = function (taskIds, newParentId, newPrevId) {
+BackendGTasks.prototype.move = function (taskIds, newParentId, newPrevId) {
 	//log("backend.moveAll: "+taskIds.length+" items to="+newParentId+" after="+newPrevId);
 	if (taskIds.length <= 0)
 		return Promise.resolve();
