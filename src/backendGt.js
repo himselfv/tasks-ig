@@ -122,11 +122,11 @@ BackendGTasks.prototype.signin = function(params) {
 		if (!isChromeExtension())
 			//Listen for sign-in state changes.
 			gapi.auth2.getAuthInstance().isSignedIn.listen(this.notifySignInStatus);
-		//Handle the initial sign-in state.
-		this.notifySignInStatus(this.isSignedIn());
-		if (isChromeExtension())
-			return;
-		return gapi.auth2.getAuthInstance().signIn();
+		//Handle the initial GAPI sign-in state -- GAPI remembers after we signed in once
+		let isSignedIn = this.isSignedIn();
+		this.notifySignInStatus(isSignedIn);
+		if (!isSignedIn && !isChromeExtension()) //Chrome has no explicit sign-in
+			return gapi.auth2.getAuthInstance().signIn();
 	})
 	.catch(error => { throw gapiUnwrapError(error); })
 	//Return the params passed
