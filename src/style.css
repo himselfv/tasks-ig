@@ -410,6 +410,9 @@ Editor
   font-family: Arial, sans-serif;
   font-size: 10pt;
 }
+#editorMoveBackendNotice {
+  margin-top: 0;
+}
 #editorControls {
   /* Align buttons to the right */
   display: flex;

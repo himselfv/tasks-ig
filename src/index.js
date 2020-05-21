@@ -1968,10 +1968,11 @@ Editor.prototype.open = function(taskId) {
 		document.getElementById("editorTaskTitleP").classList.toggle("completed", task.completed != null);
 		document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
 		document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
-		document.getElementById("editorMoveNotice").style.display = "none";
-		this.setSelectedTaskList(selectedTaskList())
+		this.setSelectedTaskList(selectedTaskList());
 
 		this.taskId = taskId;
+		
+		this.taskListChanged(); //update move notices
 
 		this.listPageBackup.display = listPage.style.display;
 		listPage.style.display = "none";
@@ -2014,11 +2015,11 @@ Editor.prototype.setSelectedTaskList = function(tasklist) {
 Editor.prototype.taskListChanged = function() {
 	//console.debug('taskListChanged');
 	if (!this.taskId) return;
-	//console.debug('taskListChanged: this=', this.selectedTaskList(), ', base=', selectedTaskList());
-	if (String(this.selectedTaskList()) != String(selectedTaskList()))
-		document.getElementById("editorMoveNotice").style.display = "block";
-	else
-		document.getElementById("editorMoveNotice").style.display = "none";
+	let oldTaskList = selectedTaskList();
+	let newTaskList = this.selectedTaskList();
+	//console.debug('taskListChanged: new=', newTaskList, ', old=', oldTaskList);
+	document.getElementById("editorMoveNotice").classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
+	document.getElementById("editorMoveBackendNotice").classList.toggle('hidden', newTaskList.account == oldTaskList.account);
 }
 //Save the task data currently in the editor
 Editor.prototype.saveClose = function() {
@@ -2052,7 +2053,6 @@ Editor.prototype.cancel = function() {
 	this.page.classList.add("hidden");
 	listPage.style.display = this.listPageBackup.display;
 	this.taskId = null;
-	document.getElementById("editorMoveNotice").style.display = "none";
 }
 
 Editor.prototype.deleteBtnClick = function() {
