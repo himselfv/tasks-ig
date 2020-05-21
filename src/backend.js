@@ -415,7 +415,7 @@ Tasks are inserted in the order given.
 The _id is only used to identify tasks in the results.
 */
 Backend.prototype.insertMultiple = function (tasks, tasklistId) {
-	console.log('Backend.insertMultiple:',arguments);
+	//console.log('Backend.insertMultiple:',arguments);
 	//Default: Call insert() multiple times.
 	results = {};
 	batch = [];
@@ -560,7 +560,7 @@ Backend.prototype.newDownmostPosition = function(parentId, tasklistId) {
 //Chooses a new sort-order value for a task under a given parent, after a given previous task.
 //  count: If given, choose that number of positions
 Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
-	console.log('choosePosition: parent=', parentId, 'previous=', previousId);
+	//console.log('choosePosition: parent=', parentId, 'previous=', previousId);
 
 	//At least null/undefined needs to work for all lists
 	if (typeof previousId == 'undefined')
@@ -575,7 +575,7 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
 	//Choose a new position betweeen previous.position and previous.next.position
 	return this.getChildren(parentId, tasklistId)
 	.then(children => {
-		console.log('choosePosition: children=',children);
+		//console.log('choosePosition: children=',children);
 		let prevPosition = null;
 		let nextPosition = null;
 		let prevIdx = null;
@@ -609,7 +609,7 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
 		//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
 		if (newPosition < prevPosition + 1)
 			newPosition = prevPosition + 1;
-		console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
+		//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
 		return newPosition;
 	});
 }
@@ -631,7 +631,7 @@ To reuse the logic for child traversal, call this.copyChildren() -- example belo
  A: Sure. You can override copyChildren() too or leave it alone - it'll still work.
 */
 Backend.prototype.copyToList = function (items, newTasklistId, newBackend, recursive) {
-	console.log('Backend.copyToList:',arguments);
+	console.debug('Backend.copyToList:',arguments);
 	if (isEmpty(items)) return Promise.resolve();
 	if (!newBackend) newBackend = this;
 	
@@ -652,14 +652,14 @@ Backend.prototype.copyToList = function (items, newTasklistId, newBackend, recur
 	}
 	
 	if (isEmpty(newItems)) {
-		console.log('Backend.copyToList: newItems is empty: ', newItems);
+		console.debug('Backend.copyToList: newItems is empty: ', newItems);
 		return Promise.resolve();
 	}
 	let batch = newBackend.insertMultiple(newItems, newTasklistId);
 	if (recursive)
 		//insertMultiple() returns a compatible oldId -> newTask dict
 		batch = batch.then(results => {
-			console.log('Backend.copyToList: insert results=', results);
+			console.debug('Backend.copyToList: insert results=', results);
 			return this.copyChildrenTo(results, newTasklistId, newBackend);
 		});
 
@@ -675,7 +675,7 @@ Reimplement if you can optimize: choose children positions all at once etc.
 You do not HAVE to reimplement this if your copyToList() already handles recursion. This will still work if called.
 */
 Backend.prototype.copyChildrenTo = function (pairs, newTasklistId, newBackend) {
-	console.log('Backend.copyChildrenTo:',arguments);
+	console.debug('Backend.copyChildrenTo:',arguments);
 	if (isEmpty(pairs)) return Promise.resolve();
 	if (!newBackend) newBackend = this;
 	
@@ -689,7 +689,7 @@ Backend.prototype.copyChildrenTo = function (pairs, newTasklistId, newBackend) {
 	
 	return Promise.all(oldBatch)
 	.then(results => {
-		console.log('Backend.copyChildrenTo: oldTasks=', results)
+		console.debug('Backend.copyChildrenTo: oldTasks=', results)
 		//Build a batch copyToList request for all children on this nesting level
 		let batch = {};
 		for (let i=0; i<oldIds.length; i++) {
@@ -708,7 +708,7 @@ Backend.prototype.copyChildrenTo = function (pairs, newTasklistId, newBackend) {
 		}
 		
 		if (isEmpty(batch)) {
-			console.log('Backend.copyChildrenTo: nothing to copy');
+			console.debug('Backend.copyChildrenTo: nothing to copy');
 			return Promise.resolve();
 		}
 		
@@ -730,7 +730,7 @@ Moved task will always appear at the top/bottom of the list. Won't do local posi
 If you're sure, position with newBackend.move() manually.
 */
 Backend.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
-	console.log('Backend.moveToList:',arguments);
+	console.debug('Backend.moveToList:',arguments);
 	if (!newBackend) newBackend = this;
 	if (!newTasklistId || (newTasklistId == this.selectedTaskList))
 		return Promise.resolve();
@@ -738,7 +738,7 @@ Backend.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
 
 	return this.cachedGet(oldTask)
 		.then(task => {
-			console.log('Backend.moveToList: queried task=',task);
+			console.debug('Backend.moveToList: queried task=',task);
 			oldTask = task;
 			pairs = {}
 			pairs[oldTask.id] = { task: oldTask, parent: null, previous: null };
@@ -807,7 +807,7 @@ TaskCache.prototype.get = function (taskId) {
 	return this.items[taskId];
 }
 TaskCache.prototype.update = function (tasks) {
-	console.log('cache.update:', arguments);
+	//console.debug('cache.update:', arguments);
 	if (!Array.isArray(tasks))
 		tasks = [tasks];
 	for (let i=0; i<tasks.length; i++)
@@ -815,7 +815,7 @@ TaskCache.prototype.update = function (tasks) {
 }
 //Updates given fields in the cached task entry. Same semantics as backend.patch
 TaskCache.prototype.patch = function (patch) {
-	console.log('cache.patch:', arguments);
+	//console.debug('cache.patch:', arguments);
 	var task = this.items[patch.id];
 	if (task)
 		resourcePatch(task, patch);

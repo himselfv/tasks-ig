@@ -31,7 +31,7 @@ function insertDavAPIs() {
 	}));
 }
 BackendDav.prototype.connect = function() {
-	log("BackendDav.init");
+	//console.debug("BackendDav.init");
 	return insertDavAPIs();
 }
 
@@ -52,7 +52,7 @@ BackendDav.prototype.settingsPage = function() {
 }
 
 BackendDav.prototype.signin = function(settings) {
-	console.log("BackendDav.signin", settings);
+	console.debug("BackendDav.signin", settings);
 	
 	if (!settings || !settings.server)
 		return Promise.reject("Server URL required for CalDAV backend");
@@ -334,7 +334,7 @@ BackendDav.prototype.parseTodoObject = function(object) {
 		*/
 	}
 	
-	console.log('parsedTodoObject:', task);
+	console.debug('parsedTodoObject:', task);
 	if (!task.id)
 		log('Warning: Task has no ID');
 	return task;
@@ -345,7 +345,7 @@ BackendDav.prototype.parseTodoObject = function(object) {
 BackendDav.prototype.parseTodoObjects = function(objects, tasklistId) {
 	let tasks = [];
 	for (var i=0; i<objects.length; i++) {
-		console.log('Object['+i+']', objects[i].calendarData);
+		console.debug('Object['+i+']', objects[i].calendarData);
 		let task = this.parseTodoObject(objects[i]);
 		task.tasklist = tasklistId;
 		tasks.push(task);
@@ -615,7 +615,7 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
 	
-	console.log('updateTaskObject:', task);
+	console.debug('updateTaskObject:', task);
 	
 	//Verify that baseEntry is defined, or we cannot check that it's still the same on the server
 	if (!patch && !task.baseEntry) //Weird
@@ -631,7 +631,7 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		if (objects.length > 1)
 			return Promise.reject("Task "+task.id+" stored across multiple ICS files on server"); //Prohibited by RFC!
 		
-		console.log('updateTaskObject: preloaded objects=', objects);
+		console.debug('updateTaskObject: preloaded objects=', objects);
 		task2 = this.parseTodoObject(objects[0]);
 		
 		//We need baseEntry to edit
@@ -653,9 +653,9 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		task2.baseEntry.updatePropertyWithValue('sequence', task2.maxsequence);
 		
 		//Pack everything back
-		console.log('update:', task2.comp);
+		console.debug('update:', task2.comp);
 		task2.obj.calendarData = task2.comp.toString();
-		console.log('update.data:', task2.obj.calendarData);
+		console.debug('update.data:', task2.obj.calendarData);
 		
 		//We want the task2 object itself to reflect changes -- it'll go to cache
 		//But we cannot just resourcePatch() it or it'll copy everything, including obsolete task.baseEntry.
@@ -663,13 +663,13 @@ BackendDav.prototype.updateTaskObject = function (tasklistId, task, patch) {
 		//Let's just reparse new baseEntry!
 		task2 = this.parseTodoObject(task2.obj);
 		task2.tasklist = tasklistId;
-		console.log('Reparsed task2:', task2);
+		console.debug('Reparsed task2:', task2);
 		
 		//Update on server
 		return dav.updateCalendarObject(task2.obj, { xhr: this.xhr, });
 	})
 	.then(xhr => {
-		console.log('updateTaskObject: calendar updated');
+		console.debug('updateTaskObject: calendar updated');
 		//Update etag in cache if the server returns it as a header -- or cache-based updates will fail
 		//CORS: Add 'etag' to Access-Control-Expose-Headers or the browser won't tell us
 		//   Davlambda queries etag via CalDAV protocol but that would require another get().
@@ -686,7 +686,7 @@ BackendDav.prototype.newUid = function() {
 }
 
 BackendDav.prototype.insert = function (task, previousId, tasklistId) {
-	console.log('BackendDav.insert:',arguments);
+	console.debug('BackendDav.insert:',arguments);
 	let calendar = this.findCalendar(tasklistId);
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
@@ -718,9 +718,9 @@ BackendDav.prototype.insert = function (task, previousId, tasklistId) {
 	
 	//Compile
 	return prom.then(() => {
-		console.log('insert:', vtodo);
+		console.debug('insert:', vtodo);
 		icsData = comp.toString();
-		console.log('insert.data: ', icsData);
+		console.debug('insert.data: ', icsData);
 	})
 	//Publish
 	.then(() => this.insertTodoObject(calendar, icsData, uid+'.ics'))
@@ -858,7 +858,7 @@ BackendDav.prototype.moveToList_localDav = function(tasks, newTasklistId) {
 
 //HTTP DAV MOVE or COPY request
 BackendDav.prototype.davMoveRequest = function(method, fromUrl, toUrl, options) {
-	console.log('davMoveRequest', arguments);
+	console.debug('davMoveRequest', arguments);
 	function transformRequest(xhr) {
 		dav.request.setRequestHeaders(xhr, options);
 		xhr.setRequestHeader('Destination', toUrl);
@@ -870,6 +870,6 @@ BackendDav.prototype.davMoveRequest = function(method, fromUrl, toUrl, options) 
 		transformRequest: transformRequest,
 	});
 	
-	console.log('davMoveRequest: ', req);
+	console.debug('davMoveRequest: ', req);
 	return options.xhr.send(req, fromUrl, { sandbox: options.sandbox });
 }

@@ -114,7 +114,7 @@ TaskList.prototype.appendTaskChildren = function(parentId, level, taskRecords) {
 }
 //Adds all tasks that specify a parent not from this list
 TaskList.prototype.appendOrphans = function(taskRecords) {
-	console.log('appendOrphans', arguments);
+	//console.debug('appendOrphans', arguments);
 	//Convert task records to dict
 	let tasks = {};
 	for (let i=0; i<taskRecords.length; i++)
@@ -127,7 +127,7 @@ TaskList.prototype.appendOrphans = function(taskRecords) {
 			continue;
 		orphans.push(task);
 	}
-	console.log('appendOrphans: orphans=', orphans);
+	//console.debug('appendOrphans: orphans=', orphans);
 	//Publish, with recursive children (those are not orphans)
 	this.appendTasksWithChildren(orphans, 0, taskRecords);
 }

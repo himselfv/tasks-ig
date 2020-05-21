@@ -270,12 +270,12 @@ function accountsLoad() {
 	
 	//Contains an ordered list of account IDs
 	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
-	console.log('accountsLoad: list=', accountList);
+	console.debug('accountsLoad: list=', accountList);
 	for (let i in accountList) {
 		if (!accountList[i]) continue;
 		
 		let accountData = getLocalStorageItem("tasksIg_account_"+accountList[i]) || {};
-		console.log('accountsLoad: account#',i,' = ',accountData);
+		//console.debug('accountsLoad: account#',i,' = ',accountData);
 		//Each entry has:
 		//  backendName
 		//  params: any account params
@@ -312,7 +312,7 @@ function accountAdd(account, params) {
 		console.error('accountAdd: invalid account object: ', account);
 		retrun;
 	}
-	console.log('accountAdd: constructor=', account.constructor);
+	//console.debug('accountAdd: constructor=', account.constructor);
 	
 	account.id = newGuid();
 	
@@ -321,13 +321,13 @@ function accountAdd(account, params) {
 	accountData.backendName = account.constructor.name;
 	accountData.params = params;
 	setLocalStorageItem("tasksIg_account_"+account.id, accountData);
-	console.log('accountAdd: accountData=', accountData);
+	//console.debug('accountAdd: accountData=', accountData);
 	
 	//Store the account ID in the permanent account list
 	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
 	accountList.push(account.id);
 	setLocalStorageItem("tasksIg_accounts", accountList);
-	console.log('accountAdd: accountList=', accountList);
+	//console.debug('accountAdd: accountList=', accountList);
 
 	//Add to runtime list
 	accounts.push(account); //signin() should already be initiated
@@ -381,7 +381,7 @@ function accountFind(id) {
 
 //Called when the _runtime_ account list changes either due to initial loading, or addition/deletion/reordering
 function accountListChanged() {
-	console.log('accountsListChanged; accounts=', accounts);
+	console.debug('accountsListChanged; accounts=', accounts);
 	//Hide task list while we have no accounts at all - looks cleaner
 	listPage.classList.toggle("hidden", (Object.keys(accounts).length <= 0));
 	//If we have no accounts at all, show account addition page,
@@ -400,7 +400,7 @@ function accountListChanged() {
 
 // Called when the signed in status changes, whether after a button click or automatically
 function updateSigninStatus(account, isSignedIn) {
-	console.log('updateSigninStatus: ', account, isSignedIn);
+	console.log('updateSigninStatus: ', isSignedIn, account);
 	//If we're on the list from this account, switch away -- will happen automatically from reloadAccountTaskLists()
 	//TODO:	If we're editing a task from this account, cancel
 	
@@ -444,7 +444,7 @@ function AccountsPage() {
 }
 inherit(CustomPage, AccountsPage);
 AccountsPage.prototype.close = function() {
-	console.log('AccountsPage.close');
+	console.debug('AccountsPage.close');
 	this.page.classList.add("hidden");
 }
 AccountsPage.prototype.reload = function() {
@@ -462,7 +462,7 @@ AccountsPage.prototype.entryFromAccount = function(account) {
 }
 AccountsPage.prototype.updateAccountActions = function() {
 	let selectedId = this.content.value;
-	console.log('AccountsPage.updateAccountActions', selectedId);
+	console.debug('AccountsPage.updateAccountActions', selectedId);
 	document.getElementById('accountListDelete').disabled = (!selectedId);
 	document.getElementById('accountListReset').disabled = (!selectedId || !options.debug || !accounts[this.content.selectedIndex].reset);
 	document.getElementById('accountListMoveUp').disabled = (!selectedId || (this.content.selectedIndex <= 0));
@@ -553,7 +553,7 @@ function accountReset(account) {
 Backend selection page
 */
 function BackendSelectPage(params) {
-	console.log('BackendSelectPage()', params);
+	console.debug('BackendSelectPage()', params);
 	CustomPage.call(this, document.getElementById('backendSelectPage'));
 	
 	this.hasCancel = params.hasCancel;
@@ -596,7 +596,7 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 	let backend = backendCreate(backendClass);
 	backend.init()
 	.then(() => {
-		console.log('Backend initialized');
+		console.debug('Backend initialized');
 		if (!backend.settingsPage)
 			return backend.setup({});
 		let settings = backend.settingsPage();
@@ -621,7 +621,7 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 		return settingsPage.waitResult();
 	})
 	.then(setupResults => {
-		console.log('Backend.setup() success; params:', setupResults);
+		//console.debug('Backend.setup() success; params:', setupResults);
 		accountAdd(backend, setupResults);
 		this.okClick(backend); //for now just run the default completion routine
 		//TODO: maybe split this into a "backend selection" which will run okClicked() over the selected backend
@@ -646,7 +646,7 @@ function StartNewAccountUi(params) {
 	let addBackendPage = new BackendSelectPage(params);
 	
 	addBackendPage.addEventListener('ok', (event) => {
-		console.log('addBackendPage.ok:', event);
+		//console.debug('addBackendPage.ok:', event);
 		addBackendPage.resolve(event.results);
 	});
 	return addBackendPage.waitResult();
@@ -687,12 +687,12 @@ SettingsPage.prototype.reenable = function() {
 	this.btnOk.disabled = false;
 }
 SettingsPage.prototype.close = function() {
-	//console.log('SettingsPage.close()');
+	//console.debug('SettingsPage.close()');
 	this.reload({});
 	this.page.classList.add("hidden");
 }
 SettingsPage.prototype.reload = function(settings) {
-	//console.log('SettingsPage.reload:', settings);
+	//console.debug('SettingsPage.reload:', settings);
 	let content = document.getElementById('settingsContent');
 	nodeRemoveAllChildren(content);
 	for (let key in settings) {
@@ -740,8 +740,8 @@ SettingsPage.prototype.reload = function(settings) {
 					paramValue.value = param.default;
 		}
 		
-		//console.log(paramName);
-		//console.log(paramValue);
+		//console.debug(paramName);
+		//console.debug(paramValue);
 		if (param.type == 'bool') {
 			row.appendChild(paramValue);
 			row.appendChild(paramName);
@@ -775,7 +775,7 @@ SettingsPage.prototype.collectResults = function() {
 	inputs = content.getElementsByTagName('select');
 	for (let i=0; i<inputs.length; i++)
 		results[inputs[i].dataId] = inputs[i].value;
-	//console.log('SettingsPage.collectResults:', results);
+	//console.debug('SettingsPage.collectResults:', results);
 	return results;
 }
 
@@ -811,7 +811,7 @@ TaskListHandle.fromString = function(value) {
 
 //Starts the task list reload process for all accounts. The UI will be updated dynamically
 function reloadTaskLists() {
-	console.log('reloadTaskLists');
+	console.debug('reloadTaskLists');
 	for (let i in accounts)
 		reloadAccountTaskLists(accounts[i]);
 	if (accounts.length <= 0)
@@ -819,10 +819,10 @@ function reloadTaskLists() {
 }
 //Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
 function reloadAccountTaskLists(account) {
-	console.log('reloadAccountTaskLists:', account);
+	console.debug('reloadAccountTaskLists:', account);
 	let prom = null;
 	if (!account.isSignedIn()) {
-		console.log('Not initialized/not signed in, no lists');
+		console.debug('Not initialized/not signed in, no lists');
 		prom = Promise.resolve([]);
 	} else
 		prom = account.tasklistList();
@@ -834,14 +834,14 @@ function reloadAccountTaskLists(account) {
 	return prom;
 }
 function tasklistBoxReload() {
-	console.log('tasklistBoxReload');
+	console.debug('tasklistBoxReload');
 	var oldSelection = listSelectBox.value;
 	nodeRemoveAllChildren(listSelectBox); //clear the list
 	for (let i in accounts) {
 		let account = accounts[i];
 		if (!account)
 			continue;
-		console.log('tasklistBoxReload: account=', account, 'signedIn=', account.isSignedIn(), 'ui=', account.ui);
+		console.debug('tasklistBoxReload: account=', account, 'signedIn=', account.isSignedIn(), 'ui=', account.ui);
 		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists || isArrayEmpty(account.ui.tasklists)) {
 			//Add a "grayed line" representing the account and it's problems
@@ -881,7 +881,7 @@ function tasklistBoxReload() {
 	
 	listSelectBox.value = oldSelection;
 	if ((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0)) {
-		console.log('tasklistBoxReload: Old selection', oldSelection, 'is lost, selecting the first item');
+		console.debug('tasklistBoxReload: Old selection', oldSelection, 'is lost, selecting the first item');
 		listSelectBox.selectedIndex = 0;
 		return selectedTaskListChanged(); //in this case we have to
 	}
@@ -908,7 +908,7 @@ function selectedTaskList() {
 //Selects the { account: accountId, tasklist: tasklistId } entry.
 //noNotify: Do not call changed() -- we're simply restoring the control state
 function setSelectedTaskList(tasklist, noNotify) {
-	console.log('setSelectedTaskList:', arguments);
+	console.debug('setSelectedTaskList:', arguments);
 	tasklist = String(tasklist);
 	if (listSelectBox.value == tasklist)
 		return; //nothing to change
@@ -928,7 +928,7 @@ function selectedTaskListChanged() {
 //Update available tasklist actions depending on the selected tasklist and available backend functions
 function tasklistActionsUpdate() {
 	var tasklist = selectedTaskList();
-	console.log('tasklistActionsUpdate:', tasklist, backend);
+	console.debug('tasklistActionsUpdate:', tasklist, backend);
 	element("listAddBtn").classList.toggle("hidden",    !backend || !backend.tasklistAdd);
 	element("listRenameBtn").classList.toggle("hidden", !backend || !backend.tasklistUpdate || !tasklist);
 	element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
@@ -937,7 +937,7 @@ function tasklistActionsUpdate() {
 }
 //Update available account actions depending on the selected account/tasklist and its state and available functions
 function accountActionsUpdate() {
-	console.log('accountActionsUpdate', backend);
+	console.debug('accountActionsUpdate', backend);
 	let accountResetBtn = element("accountResetBtn");
 	if (accountResetBtn) //missing in non-debug
 		accountResetBtn.classList.toggle("hidden", !backend || !backend.reset);
@@ -978,7 +978,7 @@ function tasklistInit() {
 
 //Reloads the currently selected task list. Tries to preserve focus. Returns a promise.
 function tasklistReloadSelected() {
-	console.log('tasklistReloadSelected');
+	console.debug('tasklistReloadSelected');
 	var oldFocus = tasks.getFocusedEntry();
 	if (oldFocus)
 		oldFocus = { id: oldFocus.getId(), pos: oldFocus.getCaret() };
@@ -987,11 +987,11 @@ function tasklistReloadSelected() {
 	
 	var selected = selectedTaskList();
 	if (!backend || !selected) {
-		console.log('tasklistReloadSelected: no tasklist entry selected');
+		console.debug('tasklistReloadSelected: no tasklist entry selected');
 		return Promise.resolve();
 	}
 
-	console.log('Loading list: ', selected);
+	console.debug('Loading list: ', selected);
 	if (backend.selectTaskList)
 		backend.selectTaskList(null); //clear the cache
 	
@@ -1040,12 +1040,12 @@ function tasklistReloadSelected() {
 
 //Called when the focused task changes
 function tasksFocusChanged() {
-	console.log('tasksFocusChanged');
+	console.debug('tasksFocusChanged');
 	tasksActionsUpdate();
 }
 //Updates available task actions depending on the selected task and backend functionality
 function tasksActionsUpdate() {
-	console.log('tasksActionUpdate');
+	console.debug('tasksActionUpdate');
 	var entry = tasks.getFocusedEntry();
 	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert);
 	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
@@ -2001,12 +2001,12 @@ Editor.prototype.selectedTaskList = function() {
 	let value = this.taskListBox.value;
 	if (!!value)
 		value = TaskListHandle.fromString(value);
-	console.log('Editor.selectedTaskList() ->', value);
+	//console.debug('Editor.selectedTaskList() ->', value);
 	return value;
 }
 //Does not notify taskListChanged()
 Editor.prototype.setSelectedTaskList = function(tasklist) {
-	console.log('Editor.setSelectedTaskList:', tasklist);
+	//console.debug('Editor.setSelectedTaskList:', tasklist);
 	tasklist = String(tasklist);
 	if (this.taskListBox.value == tasklist)
 		return; //nothing to change
@@ -2015,15 +2015,14 @@ Editor.prototype.setSelectedTaskList = function(tasklist) {
 }
 //Called when the user selects a new list to move task to
 Editor.prototype.taskListChanged = function() {
-	console.log('taskListChanged');
+	//console.debug('taskListChanged');
 	if (!this.taskId) return;
-	console.log('taskListChanged: this=', this.selectedTaskList(), ', base=', selectedTaskList());
+	//console.debug('taskListChanged: this=', this.selectedTaskList(), ', base=', selectedTaskList());
 	if (String(this.selectedTaskList()) != String(selectedTaskList()))
 		document.getElementById("editorMoveNotice").style.display = "block";
 	else
 		document.getElementById("editorMoveNotice").style.display = "none";
 }
-
 //Save the task data currently in the editor
 Editor.prototype.saveClose = function() {
 	if (!this.taskId) {

@@ -7,12 +7,12 @@ function loadScript(scriptId, scriptSrc) {
 	return new Promise((resolve, reject) => {
 		var script = document.getElementById(scriptId);
 		if (script && (script.readyState == "complete")) {
-			console.log("script already loaded: ", scriptId);
+			console.debug("script already loaded: ", scriptId);
 			resolve();
 			return;
 		}
 		if (!script) {
-			console.log('inserting script '+scriptSrc);
+			console.debug('inserting script '+scriptSrc);
 			script = document.createElement('script');
 			script.id = scriptId;
 			script.src = scriptSrc;
@@ -467,6 +467,10 @@ CustomPage.prototype.close = function() {
 /*
 Debug
 */
+if (!options.debug)
+	console.debug = () => {}; //Let's be evil; no printing
+else if (!console.debug)
+	console.debug = () => { console.log.apply(arguments); }
 function log(message) {
 	console.log(message);
 }
