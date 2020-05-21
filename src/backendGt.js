@@ -46,7 +46,7 @@ BackendGTasks.prototype.init = function() {
 	return insertGoogleAPIs()
 		//Load the auth2 library and API client library.
 		.then(result => gapiLoad())
-		.catch(error => throw gapiUnwrapError(error));
+		.catch(error => { throw gapiUnwrapError(error); });
 }
 
 
@@ -128,7 +128,7 @@ BackendGTasks.prototype.signin = function(params) {
 			return;
 		return gapi.auth2.getAuthInstance().signIn();
 	})
-	.catch(error => throw gapiUnwrapError(error))
+	.catch(error => { throw gapiUnwrapError(error); })
 	//Return the params passed
 	.then(() => params);
 }

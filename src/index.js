@@ -382,6 +382,8 @@ function accountFind(id) {
 //Called when the _runtime_ account list changes either due to initial loading, or addition/deletion/reordering
 function accountListChanged() {
 	console.log('accountsListChanged; accounts=', accounts);
+	//Hide task list while we have no accounts at all - looks cleaner
+	listPage.classList.toggle("hidden", (Object.keys(accounts).length <= 0));
 	//If we have no accounts at all, show account addition page,
 	//otherwise do nothing and wait for backends to initialize
 	if (Object.keys(accounts).length <= 0) {
