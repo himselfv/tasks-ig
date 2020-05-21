@@ -508,7 +508,7 @@ If this function is present then all local move functions are expected to work.
   Undefine		if your list does NOT support moving tasks
 */
 Backend.prototype.move = function(taskIds, newParentId, newPrevId, tasklistId) {
-	if (!Array.isArray(taskIds)) taskIds = [taskIds];
+	taskIds = toArray(taskIds);
 	if (newParentId && newParentId.id) newParentId = newParentId.id;
 	if (newPrevId && newPrevId.id) newPrevId = newPrevId.id;
 

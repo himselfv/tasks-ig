@@ -450,7 +450,8 @@ BackendGTasks.prototype.delete = function (taskIds, tasklistId) {
 // inserting them in the given order after a given task (null = at the top).
 BackendGTasks.prototype.move = function (taskIds, newParentId, newPrevId) {
 	//log("backend.moveAll: "+taskIds.length+" items to="+newParentId+" after="+newPrevId);
-	if (taskIds.length <= 0)
+	taskIds = toArray(taskIds);
+	if (isEmpty(taskIds))
 		return Promise.resolve();
 
 	//Iterate in reverse so that we can insert each child after the same known one
