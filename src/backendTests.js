@@ -53,6 +53,16 @@ BackendLongInit.prototype.init = function() {
 }
 
 
+//Tries to load non-existing scripts, should gracefully fail
+function BackendFailLoadScripts() {
+	BackendTestBase.call(this);
+}
+newTestBackend(BackendTestBase, BackendFailLoadScripts, "Fail load scripts");
+BackendFailLoadScripts.prototype.init = function() {
+	return loadScripts({'nonexistingScript': 'nonexistingScript.js'});
+}
+
+
 //Fails signout()
 function BackendFailSignout() {
 	BackendTestBase.call(this);

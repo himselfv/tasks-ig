@@ -2,31 +2,96 @@
 /*
 Load additional JS
 */
+//Loads a script and installs a number of compatibility hacks.
+//Wait for onload/onerror or check readyState/errorMessage.
+function insertScript(scriptId, scriptSrc) {
+	console.debug('inserting script '+scriptSrc);
+	let script = document.createElement('script');
+	script.id = scriptId;
+	script.src = scriptSrc;
+	script.async = true;
+	script.defer = true;
+	
+	//Some browsers fire readyStateChange but not onLoad
+	script.handleReadyStateChange = () => {
+		if (script.readyState != 'complete') return;
+		script.onload();
+	};
+	script.addEventListener("readystatechange", script.handleReadyStateChange);
+	
+	script.handleLoad = () => {
+		script.finalizeLoad();
+	};
+	script.addEventListener("load", script.handleLoad);
+	
+	//onerror works in SOME browsers, and often only for FILE LOADING errors, parsing errors might not get reported
+	script.handleLoadError = () => {
+		//The late comers want a way to find out about errors => provide errorMessage
+		//If we get here from window.error then errorMessage is already set -- preserve it
+		if (!script.errorMessage)
+			script.errorMessage = "Cannot load script "+scriptSrc;
+		script.finalizeLoad();
+	};
+	script.addEventListener("error", script.handleLoadError, true);
+	
+	//Hackish way to detect parsing errors
+	//  https://developer.mozilla.org/en-US/docs/Web/API/ErrorEvent
+	//Notes:
+	// * loaded() may still get called even if the file had processing errors
+	// * may even be called BEFORE window.onerror(), in which case there's nothing we can do
+	script.handleWindowError = (error) => {
+		if (!(error instanceof ErrorEvent))
+			return;
+		//Many browsers will expand script.src to the full path but let's be a bit permissive
+		if (!error.filename.endsWith(script.src))
+			return;
+		console.debug(scriptSrc, ': parsing error:', error);
+		script.errorMessage = scriptSrc + ': ' + error.message;
+		script.dispatchEvent(new CustomEvent('error'));
+		script.finalizeLoad(); //handleError does this but let's be safe
+	}
+	window.addEventListener('error', script.handleWindowError, true);
+	
+	script.finalizeLoad = () => {
+		//Some browsers don't support readyState at all, fake it to indicate that the script has finished loading
+		if (!script.readyState)
+			script.readyState = "complete";
+		script.removeEventListener("readystatechange", script.handleReadyStateChange);
+		script.removeEventListener("load", script.handleLoad);
+		script.removeEventListener("error", script.handleLoadError);
+		window.removeEventListener('error', script.handleWindowError, true);
+	}
+	
+	document.body.append(script);
+	return script;
+}
+
 //Returns a promise that's fulfilled when the JS is loaded
 function loadScript(scriptId, scriptSrc) {
 	return new Promise((resolve, reject) => {
 		var script = document.getElementById(scriptId);
 		if (script && (script.readyState == "complete")) {
-			console.debug("script already loaded: ", scriptId);
-			resolve();
+			if (!script.errorMessage) {
+				console.debug('script already loaded:', scriptId);
+				resolve();
+			}
+			else {
+				console.log('script load already failed:', scriptId);
+				reject(script.errorMessage);
+			}
 			return;
 		}
-		if (!script) {
-			console.debug('inserting script '+scriptSrc);
-			script = document.createElement('script');
-			script.id = scriptId;
-			script.src = scriptSrc;
-			script.async = true;
-			script.defer = true;
-			//Some browsers fire readyStateChange, others onLoad and don't even support readyState
-			//We need some indication that the script has finished loading, so reimplement readyState if it's not there
-			script.addEventListener("readystatechange", () => { if (script.readyState == 'complete') script.onload(); });
-			script.addEventListener("load", () => { if (!script.readyState) script.readyState = "complete"; });
-			document.body.append(script);
-		}
-		//console.log(script);
-		//console.log(script.readyState);
-		script.addEventListener("load", () => { console.log('loaded script'); resolve(); } );
+		if (!script)
+			script = insertScript(scriptId, scriptSrc);
+		console.debug(script);
+		script.addEventListener("load", () => {
+			console.debug('loaded script', script);
+			resolve();
+		});
+		script.addEventListener("error", () => { 
+			console.debug('script load error', script, script.errorMessage);
+			reject(script.errorMessage);
+		});
 	});
 }
 

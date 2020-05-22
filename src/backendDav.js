@@ -32,7 +32,14 @@ function insertDavAPIs() {
 }
 BackendDav.prototype.connect = function() {
 	//console.debug("BackendDav.init");
-	return insertDavAPIs();
+	return insertDavAPIs()
+	.then(() => {
+		console.log('dav: insertDavAPIs completed');
+	})
+	.catch(error => {
+		console.log('dav: insertDavAPIs error:', error);
+		throw error;
+	});
 }
 
 BackendDav.prototype.settingsPage = function() {
