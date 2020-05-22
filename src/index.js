@@ -65,7 +65,7 @@ var optionSet = {
 		type: 'bool', default: true,
 		title: 'Group lists by accounts',
 		hint: 'Group tasklists by accounts instead of showing them as a single list', },
-	makeAccountsClickable: {
+	accountsClickable: {
 		type: 'bool',
 		title: 'Make accounts clickable',
 		hint: 'Make account entries in tasklist combobox clickable -- shows a page with a few account actions when you click on them', },
@@ -76,11 +76,11 @@ var optionSet = {
 	mergeByDelete: {
 		type: 'bool', default: true,
 		title: 'Merge by Delete',
-		hint: 'Merge the next task into this one by Delete button', },
+		hint: 'Merge the next task into the selected by pressing Delete', },
 	mergeByBackspace: {
 		type: 'bool', default: true,
 		title: 'Merge by Backspace',
-		hint: 'Merge this task into the previous one by Backspace button', },
+		hint: 'Merge the selected task into the previous one by pressing Backspace', },
 	singleClickAdd: {
 		type: 'bool',
 		title: 'Single-click add',
@@ -924,8 +924,8 @@ function tasklistBoxReload() {
 		option.text = account.uiName();
 		option.classList.add("optionAccount");
 		option.value = String(new TaskListHandle(account.id, null));
-		option.disabled = true; //Normally can't select this
-		listSelectBox.add(option);
+		if (!options.accountsClickable)
+			option.disabled = true; //Normally can't select this
 		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists || isArrayEmpty(account.ui.tasklists)) {
 			option.disabled = false; //No task lists => make the account selectable
@@ -936,14 +936,21 @@ function tasklistBoxReload() {
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
 				option.text = option.text+' (no lists)';
 			option.classList.add("grayed");
+			listSelectBox.add(option);
 			continue;
 		}
+		
+		//Otherwise add account entry if the options tell us so
+		if (options.showAccountsInCombo)
+			listSelectBox.add(option);
 		
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
 			let option = document.createElement("option");
 			option.value = String(new TaskListHandle(account.id,  tasklist.id));
 			option.text = tasklist.title;
+			if (options.showAccountsInCombo)
+				option.classList.add('offset');
 			listSelectBox.add(option);
 		}
 	}
@@ -1123,8 +1130,9 @@ function tasklistReloadSelected() {
 				message.appendChild(a);
 			} else
 				message.innerHTML = message.innerHTML + "\r\nTask lists cannot be added to this account.";
-		} else
-			message.innerHTML = 'Tasklist not selected'
+		} else {
+			message.innerHTML = 'Tasklist not selected.';
+		}
 		return Promise.resolve();
 	}
 	message.classList.add('hidden');

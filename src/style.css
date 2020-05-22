@@ -78,12 +78,13 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
 option.grayed {
   color: gray;
 }
-#listSelectBox option {
+/* Offset tasklist entries -- when grouped by account */
+#listSelectBox option.offset {
   margin-left: 1em;
 }
+/* Account entries -- when grouped by account, or for accounts that failed to load */
 #listSelectBox .optionAccount {
   margin-left: 0;
-  /*font-size: 12px;*/
 }
 #listHeaderSpacer {
   /*flex-grow: 5;*/
