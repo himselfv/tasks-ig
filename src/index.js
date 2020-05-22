@@ -99,7 +99,7 @@ function optionsPageOpen() {
 		optionsPage.resolve();
 	});
 }
-optionsSetDefaults();
+optionsSetDefaults(optionSet);
 
 
 /*
