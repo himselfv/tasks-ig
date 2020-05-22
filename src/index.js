@@ -91,7 +91,7 @@ var optionSet = {
 		hint: 'Enables debug backends and more logging', },
 };
 function optionsPageOpen() {
-	console.log('options:', options);
+	console.debug('options:', options);
 	let optionsPage = new SettingsPage('Options', optionSet, options);
 	optionsPage.addEventListener('ok', function(event) {
 		options = event.results;

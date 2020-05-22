@@ -550,7 +550,7 @@ Last focused task node remains "focused"; task operations apply to it.
 */
 TaskEntry.prototype.getLength = function() {
 	var ret = editableGetLength(this.titleCtl);
-	//log("entry.getLength => "+ret);
+	//console.log("entry.getLength => "+ret);
 	return ret;
 }
 TaskEntry.prototype.getSelection = function() {
@@ -558,16 +558,16 @@ TaskEntry.prototype.getSelection = function() {
 }
 TaskEntry.prototype.getCaret = function() {
 	var ret = editableGetCaret(this.titleCtl);
-	//log("entry.getCaret => "+ret);
+	//console.log("entry.getCaret => "+ret);
 	return ret;
 }
 TaskEntry.prototype.setCaret = function(start, end) {
-	//log("entry.setCaret("+start+", "+end+")");
+	//console.log("entry.setCaret("+start+", "+end+")");
 	editableSetCaret(this.titleCtl, start, end);
 }
 TaskList.prototype.onEntryFocus = function(event) {
-	log("entryfocus");
-	log(event);
+	console.log("entryfocus");
+	console.log(event);
 	if (this.focusedTaskEntry)
 		this.clearFocus(this.focusedTaskEntry);
 	this.focusedTaskEntry = event.currentTarget.taskEntry;
@@ -598,7 +598,7 @@ TaskList.prototype.getFocusedEntry = function() {
 	var caretEntry = elementGetOwnerTaskEntry(getCaretControl());
 	//"focusedTaskEntry == null" may happen if we're called from onblur, before next onfocus
 	if (caretEntry && (caretEntry != this.focusedTaskEntry) && (this.focusedTaskEntry != null))
-		log("Focus is different from the active entry!");
+		console.log("Focus is different from the active entry!");
 	return this.focusedTaskEntry;
 }
 
@@ -645,7 +645,7 @@ TaskEntry.prototype.onTitlePaste = function(event) {
 	//Paste the data at the caret position
 	var selection = this.getSelection();
 	if (!selection) {
-		log("caret outside the paste-event control, wut");
+		console.log("caret outside the paste-event control, wut");
 		return;
 	}
 	//Delete any selected text and replace it by pasted text
@@ -712,25 +712,25 @@ TaskList.prototype.dragStartTimerAbort = function() {
 
 //Drag anywhere and hold
 TaskList.prototype.onEntryDragMouseDown = function(event) {
-	//log("onEntryDragMouseDown");
+	//console.log("onEntryDragMouseDown");
 	this.dragConfigure(event.currentTarget, event)
 	this.dragStartTimer = setTimeout(this.dragStart, 500);
 }
 //Drag on a grip
 TaskList.prototype.onEntryDragGripMouseDown = function(event) {
-	//log("onEntryDragGripMouseDown");
+	//console.log("onEntryDragGripMouseDown");
 	this.dragConfigure(elementGetOwnerTaskEntry(event.target), event);
 	this.dragStart(); //immediately
 	event.stopPropagation(); //handled here, don't start the timer
 	event.preventDefault();
 }
 TaskList.prototype.onEntryDragMouseUp = function(event) {
-	//log("onEntryDragMouseUp");
+	//console.log("onEntryDragMouseUp");
 	this.dragStartTimerAbort();
 	this.dragEnd(false);
 }
 TaskList.prototype.onEntryDragTouchCancel = function(event) {
-	//log("onEntryDragMouseUp");
+	//console.log("onEntryDragMouseUp");
 	this.dragStartTimerAbort();
 	this.dragEnd(true); //cancel
 }
@@ -765,7 +765,7 @@ TaskList.prototype.onDocumentDragTouchCancel = function(event) {
 
 //Starts the drag
 TaskList.prototype.dragStart = function() {
-	//log("startDrag")
+	//console.log("startDrag")
 	this.dragStartTimerAbort();
 
 	//From now on we're dragging
@@ -793,7 +793,7 @@ TaskList.prototype.dragEnd = function(cancelDrag) {
 		return;
 	}
 
-	//log("endDrag");
+	//console.log("endDrag");
 	this.dragging = false;
 	if (!this.dragEntry) return;
 
@@ -808,7 +808,7 @@ TaskList.prototype.dragEnd = function(cancelDrag) {
 
 //Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
 TaskList.prototype.dragUpdate = function(pos) {
-	//log("dragUpdate: x="+pos.x+", y="+pos.y);
+	//console.log("dragUpdate: x="+pos.x+", y="+pos.y);
 	
 	//Notify the subscribers
 	var event = new CustomEvent("dragmove");

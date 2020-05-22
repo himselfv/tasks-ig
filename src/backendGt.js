@@ -30,11 +30,11 @@ function insertGoogleAPIs() {
 	return loadScript('googleAPIscripts', "https://apis.google.com/js/api.js");
 }
 function gapiLoad() {
-	log('loading gapi');
+	console.log('loading gapi');
 	return new Promise((resolve, reject) => {
 		gapi.load('client:auth2', {
 			'callback': () => resolve(),
-			'onerror': () => { log("gapi load fail"); reject("GAPI client failed to load"); },
+			'onerror': () => { console.log("gapi load fail"); reject("GAPI client failed to load"); },
 		});
 	});
 }
@@ -251,7 +251,7 @@ BackendGTasks.prototype.batchResponseCheck = function (response) {
 BackendGTasks.prototype._listPaged = function(query, params) {
 	var items = [];
 	var nextPage = function(response) {
-		//log("got"+JSON.stringify(response));
+		//console.log("got"+JSON.stringify(response));
 		if (!response.result.items) //GTasks may omit items on no results
 			return items;
 		items = items.concat(response.result.items);
@@ -389,8 +389,8 @@ BackendGTasks.prototype.update = function (task) {
 
 //Inserts a new task and returns its new Task object
 BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
-	//log("backend.insert: tasklist="+tasklistId+", parent="+task.parent+", prev="+previousId);
-	//log(task);
+	//console.log("backend.insert: tasklist="+tasklistId+", parent="+task.parent+", prev="+previousId);
+	//console.log(task);
 	return gapi.client.tasks.tasks.insert({
 		'tasklist': tasklistId,
 		'parent': task.parent,
@@ -442,7 +442,7 @@ BackendGTasks.prototype.delete = function (taskIds, tasklistId) {
 		}));
 	});
 	return batch.then(response => {
-		//log("backend.delete() success");
+		//console.log("backend.delete() success");
 		return response;
 	});
 }
@@ -451,7 +451,7 @@ BackendGTasks.prototype.delete = function (taskIds, tasklistId) {
 // Moves all given tasks under a new parent in the same task list,
 // inserting them in the given order after a given task (null = at the top).
 BackendGTasks.prototype.move = function (taskIds, newParentId, newPrevId) {
-	//log("backend.moveAll: "+taskIds.length+" items to="+newParentId+" after="+newPrevId);
+	//console.log("backend.moveAll: "+taskIds.length+" items to="+newParentId+" after="+newPrevId);
 	taskIds = toArray(taskIds);
 	if (isEmpty(taskIds))
 		return Promise.resolve();

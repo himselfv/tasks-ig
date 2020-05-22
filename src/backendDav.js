@@ -343,7 +343,7 @@ BackendDav.prototype.parseTodoObject = function(object) {
 	
 	console.debug('parsedTodoObject:', task);
 	if (!task.id)
-		log('Warning: Task has no ID');
+		console.log('Warning: Task has no ID');
 	return task;
 }
 
