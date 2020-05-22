@@ -1,5 +1,28 @@
 
 /*
+Application-wide options
+Loaded at this point because all scripts may rely on them - more thorough handling in main code.
+Note: Before the main code sets default values, all defaults are undefined.
+*/
+var options = {};
+function optionsLoad() {
+	options = Object.assign({}, getLocalStorageItem("tasksIg_options"), options);
+	console.debug('options loaded:', options);
+}
+function optionsSave() {
+	setLocalStorageItem("tasksIg_options", options);
+	//Update everything in the UI that depends on options. We are lazy:
+	document.location.reload();
+}
+function optionsSetDefaults(optionSet) {
+	for (let key in optionSet)
+		if (!(key in options))
+			options[key] = optionSet[key].default;
+}
+optionsLoad();
+
+
+/*
 Load additional JS
 */
 //Loads a script and installs a number of compatibility hacks.
@@ -536,12 +559,3 @@ if (!options.debug)
 	console.debug = () => {}; //Let's be evil; no printing
 else if (!console.debug)
 	console.debug = () => { console.log.apply(arguments); }
-function log(message) {
-	console.log(message);
-}
-function dump(value, name) {
-	if (name)
-		console.log(name+': '+JSON.stringify(value));
-	else
-		console.log(name);
-}

@@ -7,7 +7,7 @@ html, body {
   font-size: 10pt;
 }
 body {
-  max-width: 400px; /* One-column view even on wide screens */
+  /*max-width: 400px;*/ /* One-column view even on wide screens */
   position: relative; /* Absolute-positioned pages stick to us */
 }
 .page {
@@ -502,6 +502,7 @@ Settings page
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
+  align-items: baseline;
   width: 100%;
   padding-bottom: 0.2em;
   margin-bottom: 0.2em;
@@ -509,22 +510,23 @@ Settings page
 .settingsRow label {
   padding-right: 1em;
 }
-/* Value inputs grow to 100%, force-wrapping flex */
-.settingsRow input, .settingsRow select {
-  width: 100%;
+/* Checbkox labels / No value input labels => caption auto-flex-expands */
+.settingsRow label {
+  flex-grow: 1;
 }
-/* No value input => caption grows to 100% */
-.settingsRow label + :not(input),
-.settingsRow label + :not(value) {
-  width: 100%;
+/* Value inputs AFTER labels auto-flex-expand */
+.settingsRow label + input,
+.settingsRow label + value {
+  flex-grow: 10;
 }
-
+/* Hint requires 100% => forced onto a separate line */
 .settingsHintText {
-  font-size: 0.8em;
-  color: gray;
+  width: 100%;
   padding-top: 0px;
   margin-top: 0px;
-  width: 100%;
+  margin-left: 1.5em; /* align with end of checkbox */
+  font-size: 1em;
+  color: gray;
 }
 
 

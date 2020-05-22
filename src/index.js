@@ -3,7 +3,6 @@ Security considerations in some contexts require:
  * No inline JS in HTML
  * No inline onclick= handlers.
 */
-var options = options || {}; //see config.js
 var accounts = [];
 
 var listPage = document.getElementById('listPage');
@@ -13,6 +12,10 @@ var taskmenu = null;
 
 function initUi() {
 	window.addEventListener("beforeunload", handleBeforeUnload);
+	
+	console.log('initUi:options:', options);
+	if (options.uiMaxWidth && (options.uiMaxWidth > 0))
+		document.body.style.maxWidth = options.uiMaxWidth+'px';
 	
 	element('listSelectBox').addEventListener("change", selectedTaskListChanged);
 
@@ -27,6 +30,7 @@ function initUi() {
 		mainmenu.add('accountResetBtn', accountReset, "Reset account");
 	mainmenu.addSeparator();
 	mainmenu.add('accountsBtn', accountsPageOpen, "Accounts...");
+	mainmenu.add('optionsBtn', optionsPageOpen, "Options...");
 	
 	element('listContent').addEventListener("click", tasklistClick);
 	element('listContent').addEventListener("dblclick", tasklistDblClick);
@@ -51,6 +55,51 @@ function initUi() {
     tasklistInit();
     accountsLoad();
 }
+
+
+/*
+Tasks IG options
+*/
+var optionSet = {
+	showAccountsInCombo: {
+		type: 'bool', default: true,
+		title: 'Group lists by accounts',
+		hint: 'Group tasklists by accounts instead of showing them as a single list', },
+	makeAccountsClickable: {
+		type: 'bool',
+		title: 'Make accounts clickable',
+		hint: 'Make account entries in tasklist combobox clickable -- shows a page with a few account actions when you click on them', },
+	uiMaxWidth: {
+		type: 'number', default: 400,
+		title: 'UI max width',
+		hint: 'Limit the UI to this width. Set to 0 to expand to all available horizontal space', },
+	mergeByDelete: {
+		type: 'bool', default: true,
+		title: 'Merge by Delete',
+		hint: 'Merge the next task into this one by Delete button', },
+	mergeByBackspace: {
+		type: 'bool', default: true,
+		title: 'Merge by Backspace',
+		hint: 'Merge this task into the previous one by Backspace button', },
+	singleClickAdd: {
+		type: 'bool',
+		title: 'Single-click add',
+		hint: 'Add new task with a single click on the empty space - as it had been in GTasks. Double click always works', },
+	debug: {
+		type: 'bool',
+		title: 'Debug',
+		hint: 'Enables debug backends and more logging', },
+};
+function optionsPageOpen() {
+	console.log('options:', options);
+	let optionsPage = new SettingsPage('Options', optionSet, options);
+	optionsPage.addEventListener('ok', function(event) {
+		options = event.results;
+		optionsSave();
+		optionsPage.resolve();
+	});
+}
+optionsSetDefaults();
 
 
 /*
@@ -593,7 +642,7 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 		let settings = backend.settingsPage();
 		if (!settings)
 			return backend.setup({});
-		settingsPage = new SettingsPage(settings, backend.uiName());
+		settingsPage = new BackendSettingsPage(settings, backend.uiName());
 		settingsPage.addEventListener('ok', function(event) {
 			//Disable the OK button for the time being
 			settingsPage.disable();
@@ -644,12 +693,13 @@ function StartNewAccountUi(params) {
 }
 
 
+
 /*
 Settings page
-Activate with settingsPageShow(), then check the data in 'ok' event handler
+Activate with new SettingsPage(), then check the data in 'ok' event handler
 and close with close().
 */
-function SettingsPage(settings, backendName) {
+function SettingsPage(titleText, settings, values) {
 	//console.log('SettingsPage()', arguments);
 	//We could've created the page from scratch but we'll reuse the precreated one
 	CustomPage.call(this, document.getElementById('settingsPage'));
@@ -657,13 +707,14 @@ function SettingsPage(settings, backendName) {
 	this.btnCancel = document.getElementById('settingsCancel');
 	this.btnOk.onclick = () => this.okClick();
 	this.btnCancel.onclick = () => this.cancelClick();
+	this.content = document.getElementById('settingsContent');
 	
-	if (!backendName)
-		backendName = 'Connection';
 	let pageTitle = document.getElementById('settingsPageTitle');
-	pageTitle.textContent = backendName + ' settings:';
+	pageTitle.textContent = titleText;
 	
 	this.reload(settings);
+	if (values)
+		this.setValues(values);
 	this.page.classList.remove("hidden");
 	this.reenable(); //enable for starters
 }
@@ -682,15 +733,15 @@ SettingsPage.prototype.close = function() {
 	this.reload({});
 	this.page.classList.add("hidden");
 }
+//Reloads settings list for the page
 SettingsPage.prototype.reload = function(settings) {
 	//console.debug('SettingsPage.reload:', settings);
-	let content = document.getElementById('settingsContent');
-	nodeRemoveAllChildren(content);
+	nodeRemoveAllChildren(this.content);
 	for (let key in settings) {
 		let param = settings[key];
 		let row = document.createElement("div");
 		row.classList.add("settingsRow");
-		content.appendChild(row);
+		this.content.appendChild(row);
 		
 		let paramName = document.createElement("label");
 		paramName.id = 'settingsLabel-'+key;
@@ -750,10 +801,34 @@ SettingsPage.prototype.reload = function(settings) {
 		}
 	}
 }
+//Sets option values. Leaves the non-mentioned values as is.
+SettingsPage.prototype.setValues = function(values) {
+	let inputs = this.content.getElementsByTagName('input');
+	for (let i=0; i<inputs.length; i++) {
+		if (!inputs[i].dataId) continue;
+		let value = values[inputs[i].dataId];
+		if (typeof value == 'undefined')
+			continue;
+		console.log('setting', inputs[i].dataId, 'to', value);
+		if (inputs[i].type == 'checkbox')
+			inputs[i].checked = value;
+		else
+			inputs[i].value = value;
+	}
+	inputs = this.content.getElementsByTagName('input');
+	for (let i=0; i<inputs.length; i++) {
+		if (!inputs[i].dataId) continue;
+		let value = values[inputs[i].dataId];
+		if (typeof value == 'undefined')
+			continue;
+		console.log('setting', inputs[i].dataId, 'to', value);
+		inputs[i].value = value;
+	}
+}
+//Collects and verifies option values
 SettingsPage.prototype.collectResults = function() {
 	let results = {};
-	let content = document.getElementById('settingsContent');
-	let inputs = content.getElementsByTagName('input');
+	let inputs = this.content.getElementsByTagName('input');
 	for (let i=0; i<inputs.length; i++)
 	{
 		let value = null;
@@ -763,12 +838,22 @@ SettingsPage.prototype.collectResults = function() {
 			value = inputs[i].value;
 		results[inputs[i].dataId] = value;
 	}
-	inputs = content.getElementsByTagName('select');
+	inputs = this.content.getElementsByTagName('select');
 	for (let i=0; i<inputs.length; i++)
 		results[inputs[i].dataId] = inputs[i].value;
 	//console.debug('SettingsPage.collectResults:', results);
 	return results;
 }
+
+/*
+Backend settings page
+*/
+function BackendSettingsPage(backendName, settings, values) {
+	if (!backendName)
+		backendName = 'Connection';
+	SettingsPage.call(backendName+' settings:', settings, values);
+}
+inherit(SettingsPage, BackendSettingsPage);
 
 
 
