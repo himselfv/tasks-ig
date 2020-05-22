@@ -78,6 +78,13 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
 option.grayed {
   color: gray;
 }
+#listSelectBox option {
+  margin-left: 1em;
+}
+#listSelectBox .optionAccount {
+  margin-left: 0;
+  /*font-size: 12px;*/
+}
 #listHeaderSpacer {
   /*flex-grow: 5;*/
 }

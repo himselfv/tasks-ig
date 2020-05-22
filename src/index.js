@@ -834,19 +834,23 @@ function tasklistBoxReload() {
 			continue;
 		console.debug('tasklistBoxReload: account=', account, 'signedIn=', account.isSignedIn(), 'ui=', account.ui);
 		
+		//Add a "grayed line" representing the account
+		let option = document.createElement("option");
+		option.text = account.uiName();
+		option.classList.add("optionAccount");
+		option.value = String(new TaskListHandle(account.id, null));
+		option.disabled = true; //Normally can't select this
+		listSelectBox.add(option);
+		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists || isArrayEmpty(account.ui.tasklists)) {
-			//Add a "grayed line" representing the account and it's problems
-			let option = document.createElement("option");
-			option.text = account.uiName();
+			option.disabled = false; //No task lists => make the account selectable
 			if (account.error)
 				option.text = option.text+' (error)';
 			else if (!account.isSignedIn())
 				option.text = option.text+' (signing in)';
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
 				option.text = option.text+' (no lists)';
-			option.value = String(new TaskListHandle(account.id, null));
 			option.classList.add("grayed");
-			listSelectBox.add(option);
 			continue;
 		}
 		
@@ -870,10 +874,37 @@ function tasklistBoxReload() {
 		listSelectBox.classList.remove("grayed");
 	}
 	
+	/*
+	Try to restore the selection or select something appropriate:
+	1. The same item (unless it's now disabled)
+	2. First non-disabled item for the same account
+	3. First non-disabled item in the list
+	4. Nothing (-1)
+	*/
 	listSelectBox.value = oldSelection;
-	if ((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0)) {
-		console.debug('tasklistBoxReload: Old selection', oldSelection, 'is lost, selecting the first item');
-		listSelectBox.selectedIndex = 0;
+	if (((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0)) || listSelectBox.options[listSelectBox.selectedIndex].disabled) {
+		console.debug('tasklistBoxReload: Old selection', oldSelection, 'is lost, selecting the first appropriate item');
+		oldSelection = TaskListHandle.fromString(oldSelection); //parse the old selection
+		let newIndex = -1;
+		let firstNonDisabledIndex = -1;
+		for (let i=0; i<listSelectBox.options.length; i++) {
+			let option = listSelectBox.options[i];
+			if (option.disabled || !option.value)
+				continue;
+			if (firstNonDisabledIndex < 0)
+				firstNonDisabledIndex = i;
+			if (!oldSelection || !oldSelection.account)
+				break; //found the first entry; no point in iterating further
+			let handle = TaskListHandle.fromString(option.value);
+			if (!!handle && (handle.account == oldSelection.account)) {
+				newIndex = i;
+				break;
+			}
+		}
+		console.log('newIndex:', newIndex, 'firstNonDisabledIndex:', firstNonDisabledIndex, 'old sel:', oldSelection);
+		if (newIndex < 0)
+			newIndex = firstNonDisabledIndex;
+		listSelectBox.selectedIndex = newIndex; //may even be -1
 		return selectedTaskListChanged(); //in this case we have to
 	}
 }
