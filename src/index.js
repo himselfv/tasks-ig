@@ -901,7 +901,7 @@ function tasklistBoxReload() {
 				break;
 			}
 		}
-		console.log('newIndex:', newIndex, 'firstNonDisabledIndex:', firstNonDisabledIndex, 'old sel:', oldSelection);
+		console.debug('newIndex:', newIndex, 'firstNonDisabledIndex:', firstNonDisabledIndex, 'old sel:', oldSelection);
 		if (newIndex < 0)
 			newIndex = firstNonDisabledIndex;
 		listSelectBox.selectedIndex = newIndex; //may even be -1
