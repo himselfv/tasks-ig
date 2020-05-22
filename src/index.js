@@ -938,8 +938,7 @@ function tasklistBoxReload() {
 			option.classList.add("grayed");
 			listSelectBox.add(option);
 			continue;
-		}
-		
+		} else
 		//Otherwise add account entry if the options tell us so
 		if (options.showAccountsInCombo)
 			listSelectBox.add(option);
