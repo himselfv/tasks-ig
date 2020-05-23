@@ -411,9 +411,9 @@ BackendGTasks.prototype.insertMultiple = function (tasks, tasklistId) {
 		batch.add(
 			gapi.client.tasks.tasks.insert({
 				'tasklist': tasklistId,
-				'parent': tasks[i].parent,
-				'previous': tasks[i].previousId,
-				'resource': this.taskToResource(tasks[i]),
+				'parent': tasks[_id].parent,
+				'previous': tasks[_id].previousId,
+				'resource': this.taskToResource(tasks[_id]),
 			}),
 			{ 'id': _id, }
 		);
