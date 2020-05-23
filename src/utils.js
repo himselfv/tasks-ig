@@ -478,6 +478,23 @@ function buttonNew(id, onclick, title) {
 	button.addEventListener("click", onclick);
 	return button;
 }
+function linkNew(id, onclick, title) {
+	var link = document.createElement("a");
+	link.href = '#';
+	if (id) link.id = id;
+	if (title) link.textContent = title;
+	if (onclick) link.addEventListener("click", onclick);
+	return link;
+}
+//Creates a new <li> wrapper around the content
+function li(content) {
+	let li = document.createElement('li');
+	if (typeof content == 'string')
+		li.textContent = content;
+	else
+		li.appendChild(content)
+	return li;
+}
 
 
 

@@ -91,12 +91,12 @@ option.grayed {
 }
 
 #listContent,
-#listMessage { /* both fill 100% height */
+#listMessages { /* both fill 100% height */
   width: 100%;
   flex: 1;
   overflow: auto; /* disable to "unstick" header   */
 }
-#listMessage {
+#listMessages {
   text-align: center;
   margin-top: 1em;
 }

@@ -21,7 +21,7 @@ function initUi() {
 
 	mainmenu = dropdownInit('mainmenu');
 	mainmenu.button.title = "Task list action";
-	mainmenu.add('menuReloadBtn', reloadTaskLists, "Reload");
+	mainmenu.add('menuReloadBtn', reloadAllAccountsTaskLists, "Reload");
 	mainmenu.add('listAddBtn', tasklistAdd, "Add list...");
 	mainmenu.add('listRenameBtn', tasklistRename, "Rename list...");
 	mainmenu.add('listDeleteBtn', tasklistDelete, "Delete list");
@@ -280,8 +280,7 @@ function backendCreate(backendCtor) {
 	//We store a few additional runtime properties with each account,
 	//under account.ui.
 	backend.ui = {};
-	
-	backend.onSignInStatus.push(updateSigninStatus);
+	backend.onSignInStatus.push(accountSigninStateChanged);
 	registerChangeNotifications(backend);
 	return backend;
 }
@@ -337,7 +336,7 @@ function accountsLoad() {
 		})
 		.catch(error => {
 			account.error = error;
-			updateSigninStatus(account, false);
+			accountSigninStateChanged(account, false);
 		});
 		
 	}
@@ -432,29 +431,51 @@ function accountListChanged() {
 		//Start the "add account" sequence
 		StartNewAccountUi({ hasCancel: false, });
 		//Since new accounts can't arrive except from its completion, there's no need to manually abort it in "else"
+		console.debug('accountListChanged: no accounts, tasklistBoxReload() to empty');
 		tasklistBoxReload();
 	} else {
-		reloadTaskLists(); //if e.g. the order of the lists has changed
+		reloadAllAccountsTaskLists(); //if e.g. the order of the lists has changed
 	}
 }
-
 // Called when the signed in status changes, whether after a button click or automatically
-function updateSigninStatus(account, isSignedIn) {
-	console.log('updateSigninStatus: ', isSignedIn, account);
-	//If we're on the list from this account, switch away -- will happen automatically from reloadAccountTaskLists()
-	//TODO:	If we're editing a task from this account, cancel
+function accountSigninStateChanged(account, isSignedIn) {
+	console.log('accountSigninStateChanged:', isSignedIn, account);
 	
-	let selected = selectedTaskList();
+	//Request new task lists (null, if !signedIn)
 	reloadAccountTaskLists(account);
 
-	//If we were on the "account status" message, update
-	let newSelected = selectedTaskList();
-	if ((selected.account == newSelected.account) && (selected.tasklist == newSelected.tasklist) && (!selected.tasklist)) {
-		tasklistReloadSelected(); //will update the message
-		accountActionsUpdate();
-	}
-}
+	//When signing off:
+	//  If we're on the list from this account, switch away -- will happen automatically from reloadAccountTaskLists()
+	//  TODO:	If we're editing a task from this account, cancel
 
+	//Do the accountStateChanged right now because the sign in state changed
+	//Once we get the tasklist registry we're going to do this another time
+	accountStateChanged(account);
+}
+//Called when the account init/signin status or the _cached_ tasklist registry changes
+function accountStateChanged(account) {
+	console.debug('accountStateChanged:', account);
+	let oldSelected = selectedTaskList();
+	
+	//Things to update:
+	// 1. Account's own combobox entry
+	// 2. Account's tasklist comobobox entries
+	tasklistBoxReload();
+	let newSelected = selectedTaskList();
+	
+	// 3. Account's accountPage, if it's open
+	// 4. Account actions in page menu, if it's the currently selected account
+	//If tasklistbox reloading switched pages, everything refreshed anyway
+	if ((String(newSelected) == String(oldSelected)) && (newSelected.account == account))
+		if (!newSelected.tasklist)
+			//Account-wide page is open, update it
+			//We don't need to recheck if it's appropriate, tasklistBoxReload() would have done that.
+			accountPageReload(newSelected);
+		else
+			//We don't need to reload the tasks themselves, account state doesn't influence that directly
+			//But the available actions might have changed
+			accountActionsUpdate();
+}
 
 
 /*
@@ -472,6 +493,7 @@ function AccountsPage() {
 	
 	document.getElementById('accountListClose').onclick = () => { this.cancelClick(); };
 	document.getElementById('accountListAdd').onclick = () => { this.addClick();};
+	document.getElementById('accountListEditSettings').onclick = () => { this.editSettingsClick();};
 	document.getElementById('accountListDelete').onclick = () => { this.deleteClick();};
 	document.getElementById('accountListReset').onclick = () => { this.resetClick();};
 	document.getElementById('accountListMoveUp').onclick = () => { this.moveUpClick();};
@@ -503,6 +525,7 @@ AccountsPage.prototype.entryFromAccount = function(account) {
 AccountsPage.prototype.updateAccountActions = function() {
 	let selectedId = this.content.value;
 	console.debug('AccountsPage.updateAccountActions', selectedId);
+	document.getElementById('accountListEditSettings').disabled = (!selectedId);
 	document.getElementById('accountListDelete').disabled = (!selectedId);
 	document.getElementById('accountListReset').disabled = (!selectedId || !options.debug || !accounts[this.content.selectedIndex].reset);
 	document.getElementById('accountListMoveUp').disabled = (!selectedId || (this.content.selectedIndex <= 0));
@@ -527,6 +550,23 @@ AccountsPage.prototype.moveDownClick = function() {
 	//Now the accounts
 	accountSwap(index+1, index);
 	this.updateAccountActions(); //Positions have changed
+}
+AccountsPage.prototype.addClick = function() {
+	StartNewAccountUi({ hasCancel:true, })
+	.then(account => {
+		let item = this.entryFromAccount(account);
+		//Currently new accounts always go to the end of the list:
+		this.content.appendChild(item);
+		this.updateAccountActions(); //The one above may now moveDown
+	});
+}
+AccountsPage.prototype.editSettingsClick = function() {
+	accountEditSettings()
+	.then(() => {
+		//Editing the account must not change it's place in the list, but may change available actions
+		//If we ever support editing account ui names, we'll have to do reload/restore the selection here
+		this.updateAccountActions();
+	});
 }
 AccountsPage.prototype.deleteClick = function() {
 	let index = this.content.selectedIndex;
@@ -558,15 +598,6 @@ AccountsPage.prototype.deleteClick = function() {
 		}
 	});
 }
-AccountsPage.prototype.addClick = function() {
-	StartNewAccountUi({ hasCancel:true, })
-	.then(account => {
-		let item = this.entryFromAccount(account);
-		//Currently new accounts always go to the end of the list:
-		this.content.appendChild(item);
-		this.updateAccountActions(); //The one above may now moveDown
-	});
-}
 AccountsPage.prototype.resetClick = function() {
 	let index = this.content.selectedIndex;
 	if ((index < 0) || (index > this.content.options.length-1))
@@ -584,8 +615,13 @@ function accountReset(account) {
 	if (!confirm('Are you SURE you want to delete ALL your task lists and tasks in account "'+account.uiName()+'"?'))
 	return;
 	var job = account.reset()
-		.then(() => reloadTaskLists());
+		.then(() => reloadAccountTaskLists(account));
 	pushJob(job);
+}
+//Opens the account settings page, lets the user edit, try to apply and then save the settings
+function accountEditSettings(account) {
+	//TODO: Implement.
+	//TODO: Return a Page prototype to wait on
 }
 
 
@@ -886,12 +922,14 @@ TaskListHandle.fromString = function(value) {
 
 
 //Starts the task list reload process for all accounts. The UI will be updated dynamically
-function reloadTaskLists() {
-	console.debug('reloadTaskLists');
+function reloadAllAccountsTaskLists() {
+	console.debug('reloadAllAccountsTaskLists');
 	for (let i in accounts)
 		reloadAccountTaskLists(accounts[i]);
-	if (accounts.length <= 0)
+	if (accounts.length <= 0) {
+		console.debug('reloadAllAccontsTaskLists: No accounts, tasklistBoxReload() to empty');
 		tasklistBoxReload(); //no accounts => no one will trigger visuals
+	}
 }
 //Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
 function reloadAccountTaskLists(account) {
@@ -899,13 +937,21 @@ function reloadAccountTaskLists(account) {
 	let prom = null;
 	if (!account.isSignedIn()) {
 		console.debug('Not initialized/not signed in, no lists');
-		prom = Promise.resolve([]);
+		prom = Promise.resolve(null); //Not empty []; "not yet loaded".
+		//Note: we load tasklits, account signs out, signs in again -
+		// we want tasklists to be null until we load them for the first time again
 	} else
 		prom = account.tasklistList();
 	
 	prom.then(tasklists => {
+		//Optimize away some obvious cases of nothing changed
+		if (!account.ui.tasklits && !tasklists)
+			return; //but if it's "null -> []" or "[] -> null", we should transition
+		if (isEmpty(account.ui.tasklists) && isEmpty(tasklists))
+			return;
 		account.ui.tasklists = tasklists;
-		tasklistBoxReload();
+		console.log('reloadAccountTaskLists: new lists available for account', account);
+		accountStateChanged(account);
 	});
 	return prom;
 }
@@ -928,7 +974,7 @@ function tasklistBoxReload() {
 			option.disabled = true; //Normally can't select this
 		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists || isArrayEmpty(account.ui.tasklists)) {
-			option.disabled = false; //No task lists => make the account selectable
+			option.disabled = false; //No task lists => make the account always selectable
 			if (account.error)
 				option.text = option.text+' (error)';
 			else if (!account.isSignedIn())
@@ -1003,20 +1049,15 @@ function tasklistBoxReload() {
 //Backend for the currently selected list. Only set if the backend is initialized.
 var backend = null;
 
-//Compatibility. Returns the currently selected task list ID (in the currently selected account)
-function selectedTaskListId() {
-	let selection = listSelectBox.value;
-	return (!!selection) ? selection.tasklist : null;
-}
-function selectedTaskListTitle() {
-	return listSelectBox.options[listSelectBox.selectedIndex].text;
-}
 //Returns the { account: account, tasklist: tasklist } structure or null.
 function selectedTaskList() {
 	let value = listSelectBox.value;
 	if (!!value)
 		value = TaskListHandle.fromString(value);
 	return value;
+}
+function selectedTaskListTitle() {
+	return listSelectBox.options[listSelectBox.selectedIndex].text;
 }
 //Selects the { account: accountId, tasklist: tasklistId } entry.
 //noNotify: Do not call changed() -- we're simply restoring the control state
@@ -1108,34 +1149,13 @@ function tasklistReloadSelected() {
 	if (backend.selectTaskList)
 		backend.selectTaskList(null); //clear the cache
 	
-	let message = document.getElementById('listMessage');
-	if (!selected.tasklist) {
-		tasks.root.classList.add('hidden');
-		message.classList.remove('hidden');
-		nodeRemoveAllChildren(message);
-		if (selected.account.error)
-			message.innerHTML = 'Could not initialize the backend '+selected.account.uiName()
-				+'.<br />Error: '+selected.account.error;
-			//TODO: Link to try reinitialize / link to edit settings
-		else if (!selected.account.isSignedIn())
-			message.innerHTML = 'Signing in...<br />If this takes too long, perhaps there are problems';
-		else if (!!selected.account.ui && isArrayEmpty(selected.account.ui.tasklists)) {
-			message.innerHTML = 'No task lists in this account. ';
-			if (!!selected.account.tasklistAdd) {
-				let a = document.createElement('a');
-				a.href = "#";
-				a.textContent = 'Add a task list.';
-				a.addEventListener("click", tasklistAdd);
-				message.appendChild(a);
-			} else
-				message.innerHTML = message.innerHTML + "\r\nTask lists cannot be added to this account.";
-		} else {
-			message.innerHTML = 'Tasklist not selected.';
-		}
+
+	//If no specific tasklist is selected, hide this list
+	tasks.root.classList.toggle('hidden', !selected.tasklist);
+	//Show/hide the account-wide page accordingly
+	accountPageReload(selected);
+	if (!selected.tasklist)
 		return Promise.resolve();
-	}
-	message.classList.add('hidden');
-	tasks.root.classList.remove('hidden');
 
 	return backend.selectTaskList(selected.tasklist)
 	.then(taskRecords => {
@@ -1150,6 +1170,61 @@ function tasklistReloadSelected() {
 		} else
 			tasksFocusChanged();
 	});
+}
+//Shows/hides and reloads contents for the "account-wide page" (no specific tasklist selected)
+function accountPageReload(selected) {
+	if (typeof selected == 'undefined')
+		selected = selectedTaskList();
+	
+	let messages = document.getElementById('listMessages');
+	nodeRemoveAllChildren(messages);
+
+	//If what's selected is not an "account-wide page", we're not concerned
+	if (!selected || !selected.account || !!selected.tasklist) {
+		messages.classList.add('hidden');
+		return;
+	}
+	messages.classList.remove('hidden');
+	
+	let account = selected.account;
+	if (account.error) {
+		messages.innerHTML = 'Could not initialize the backend '+selected.account.uiName()
+			+'.<br />Error: '+account.error;
+		messages.appendChild(li(linkNew(null, accountEditSettings, 'Change account settings')));
+	}
+	else if (!account.isSignedIn() || !account.ui || !account.ui.tasklists)
+		messages.innerHTML = 'Signing in...<br />If this takes too long, perhaps there are problems';
+	else {
+		//Task lists
+		let listP = document.createElement('p');
+		if (isArrayEmpty(account.ui.tasklists))
+			listP.textContent = 'No task lists in this account.';
+		else {
+			listP.textContent = "Task lists:";
+			for (let j in account.ui.tasklists) {
+				let tasklist = account.ui.tasklists[j];
+				listP.appendChild(li(
+					linkNew(null, () => {
+						setSelectedTaskList(new TaskListHandle(account.id, tasklist.id))
+					}, tasklist.title)
+				));
+			}
+		}
+		
+		//"Add task list"
+		if (!!account.tasklistAdd)
+			listP.appendChild(li(linkNew(null, tasklistAdd, 'Add a task list')));
+		else
+			listP.appendChild(li("Task lists cannot be added to this account."));
+		messages.appendChild(listP);
+		
+		//Actions
+		let actionsP = document.createElement('p');
+		actionsP.appendChild(li(linkNew(null, accountEditSettings, 'Change account settings')));
+		if (options.debug && account.reset)
+			actionsP.appendChild(linkNew(null, accountReset, 'Reset account'));
+		messages.appendChild(actionsP);
+	}
 }
 
 //Called when the focused task changes
