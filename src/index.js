@@ -1019,8 +1019,6 @@ function tasklistBoxReload() {
 	let urlState = urlReadState();
 	if (String(urlState)==String(oldSelection))
 		urlState = null; //use normal oldSelection processing to avoid selectedTaskListChanged()
-	if (!urlState.account)
-		url
 	if (urlState) {
 		listSelectBox.value = urlState;
 		if ((listSelectBox.selectedIndex >= 0) && (!listSelectBox.options[listSelectBox.selectedIndex].disabled))
