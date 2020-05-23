@@ -559,44 +559,6 @@ BackendDav.prototype.getMultiple = function(taskIds, tasklistId) {
 		return results;
 	});
 }
-//Same but looks in cache first
-BackendDav.prototype.getMaybeCached = function(taskIds, tasklistId) {
-	let results = {};
-	let queryTaskIds = [];
-	
-	//If this is a selected list we can optimize a bit by looking up in cache
-	if (!tasklistId || (tasklistId == this.selectedTaskList)) {
-		for (let i=0; i<taskIds.length; i++) {
-			let task = this.cache.get(taskIds[i]);
-			if (task)
-				results[taskIds[i]] = task;
-			else
-				queryTaskIds.push(taskIds[i]);
-		}
-		if (queryTaskIds.length > 0)
-			console.log('Not all taskIds found in cache, strange; querying');
-	} else
-		queryTaskIds = taskIds;
-	
-	for (let i=queryTaskIds.length-1; i>=0; i--)
-		//If this is already a task object, use it as is
-		if (taskIds[queryTaskIds[i]].id) {
-			results[queryTaskIds[i]] = taskIds[queryTaskIds[i]];
-			queryTaskIds.splice(i, 1);
-		}
-	
-	if (queryTaskIds.length <= 0)
-		return Promise.resolve(results);
-	
-	//Maybe we should just query everything at this point? It's a single request anyway.
-	
-	return this.getMultiple(queryTaskIds, tasklistId)
-	.then(tasks => {
-		for (let taskId in tasks)
-			results[taskId] = tasks[taskId];
-		return results;
-	});
-}
 
 
 BackendDav.prototype.update = function (task, tasklistId) {

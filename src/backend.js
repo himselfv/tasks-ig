@@ -401,6 +401,46 @@ Backend.prototype.get = function(taskIds, tasklistId) {
 //If tasklistId is not given, selected task list is assumed.
 //Backend.prototype.getMultiple = function(taskIds, tasklistId)
 
+//Same as getMultiple(), but 1. looks in cache first, 2. if any of taskIds are already Tasks(), uses them as is
+Backend.prototype.getMaybeCached = function(taskIds, tasklistId) {
+	let results = {};
+	
+	taskIds = taskIds.slice();
+	
+	//If any of taskIds are already Tasks(), use them as is
+	for (let i=taskIds.length-1; i>=0; i--)
+		if (taskIds[i].id) {
+			results[taskIds[i].id] = taskIds[i];
+			taskIds.splice(i, 1);
+		}
+	
+	//If this is a selected list we can optimize by looking in cache
+	if (!tasklistId || (tasklistId == this.selectedTaskList)) {
+		for (let i=taskIds.length-1; i>=0; i--) {
+			let task = this.cache.get(taskIds[i]);
+			if (task) {
+				results[taskIds[i]] = task;
+				taskIds.splice(i, 1);
+			};
+		}
+		if (taskIds.length > 0)
+			console.log('Not all taskIds found in cache, strange; querying');
+	};
+	
+	if (taskIds.length <= 0)
+		return Promise.resolve(results);
+	
+	//Maybe we should just query everything at this point? It's a single request anyway.
+	
+	return this.getMultiple(taskIds, tasklistId)
+	.then(tasks => {
+		for (let taskId in tasks)
+			results[taskId] = tasks[taskId];
+		return results;
+	});
+}
+
+
 
 //Backend.prototype.update = function (task, tasklistId)
 //Updates the contents of the task on the server. Missing or null fields will be deleted.
