@@ -17,7 +17,7 @@ function initUi() {
 	if (options.uiMaxWidth && (options.uiMaxWidth > 0))
 		document.body.style.maxWidth = options.uiMaxWidth+'px';
 	
-	element('listSelectBox').addEventListener("change", selectedTaskListChanged);
+	element('listSelectBox').addEventListener("change", selectedTaskListChangedManually);
 
 	mainmenu = dropdownInit('mainmenu');
 	mainmenu.button.title = "Task list action";
@@ -678,7 +678,7 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 		let settings = backend.settingsPage();
 		if (!settings)
 			return backend.setup({});
-		settingsPage = new BackendSettingsPage(settings, backend.uiName());
+		settingsPage = new BackendSettingsPage(backend.uiName(), settings);
 		settingsPage.addEventListener('ok', function(event) {
 			//Disable the OK button for the time being
 			settingsPage.disable();
@@ -736,7 +736,7 @@ Activate with new SettingsPage(), then check the data in 'ok' event handler
 and close with close().
 */
 function SettingsPage(titleText, settings, values) {
-	//console.log('SettingsPage()', arguments);
+	console.log('SettingsPage()', arguments);
 	//We could've created the page from scratch but we'll reuse the precreated one
 	CustomPage.call(this, document.getElementById('settingsPage'));
 	this.btnOk = document.getElementById('settingsOk');
@@ -885,9 +885,10 @@ SettingsPage.prototype.collectResults = function() {
 Backend settings page
 */
 function BackendSettingsPage(backendName, settings, values) {
+	console.log('BackendSettingsPage:', arguments);
 	if (!backendName)
 		backendName = 'Connection';
-	SettingsPage.call(backendName+' settings:', settings, values);
+	SettingsPage.call(this, backendName+' settings:', settings, values);
 }
 inherit(SettingsPage, BackendSettingsPage);
 
@@ -1013,7 +1014,21 @@ function tasklistBoxReload() {
 	
 	/*
 	Try to restore the selection or select something appropriate:
-	1. The same item (unless it's now disabled)
+	1. If the URI instructs us to select a specific account/list, try our best until user explicitly selects something else
+	*/
+	let urlState = urlReadState();
+	if (String(urlState)==String(oldSelection))
+		urlState = null; //use normal oldSelection processing to avoid selectedTaskListChanged()
+	if (!urlState.account)
+		url
+	if (urlState) {
+		listSelectBox.value = urlState;
+		if ((listSelectBox.selectedIndex >= 0) && (!listSelectBox.options[listSelectBox.selectedIndex].disabled))
+			return selectedTaskListChanged(); //we've just changed it
+		//Otherwise fall back to normal
+	}
+	/*
+	2. The same item (unless it's now disabled)
 	2. First non-disabled item for the same account
 	3. First non-disabled item in the list
 	4. Nothing (-1)
@@ -1046,6 +1061,48 @@ function tasklistBoxReload() {
 	}
 }
 
+//Save/restore the selected task list via the URL
+function urlSaveState(selected) {
+	let url = '#';
+	if (!!selected && !!selected.account) {
+		url = url + 'account='+encodeURIComponent(selected.account.id);
+		if (selected.tasklist)
+			url = url + '&list='+encodeURIComponent(selected.tasklist);
+	};
+	document.location.href = url;
+}
+function urlReadState() {
+	let url = document.location.href;
+	let hashIdx = url.indexOf('#');
+	if (hashIdx >= 0)
+		data = url.slice(hashIdx+1);
+	else
+		data = "";
+	if (!data || (data.length <= 0))
+		return null; //nothing is selected
+	
+	let parts = data.split('&');
+	data = {};
+	for (let i in parts) {
+		let nameVal = parts[i].split('=');
+		if (!nameVal || !nameVal.length || (nameVal.length != 2)) {
+			console.debug('Weird URI component:', parts[i]);
+			continue;
+		}
+		data[nameVal[0]] = decodeURIComponent(nameVal[1]);
+	}
+	console.debug('url data:', data);
+	
+	if (!('account' in data)) {
+		console.debug('Weird URI state: no account given');
+		return null; //nothing useful
+	}
+	
+	let selected = new TaskListHandle(data['account'], data['list']);
+	console.debug('url selected:', selected);
+	return selected;
+}
+
 //Backend for the currently selected list. Only set if the backend is initialized.
 var backend = null;
 
@@ -1067,7 +1124,7 @@ function setSelectedTaskList(tasklist, noNotify) {
 	if (listSelectBox.value == tasklist)
 		return; //nothing to change
 	listSelectBox.value = tasklist;
-	selectedTaskListChanged(); //Won't get called automatically
+	selectedTaskListChangedManually(); //Won't get called automatically
 }
 function selectedTaskListChanged() {
 	tasklist = selectedTaskList();
@@ -1078,6 +1135,12 @@ function selectedTaskListChanged() {
 	accountActionsUpdate();
 	tasklistActionsUpdate();
 	return tasklistReloadSelected();
+}
+//Called only when the selected task list had been chagned as a result of direct user action
+function selectedTaskListChangedManually() {
+	let selected = selectedTaskList();
+	urlSaveState(selected);
+	selectedTaskListChanged();
 }
 //Update available tasklist actions depending on the selected tasklist and available backend functions
 function tasklistActionsUpdate() {

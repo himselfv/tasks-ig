@@ -578,6 +578,13 @@ BackendDav.prototype.getMaybeCached = function(taskIds, tasklistId) {
 	} else
 		queryTaskIds = taskIds;
 	
+	for (let i=queryTaskIds.length-1; i>=0; i--)
+		//If this is already a task object, use it as is
+		if (taskIds[queryTaskIds[i]].id) {
+			results[queryTaskIds[i]] = taskIds[queryTaskIds[i]];
+			queryTaskIds.splice(i, 1);
+		}
+	
 	if (queryTaskIds.length <= 0)
 		return Promise.resolve(results);
 	
