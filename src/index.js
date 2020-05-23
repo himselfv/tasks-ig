@@ -2058,6 +2058,7 @@ function Editor() {
 	this.page = document.getElementById("editorPage");
 	this.taskListBox = document.getElementById("editorTaskList");
 	this.saveBtn = document.getElementById("editorSave");
+	this.saveCopyBtn = document.getElementById("editorSaveCopy");
 	this.cancelBtn = document.getElementById("editorCancel");
 	this.deleteBtn = document.getElementById("editorDelete");
 	this.taskId = null;
@@ -2066,6 +2067,7 @@ function Editor() {
 	//Preserve proper "this" by lambdas
 	this.taskListBox.onchange = () => { this.taskListChanged(); };
 	this.saveBtn.onclick = () => { this.saveClose(); };
+	this.saveCopyBtn.onclick = () => { this.saveCopyClose(); }
 	this.cancelBtn.onclick = () => { this.cancel(); };
 	this.deleteBtn.onclick = () => { this.deleteBtnClick(); };
 }
@@ -2141,8 +2143,17 @@ Editor.prototype.taskListChanged = function() {
 	let oldTaskList = selectedTaskList();
 	let newTaskList = this.selectedTaskList();
 	//console.debug('taskListChanged: new=', newTaskList, ', old=', oldTaskList);
+	document.getElementById("editorSaveCopy").classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
 	document.getElementById("editorMoveNotice").classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
 	document.getElementById("editorMoveBackendNotice").classList.toggle('hidden', newTaskList.account == oldTaskList.account);
+}
+//Retrieves a patch based on the changes in the editor
+Editor.prototype.getPatch = function() {
+	var patch = { "id": this.taskId };
+	taskResSetCompleted(patch, document.getElementById("editorTaskTitleBox").checked);
+	patch.due = document.getElementById("editorTaskDate").valueAsDate; //null is fine!
+	patch.notes = document.getElementById("editorTaskNotes").value;
+	return patch;
 }
 //Save the task data currently in the editor
 Editor.prototype.saveClose = function() {
@@ -2151,21 +2162,42 @@ Editor.prototype.saveClose = function() {
 		return;
 	}
 
-	var patch = { "id": this.taskId };
-	taskResSetCompleted(patch, document.getElementById("editorTaskTitleBox").checked);
-	patch.due = document.getElementById("editorTaskDate").valueAsDate; //null is fine!
-	patch.notes = document.getElementById("editorTaskNotes").value;
-
+	var patch = this.getPatch();
 	var job = null;
 
-	var newTaskList = this.selectedTaskList();
-	if (String(newTaskList) == String(selectedTaskList()))
+	var newList = this.selectedTaskList();
+	if (String(newList) == String(selectedTaskList()))
 		//Simple version, just edit the task
 		job = taskPatch(patch);
 	else
 		//Complicated version, edit and move
-		job = taskPatchMoveToList(patch, newTaskList);
+		job = taskPatchMoveToList(patch, newList);
 
+	job = job.then(response => this.cancel());
+	pushJob(job);
+}
+//Save the data currently in the editor as a copy in another list
+Editor.prototype.saveCopyClose = function() {
+	if (!this.taskId) {
+		this.cancel();
+		return;
+	}
+	
+	var patch = this.getPatch();
+	var newList = this.selectedTaskList();
+	if (!newList || !newList.account || !newList.tasklist)
+		return;
+	
+	//Get the current version of the task
+	let job = backend.get(this.taskId)
+	.then(task => {
+		//Patch the task in memory. Let's hope copyToList uses this. (Otherwise we should copy and THEN edit)
+		resourcePatch(task, patch);
+		//Copy recursively
+		let items = {};
+		items[task.id] = { task: task };
+		return backend.copyToList(items, newList.tasklist, newList.account, true);
+	});
 	job = job.then(response => this.cancel());
 	pushJob(job);
 }
