@@ -165,6 +165,44 @@ function setLocalStorageItem(key, value) {
 
 
 /*
+Saves/reads params in the URL's #anchor part
+Please use URI compatible key names at least.
+*/
+function urlWrite(dict) {
+	let url = '';
+	if (dict)
+		for (let key in dict)
+			url = url + ((url.length <= 0)?'#':'&') + key + '=' + encodeURIComponent(dict[key]);
+	if (url=='') url='#';
+	document.location.href = url;
+}
+function urlRead() {
+	let url = document.location.href;
+	let hashIdx = url.indexOf('#');
+	if (hashIdx >= 0)
+		data = url.slice(hashIdx+1);
+	else
+		data = "";
+	if (!data || (data.length <= 0))
+		return null; //nothing is selected
+	
+	let parts = data.split('&');
+	data = {};
+	for (let i in parts) {
+		let nameVal = parts[i].split('=');
+		if (!nameVal || !nameVal.length || (nameVal.length != 2)) {
+			console.debug('Weird URI component:', parts[i]);
+			continue;
+		}
+		data[nameVal[0]] = decodeURIComponent(nameVal[1]);
+	}
+	console.debug('url data:', data);
+	return parts;
+}
+
+
+
+/*
 Focus, caret and selection
 https://developer.mozilla.org/en-US/docs/Web/API/Selection
 

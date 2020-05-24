@@ -17,7 +17,7 @@ function initUi() {
 	if (options.uiMaxWidth && (options.uiMaxWidth > 0))
 		document.body.style.maxWidth = options.uiMaxWidth+'px';
 	
-	element('listSelectBox').addEventListener("change", selectedTaskListChangedManually);
+	element('listSelectBox').addEventListener("change", selectedTaskListChanged);
 
 	mainmenu = dropdownInit('mainmenu');
 	mainmenu.button.title = "Task list action";
@@ -443,7 +443,7 @@ function accountListChanged() {
 	//Don't reloadAllAccountsTaskLists() here: most accounts are fine.
 	//Whoever is adding/changing individual accounts must trigger their reloadAccountTaskList() if needed.
 	//Reload the combo though -- the order of the lists could've changed
-	tasklistBoxReload();
+	tasklistBox.reload();
 }
 // Called when the signed in status changes, whether after a button click or automatically
 function accountSigninStateChanged(account, isSignedIn) {
@@ -468,7 +468,7 @@ function accountStateChanged(account) {
 	//Things to update:
 	// 1. Account's own combobox entry
 	// 2. Account's tasklist comobobox entries
-	tasklistBoxReload();
+	tasklistBox.reload();
 	let newSelected = selectedTaskList();
 	
 	// 3. Account's accountPage, if it's open
@@ -477,7 +477,7 @@ function accountStateChanged(account) {
 	if ((String(newSelected) == String(oldSelected)) && (newSelected.account == account))
 		if (!newSelected.tasklist)
 			//Account-wide page is open, update it
-			//We don't need to recheck if it's appropriate, tasklistBoxReload() would have done that.
+			//We don't need to recheck if it's appropriate, tasklistBox.reload() would have done that.
 			accountPageReload(newSelected);
 		else
 			//We don't need to reload the tasks themselves, account state doesn't influence that directly
@@ -901,43 +901,19 @@ function BackendSettingsPage(backendName, settings, values) {
 inherit(SettingsPage, BackendSettingsPage);
 
 
-
 /*
-Task list selection box
-Each entry's .value is a JSON.stringify({ account: accountId, tasklist: tasklistId }).
+Task lists reloading
+Each account has a cached ui.tasklists[] that's filled by reloadAccountTaskLists().
+Task list boxes reload by these caches.
 */
-var listSelectBox = document.getElementById('listSelectBox');
-
-//Note: You can't compare these as objects. For easy comparison compare as String(a) == String(b)
-function TaskListHandle(account, tasklist) {
-	this.account = account;
-	this.tasklist = tasklist;
-}
-TaskListHandle.prototype.toString = function() {
-	let account = this.account;
-	if (!!account && !(typeof account == 'string')) //just in case we're already given the ID
-		account = account.id;
-	return JSON.stringify({account: account, tasklist: this.tasklist});
-}
-TaskListHandle.fromString = function(value) {
-	if (!value)
-		return null;
-	value = JSON.parse(value);
-	//Convert account ID to account object
-	if (!!value.account)
-		value.account = accountFind(value.account);
-	return new TaskListHandle(value.account, value.tasklist);
-}
-
-
 //Starts the task list reload process for all accounts. The UI will be updated dynamically
 function reloadAllAccountsTaskLists() {
 	console.debug('reloadAllAccountsTaskLists');
 	for (let i in accounts)
 		reloadAccountTaskLists(accounts[i]);
 	if (accounts.length <= 0) {
-		console.debug('reloadAllAccontsTaskLists: No accounts, tasklistBoxReload() to empty');
-		tasklistBoxReload(); //no accounts => no one will trigger visuals
+		console.debug('reloadAllAccontsTaskLists: No accounts, tasklistBox.reload() to empty');
+		tasklistBox.reload(); //no accounts => no one will trigger visuals
 	}
 }
 //Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
@@ -964,10 +940,48 @@ function reloadAccountTaskLists(account) {
 	});
 	return prom;
 }
-function tasklistBoxReload() {
+
+
+/*
+Task list selection box
+Each entry's .value is a JSON.stringify({ account: accountId, tasklist: tasklistId }).
+*/
+//Note: You can't compare these as objects. For easy comparison compare as String(a) == String(b)
+function TaskListHandle(account, tasklist) {
+	this.account = account;
+	this.tasklist = tasklist;
+}
+TaskListHandle.prototype.toString = function() {
+	let account = this.account;
+	if (!!account && !(typeof account == 'string')) //just in case we're already given the ID
+		account = account.id;
+	return JSON.stringify({account: account, tasklist: this.tasklist});
+}
+TaskListHandle.fromString = function(value) {
+	if (!value)
+		return null;
+	value = JSON.parse(value);
+	//Convert account ID to account object
+	if (!!value.account)
+		value.account = accountFind(value.account);
+	return new TaskListHandle(value.account, value.tasklist);
+}
+//The box itself
+function TaskListBox(boxElement) {
+	if (!boxElement)
+		boxElement = document.createElement('select');
+	boxElement.classList.add('taskListBox');
+	this.box = boxElement;
+	this.showAccounts = options.showAccountsInCombo;
+	this.selectAccounts = options.accountsClickable;
+	this.selectFailedAccounts = false;
+}
+TaskListBox.prototype.reload = function() {
 	console.debug('tasklistBoxReload');
-	var oldSelection = listSelectBox.value;
-	nodeRemoveAllChildren(listSelectBox); //clear the list
+	var oldSelection = this.box.value;
+
+	nodeRemoveAllChildren(this.box); //clear the list
+	
 	for (let i in accounts) {
 		let account = accounts[i];
 		if (!account)
@@ -979,11 +993,12 @@ function tasklistBoxReload() {
 		option.text = account.uiName();
 		option.classList.add("optionAccount");
 		option.value = String(new TaskListHandle(account.id, null));
-		if (!options.accountsClickable)
+		if (!this.selectAccounts)
 			option.disabled = true; //Normally can't select this
 		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists || isArrayEmpty(account.ui.tasklists)) {
-			option.disabled = false; //No task lists => make the account always selectable
+			if (this.selectFailedAccounts)
+				option.disabled = false; //No task lists => make the account always selectable
 			if (account.error)
 				option.text = option.text+' (error)';
 			else if (!account.isSignedIn())
@@ -991,46 +1006,89 @@ function tasklistBoxReload() {
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
 				option.text = option.text+' (no lists)';
 			option.classList.add("grayed");
-			listSelectBox.add(option);
+			this.box.add(option);
 			continue;
 		} else
 		//Otherwise add account entry if the options tell us so
-		if (options.showAccountsInCombo)
-			listSelectBox.add(option);
+		if (this.showAccounts)
+			this.box.add(option);
 		
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
 			let option = document.createElement("option");
 			option.value = String(new TaskListHandle(account.id,  tasklist.id));
 			option.text = tasklist.title;
-			if (options.showAccountsInCombo)
+			if (this.showAccounts)
 				option.classList.add('offset');
-			listSelectBox.add(option);
+			this.box.add(option);
 		}
 	}
 	
 	if (accounts.length <= 0) {
 		let option = document.createElement("option");
 		option.hidden = true;
-		option.text = "Create a new acount from the menu...";
+		option.text = "No accounts";
 		option.value = "";
-		listSelectBox.add(option);
-		listSelectBox.classList.add("grayed");
+		this.box.add(option);
+		this.box.classList.add("grayed");
 	} else {
-		listSelectBox.classList.remove("grayed");
+		this.box.classList.remove("grayed");
 	}
 	
+	//Select the same item as before, if possible -- but do not trigger changed()
+	this.box.value = oldSelection;
+}
+//Returns the { account: account, tasklist: tasklist } structure or null.
+TaskListBox.prototype.selected = function() {
+	let value = this.box.value;
+	if (!!value)
+		value = TaskListHandle.fromString(value);
+	return value;
+}
+TaskListBox.prototype.selectedTitle = function() {
+	return this.box.options[this.box.selectedIndex].text;
+}
+//Selects the { account: accountId, tasklist: tasklistId } entry.
+//noNotify: Do not call changed() -- we're simply restoring the control state
+TaskListBox.prototype.setSelected = function(tasklist, noNotify) {
+	console.debug('setSelectedTaskList:', arguments);
+	tasklist = String(tasklist);
+	if (this.box.value == tasklist)
+		return; //nothing to change
+	this.box.value = tasklist;
+	this.changed(); //Won't get called automatically
+}
+TaskListBox.prototype.changed = function() {
+	console.debug('change');
+	this.box.dispatchEvent(new Event('change'));
+}
+
+
+/*
+Main task list selection box
+Tries to select the best available replacement if the exact list is temporarily unavailable
+*/
+function MainTaskListBox(boxElement) {
+	TaskListBox.call(this, boxElement);
+	this.selectFailedAccounts = true;
+	this.box.addEventListener('changed', () => { this._handleChanged(); })
+}
+inherit(TaskListBox, MainTaskListBox);
+MainTaskListBox.prototype.reload = function() {
+	let oldSelection = this.selected();
+	TaskListBox.prototype.reload.call(this);
+
 	/*
 	Try to restore the selection or select something appropriate:
 	1. If the URI instructs us to select a specific account/list, try our best until user explicitly selects something else
 	*/
 	let urlState = urlReadState();
 	if (String(urlState)==String(oldSelection))
-		urlState = null; //use normal oldSelection processing to avoid selectedTaskListChanged()
+		urlState = null; //use normal oldSelection processing to avoid selectionChanged()
 	if (urlState) {
-		listSelectBox.value = urlState;
-		if ((listSelectBox.selectedIndex >= 0) && (!listSelectBox.options[listSelectBox.selectedIndex].disabled))
-			return selectedTaskListChanged(); //we've just changed it
+		this.box.value = urlState;
+		if ((this.box.selectedIndex >= 0) && (!this.box.options[this.box.selectedIndex].disabled))
+			this.changedSkipUrl(); //we've just changed it
 		//Otherwise fall back to normal
 	}
 	/*
@@ -1039,14 +1097,14 @@ function tasklistBoxReload() {
 	3. First non-disabled item in the list
 	4. Nothing (-1)
 	*/
-	listSelectBox.value = oldSelection;
-	if (((listSelectBox.selectedIndex < 0) && (listSelectBox.length > 0)) || listSelectBox.options[listSelectBox.selectedIndex].disabled) {
-		console.debug('tasklistBoxReload: Old selection', oldSelection, 'is lost, selecting the first appropriate item');
+	this.box.value = oldSelection;
+	if (((this.box.selectedIndex < 0) && (this.box.length > 0)) || this.box.options[this.box.selectedIndex].disabled) {
+		console.debug('tasklistBox.reload: Old selection', oldSelection, 'is lost, selecting the first appropriate item');
 		oldSelection = TaskListHandle.fromString(oldSelection); //parse the old selection
 		let newIndex = -1;
 		let firstNonDisabledIndex = -1;
-		for (let i=0; i<listSelectBox.options.length; i++) {
-			let option = listSelectBox.options[i];
+		for (let i=0; i<this.box.options.length; i++) {
+			let option = this.box.options[i];
 			if (option.disabled || !option.value)
 				continue;
 			if (firstNonDisabledIndex < 0)
@@ -1062,77 +1120,49 @@ function tasklistBoxReload() {
 		console.debug('newIndex:', newIndex, 'firstNonDisabledIndex:', firstNonDisabledIndex, 'old sel:', oldSelection);
 		if (newIndex < 0)
 			newIndex = firstNonDisabledIndex;
-		listSelectBox.selectedIndex = newIndex; //may even be -1
-		return selectedTaskListChanged(); //in this case we have to
+		this.box.selectedIndex = newIndex; //may even be -1
+		return this.changedSkipUrl(); //in this case we have to
 	}
 }
+MainTaskListBox.prototype.changedSkipUrl = function() {
+	console.debug('changedSkipUrl()');
+	this.skipUrl = true;
+	this.changed();
+}
+MainTaskListBox.prototype._handleChanged = function() {
+	if (this.skipUrl)
+		this.skipUrl = false;
+	else
+		urlSaveState(this.selected());
+}
+var tasklistBox = new MainTaskListBox(document.getElementById('listSelectBox'));
 
 //Save/restore the selected task list via the URL
 function urlSaveState(selected) {
-	let url = '#';
-	if (!!selected && !!selected.account) {
-		url = url + 'a='+encodeURIComponent(selected.account.id);
-		if (selected.tasklist)
-			url = url + '&l='+encodeURIComponent(selected.tasklist);
-	};
-	document.location.href = url;
+	if (!!selected && !!selected.account)
+		urlWrite({ a: selected.account.id, l: selected.tasklist, });
+	else
+		urlWrite(null);
 }
 function urlReadState() {
-	let url = document.location.href;
-	let hashIdx = url.indexOf('#');
-	if (hashIdx >= 0)
-		data = url.slice(hashIdx+1);
-	else
-		data = "";
-	if (!data || (data.length <= 0))
-		return null; //nothing is selected
-	
-	let parts = data.split('&');
-	data = {};
-	for (let i in parts) {
-		let nameVal = parts[i].split('=');
-		if (!nameVal || !nameVal.length || (nameVal.length != 2)) {
-			console.debug('Weird URI component:', parts[i]);
-			continue;
-		}
-		data[nameVal[0]] = decodeURIComponent(nameVal[1]);
-	}
-	console.debug('url data:', data);
-	
-	if (!('a' in data)) {
-		console.debug('Weird URI state: no account given');
+	let data = urlRead();
+	if (!data || !('a' in data))
 		return null; //nothing useful
-	}
-	
 	let selected = new TaskListHandle(data['a'], data['l']);
 	console.debug('url selected:', selected);
 	return selected;
 }
 
+
 //Backend for the currently selected list. Only set if the backend is initialized.
 var backend = null;
 
-//Returns the { account: account, tasklist: tasklist } structure or null.
-function selectedTaskList() {
-	let value = listSelectBox.value;
-	if (!!value)
-		value = TaskListHandle.fromString(value);
-	return value;
-}
-function selectedTaskListTitle() {
-	return listSelectBox.options[listSelectBox.selectedIndex].text;
-}
-//Selects the { account: accountId, tasklist: tasklistId } entry.
-//noNotify: Do not call changed() -- we're simply restoring the control state
-function setSelectedTaskList(tasklist, noNotify) {
-	console.debug('setSelectedTaskList:', arguments);
-	tasklist = String(tasklist);
-	if (listSelectBox.value == tasklist)
-		return; //nothing to change
-	listSelectBox.value = tasklist;
-	selectedTaskListChangedManually(); //Won't get called automatically
-}
+function selectedTaskList(){ return tasklistBox.selected(); }
+function selectedTaskListTitle() { return tasklistBox.selectedTitle(); }
+function setSelectedTaskList(tasklist, noNotify) { return tasklistBox.setSelected(tasklist, noNotify); }
+//Called when the selected task list had been chagned
 function selectedTaskListChanged() {
+	console.debug('selectedTaskListChanged');
 	tasklist = selectedTaskList();
 	if (!!tasklist && !!tasklist.account)
 		backend = tasklist.account;
@@ -1141,12 +1171,6 @@ function selectedTaskListChanged() {
 	accountActionsUpdate();
 	tasklistActionsUpdate();
 	return tasklistReloadSelected();
-}
-//Called only when the selected task list had been chagned as a result of direct user action
-function selectedTaskListChangedManually() {
-	let selected = selectedTaskList();
-	urlSaveState(selected);
-	selectedTaskListChanged();
 }
 //Update available tasklist actions depending on the selected tasklist and available backend functions
 function tasklistActionsUpdate() {
@@ -2188,8 +2212,7 @@ function tasklistDelete() {
 	if (!confirm('Are you SURE you want to delete task list "'+title+'"?'))
 		return;
 	var job = tasklist.account.tasklistDelete(tasklist.tasklist)
-	.then(result => reloadAccountTaskLists(tasklist.account))
-	.then(response => selectedTaskListChanged());
+	.then(result => reloadAccountTaskLists(tasklist.account));
 	pushJob(job);
 }
 
@@ -2200,7 +2223,9 @@ Editor page
 */
 function Editor() {
 	this.page = document.getElementById("editorPage");
-	this.taskListBox = document.getElementById("editorTaskList");
+	this.taskListBox = new TaskListBox(document.getElementById("editorTaskList"));
+	this.taskListBox.selectAccounts = false; //whatever the options say
+	this.taskListBox.selectFailedAcconts = false;
 	this.saveBtn = document.getElementById("editorSave");
 	this.saveCopyBtn = document.getElementById("editorSaveCopy");
 	this.cancelBtn = document.getElementById("editorCancel");
@@ -2209,7 +2234,7 @@ function Editor() {
 	this.listPageBackup = {}; //overwritten properties of listPage
 	
 	//Preserve proper "this" by lambdas
-	this.taskListBox.onchange = () => { this.taskListChanged(); };
+	this.taskListBox.box.onchange = () => { this.taskListChanged(); };
 	this.saveBtn.onclick = () => { this.saveClose(); };
 	this.saveCopyBtn.onclick = () => { this.saveCopyClose(); }
 	this.cancelBtn.onclick = () => { this.cancel(); };
@@ -2231,13 +2256,13 @@ Editor.prototype.open = function(taskId) {
 			this.taskId = null;
 			return;
 		}
-		this.taskListBoxReload();
+		this.taskListBox.reload();
 		document.getElementById("editorTaskTitle").innerText = task.title;
 		document.getElementById("editorTaskTitleBox").checked = (task.completed != null);
 		document.getElementById("editorTaskTitleP").classList.toggle("completed", task.completed != null);
 		document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
 		document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
-		this.setSelectedTaskList(selectedTaskList());
+		this.taskListBox.setSelected(selectedTaskList());
 
 		this.taskId = taskId;
 		
@@ -2249,43 +2274,12 @@ Editor.prototype.open = function(taskId) {
 	});
 	pushJob(job);
 }
-Editor.prototype.taskListBoxReload = function() {
-	nodeRemoveAllChildren(this.taskListBox);
-	for (let i in accounts) {
-		let account = accounts[i];
-		if (!account || !account.ui || !account.ui.tasklists)
-			continue;
-		for (let j in account.ui.tasklists) {
-			let tasklist = account.ui.tasklists[j];
-			let option = document.createElement("option");
-			option.value = JSON.stringify({ account: account.id, tasklist: tasklist.id });
-			option.text = tasklist.title;
-			this.taskListBox.add(option);
-		}
-	}
-}
-Editor.prototype.selectedTaskList = function() {
-	let value = this.taskListBox.value;
-	if (!!value)
-		value = TaskListHandle.fromString(value);
-	//console.debug('Editor.selectedTaskList() ->', value);
-	return value;
-}
-//Does not notify taskListChanged()
-Editor.prototype.setSelectedTaskList = function(tasklist) {
-	//console.debug('Editor.setSelectedTaskList:', tasklist);
-	tasklist = String(tasklist);
-	if (this.taskListBox.value == tasklist)
-		return; //nothing to change
-	this.taskListBox.value = tasklist;
-
-}
 //Called when the user selects a new list to move task to
 Editor.prototype.taskListChanged = function() {
 	//console.debug('taskListChanged');
 	if (!this.taskId) return;
 	let oldTaskList = selectedTaskList();
-	let newTaskList = this.selectedTaskList();
+	let newTaskList = this.taskListBox.selected();
 	//console.debug('taskListChanged: new=', newTaskList, ', old=', oldTaskList);
 	document.getElementById("editorSaveCopy").classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
 	document.getElementById("editorMoveNotice").classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
@@ -2309,7 +2303,7 @@ Editor.prototype.saveClose = function() {
 	var patch = this.getPatch();
 	var job = null;
 
-	var newList = this.selectedTaskList();
+	var newList = this.taskListBox.selected();
 	if (String(newList) == String(selectedTaskList()))
 		//Simple version, just edit the task
 		job = taskPatch(patch);
@@ -2328,7 +2322,7 @@ Editor.prototype.saveCopyClose = function() {
 	}
 	
 	var patch = this.getPatch();
-	var newList = this.selectedTaskList();
+	var newList = this.taskListBox.selected();
 	if (!newList || !newList.account || !newList.tasklist)
 		return;
 	

@@ -48,6 +48,23 @@ Error message popup
   padding: 1em;
 }
 
+/*
+Task list selection box
+Used in the main list and in the editor
+*/
+.taskListBox {}
+.taskListBox.grayed, option.grayed {
+  color: gray;
+}
+/* Offset tasklist entries -- when grouped by account */
+.taskListBox option.offset {
+  margin-left: 1em;
+}
+/* Account entries -- when grouped by account, or for accounts that failed to load */
+.taskListBox .optionAccount {
+  margin-left: 0;
+}
+
 
 /*
 Task list page
@@ -63,7 +80,8 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   /*border-bottom: lightgrey 1px solid;*/ /* A line under the title */
   /*margin-bottom: 4px;*/ /* A space under the line */
 }
-#listSelectBox {
+
+#listSelectBox { /* a taskListBox */
   font-family: Arial, sans-serif;
   font-size: 14px;
   font-weight: bold;
@@ -74,22 +92,9 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   flex-grow:10;
   margin-right:4px;
 }
-#listSelectBox.grayed,
-option.grayed {
-  color: gray;
-}
-/* Offset tasklist entries -- when grouped by account */
-#listSelectBox option.offset {
-  margin-left: 1em;
-}
-/* Account entries -- when grouped by account, or for accounts that failed to load */
-#listSelectBox .optionAccount {
-  margin-left: 0;
-}
 #listHeaderSpacer {
   /*flex-grow: 5;*/
 }
-
 #listContent,
 #listMessages { /* both fill 100% height */
   width: 100%;
@@ -100,7 +105,6 @@ option.grayed {
   text-align: center;
   margin-top: 1em;
 }
-
 #listFooter {
   border-top: lightgrey 1px solid;
   /* Align buttons to the right */
