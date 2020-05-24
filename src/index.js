@@ -341,6 +341,9 @@ function accountsLoad() {
 		
 	}
 	
+	//Trigger full task lists request
+	reloadAllAccountsTaskLists();
+	//Also react right now to provide at least some ui (the accounts in "loading" stage/"no accounts found")
 	accountListChanged();
 }
 //Permanently adds a new account based on its Backend() object and signin() params.
@@ -370,6 +373,10 @@ function accountAdd(account, params) {
 
 	//Add to runtime list
 	accounts.push(account); //signin() should already be initiated
+	//The account might already have tasklists cached -- don't requery
+	//E.g. it notified of signinChanged(true) from init() and we already did reloadAccountTaskLists() to it.
+	if (!Array.isArray(account.ui.tasklists))
+		reloadAccountTaskLists(account);
 	accountListChanged();
 }
 //Deletes the account by its id.
@@ -432,10 +439,11 @@ function accountListChanged() {
 		StartNewAccountUi({ hasCancel: false, });
 		//Since new accounts can't arrive except from its completion, there's no need to manually abort it in "else"
 		console.debug('accountListChanged: no accounts, tasklistBoxReload() to empty');
-		tasklistBoxReload();
-	} else {
-		reloadAllAccountsTaskLists(); //if e.g. the order of the lists has changed
 	}
+	//Don't reloadAllAccountsTaskLists() here: most accounts are fine.
+	//Whoever is adding/changing individual accounts must trigger their reloadAccountTaskList() if needed.
+	//Reload the combo though -- the order of the lists could've changed
+	tasklistBoxReload();
 }
 // Called when the signed in status changes, whether after a button click or automatically
 function accountSigninStateChanged(account, isSignedIn) {
@@ -1063,9 +1071,9 @@ function tasklistBoxReload() {
 function urlSaveState(selected) {
 	let url = '#';
 	if (!!selected && !!selected.account) {
-		url = url + 'account='+encodeURIComponent(selected.account.id);
+		url = url + 'a='+encodeURIComponent(selected.account.id);
 		if (selected.tasklist)
-			url = url + '&list='+encodeURIComponent(selected.tasklist);
+			url = url + '&l='+encodeURIComponent(selected.tasklist);
 	};
 	document.location.href = url;
 }
@@ -1091,12 +1099,12 @@ function urlReadState() {
 	}
 	console.debug('url data:', data);
 	
-	if (!('account' in data)) {
+	if (!('a' in data)) {
 		console.debug('Weird URI state: no account given');
 		return null; //nothing useful
 	}
 	
-	let selected = new TaskListHandle(data['account'], data['list']);
+	let selected = new TaskListHandle(data['a'], data['l']);
 	console.debug('url selected:', selected);
 	return selected;
 }
