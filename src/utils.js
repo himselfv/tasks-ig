@@ -6,7 +6,7 @@ Note: Before the main code sets default values, all defaults are undefined.
 */
 var options = options || {};
 function optionsLoad() {
-	options = Object.assign({}, getLocalStorageItem("tasksIg_options"), options);
+	options = Object.assign({}, options, getLocalStorageItem("tasksIg_options"));
 	console.debug('options loaded:', options);
 }
 function optionsSave() {
