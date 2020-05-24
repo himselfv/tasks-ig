@@ -948,7 +948,7 @@ function reloadAccountTaskLists(account) {
 		//Optimize away some obvious cases of nothing changed
 		if (!account.ui.tasklits && !tasklists)
 			return; //but if it's "null -> []" or "[] -> null", we should transition
-		if (isEmpty(account.ui.tasklists) && isEmpty(tasklists))
+		if (Array.isArray(account.ui.tasklists) && isEmpty(account.ui.tasklists) && Array.isArray(tasklists) && isEmpty(tasklists))
 			return;
 		account.ui.tasklists = tasklists;
 		console.log('reloadAccountTaskLists: new lists available for account', account);
