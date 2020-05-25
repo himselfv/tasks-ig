@@ -85,6 +85,10 @@ var optionSet = {
 		type: 'bool',
 		title: 'Single-click add',
 		hint: 'Add new task with a single click on the empty space - as it had been in GTasks. Double click always works', },
+	urlTrack: {
+		type: 'bool', default: true,
+		title: 'URL selection permanence',
+		hint: 'Reflect the selected task list in the URL - you can copy the URL and it\'ll open on the same tasklist/account. The URLs are uglier though', },
 	debug: {
 		type: 'bool',
 		title: 'Debug',
@@ -1073,7 +1077,6 @@ TaskListBox.prototype.setSelected = function(tasklist, noNotify) {
 	this.changed(); //Won't get called automatically
 }
 TaskListBox.prototype.changed = function() {
-	console.debug('change');
 	this.box.dispatchEvent(new Event('change'));
 }
 
@@ -1098,11 +1101,10 @@ MainTaskListBox.prototype.reload = function() {
 
 	//2. If the URI gives us something else, prefer that.
 	//   Normally the URI tracks the current selection and we only temporarily deviate from that while the account is loaded
+	//   Note: We ALWAYS follow the URL, but we only update it if urlTrack is enabled.
 	let urlState = urlReadState();
-	if (urlState) {
-		console.log('urlState:', urlState);
+	if (urlState)
 		newSelection = urlState;
-	}
 	
 	//Try to apply either the URL or the old selection (when no URL instructions)
 	this.box.value = String(newSelection); //may be string, may be structure
@@ -1114,18 +1116,14 @@ MainTaskListBox.prototype.reload = function() {
 			this.changedSkipUrl();
 		return;
 	}
-	console.debug('tried to set sel=', String(newSelection));
-	console.debug('result: selIndex=', this.box.selectedIndex);
-	if (this.box.selectedIndex >=0)
-		console.debug('selected option=', this.box.options[this.box.selectedIndex]);
-	
+
 	/*
 	Could not select the best option, try substitutes:
 	2. First non-disabled item for the same account, INCLUDING the account itself
 	3. First non-disabled item in the list
 	4. Nothing (-1)
 	*/
-	console.debug('tasklistBox.reload: Selection', String(newSelection), 'is lost, selecting a substitutde');
+	console.debug('tasklistBox.reload: Selection', String(newSelection), 'is lost, selecting a substitute');
 	if (typeof newSelection == 'string')
 		newSelection = TaskListHandle.fromString(newSelection); //parse the selection string
 
@@ -1177,17 +1175,19 @@ MainTaskListBox.prototype.reload = function() {
 	this.changed(); //Otherwise permanent
 }
 MainTaskListBox.prototype.changedSkipUrl = function() {
-	console.debug('changedSkipUrl()');
 	this.skipUrl = true;
 	this.changed();
 }
 MainTaskListBox.prototype._handleChanged = function() {
-	console.debug('handleChanged(), skipUrl=',this.skipUrl);
-	if (this.skipUrl)
+	if (this.skipUrl) {
 		this.skipUrl = false;
-	else {
-		urlSaveState(this.selected());
+		return;
 	}
+	if (options.urlTrack)
+		urlSaveState(this.selected());
+	else
+		//ALWAYS write something to the URL, or if someone passes us params we'll apply them again and again
+		urlSaveState(null);
 }
 var tasklistBox = new MainTaskListBox(document.getElementById('listSelectBox'));
 
@@ -1206,7 +1206,6 @@ function urlReadState() {
 	if (!data || !('a' in data))
 		return null; //nothing useful
 	let selected = new TaskListHandle(data['a'], data['l']);
-	console.debug('url selected:', selected);
 	return selected;
 }
 
