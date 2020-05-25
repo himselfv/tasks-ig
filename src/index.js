@@ -630,6 +630,7 @@ function accountReset(account) {
 function accountEditSettings(account) {
 	//TODO: Implement.
 	//TODO: Return a Page prototype to wait on
+	return Promise.resolve();
 }
 
 
