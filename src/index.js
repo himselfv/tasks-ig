@@ -644,6 +644,7 @@ function BackendSelectPage(params) {
 	this.hasCancel = params.hasCancel;
 	this.prompt = params.prompt;
 	
+	this.reenable();
 	this.reload();
 	this.page.classList.remove("hidden");
 }
@@ -659,17 +660,17 @@ BackendSelectPage.prototype.reload = function() {
 		btn.textContent = item.uiName || item.name;
 		btn.associatedBackend = item;
 		btn.onclick = () => { this.backendClicked(btn); };
-		backendSelectPage.appendChild(btn);
+		this.page.appendChild(btn);
 	});
 	
 	if (this.hasCancel) {
 		let sep = document.createElement("p");
 		sep.classList.add("backendSelectSeparator");
-		backendSelectPage.appendChild(sep);
+		this.page.appendChild(sep);
 		let btn = document.createElement("button");
 		btn.textContent = 'Cancel';
 		btn.onclick = () => { this.cancelClick(); };
-		backendSelectPage.appendChild(btn);
+		this.page.appendChild(btn);
 	}
 }
 BackendSelectPage.prototype.close = function() {
@@ -678,6 +679,7 @@ BackendSelectPage.prototype.close = function() {
 BackendSelectPage.prototype.backendClicked = function(btn) {
 	backendClass = btn.associatedBackend;
 	console.log("Setting up backend", backendClass);
+	this.disable();
 	let backend = backendCreate(backendClass);
 	backend.init()
 	.then(() => {
@@ -717,8 +719,19 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 		console.log('Could not configure backend:', error);
 		if (!(error instanceof FormCancelError))
 			window.alert(error);
+		this.reenable();
 		return null;
 	});
+}
+//Disables everything on this page while we process the user command
+BackendSelectPage.prototype.disable = function() {
+	for (let i=0; i<this.page.children.length; i++)
+		this.page.children[i].disabled=true;
+}
+//Reenables everything on this page
+BackendSelectPage.prototype.reenable = function() {
+	for (let i=0; i<this.page.children.length; i++)
+		this.page.children[i].disabled=false;
 }
 
 /*
