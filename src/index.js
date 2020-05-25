@@ -1006,7 +1006,7 @@ TaskListBox.prototype.reload = function() {
 		let option = document.createElement("option");
 		option.text = account.uiName();
 		option.classList.add("optionAccount");
-		option.value = String(new TaskListHandle(account.id, null));
+		option.value = String(new TaskListHandle(account.id, undefined));
 		if (!this.selectAccounts)
 			option.disabled = true; //Normally can't select this
 		
@@ -1085,58 +1085,96 @@ Tries to select the best available replacement if the exact list is temporarily 
 function MainTaskListBox(boxElement) {
 	TaskListBox.call(this, boxElement);
 	this.selectFailedAccounts = true;
-	this.box.addEventListener('changed', () => { this._handleChanged(); })
+	this.box.addEventListener('change', () => { this._handleChanged(); })
 }
 inherit(TaskListBox, MainTaskListBox);
 MainTaskListBox.prototype.reload = function() {
-	let oldSelection = this.selected();
+	let oldSelection = this.box.value;
 	TaskListBox.prototype.reload.call(this);
 
-	/*
-	Try to restore the selection or select something appropriate:
-	1. If the URI instructs us to select a specific account/list, try our best until user explicitly selects something else
-	*/
+	//Try to restore the selection or choose the best substitution:
+	//1. Start with whatever was selected
+	let newSelection = oldSelection;
+
+	//2. If the URI gives us something else, prefer that.
+	//   Normally the URI tracks the current selection and we only temporarily deviate from that while the account is loaded
 	let urlState = urlReadState();
-	if (String(urlState)==String(oldSelection))
-		urlState = null; //use normal oldSelection processing to avoid selectionChanged()
 	if (urlState) {
-		this.box.value = urlState;
-		if ((this.box.selectedIndex >= 0) && (!this.box.options[this.box.selectedIndex].disabled))
-			this.changedSkipUrl(); //we've just changed it
-		//Otherwise fall back to normal
+		console.log('urlState:', urlState);
+		newSelection = urlState;
 	}
+	
+	//Try to apply either the URL or the old selection (when no URL instructions)
+	this.box.value = String(newSelection); //may be string, may be structure
+	if ((this.box.selectedIndex >= 0) && (!this.box.options[this.box.selectedIndex].disabled)) { //That worked.
+		//Do not call changed() if simply restored what was there
+		if (String(oldSelection) != String(newSelection))
+			//NB: A simple changed() works here too!
+			//  But IN FACT we only get here by following the URI command so optimize a bit
+			this.changedSkipUrl();
+		return;
+	}
+	console.debug('tried to set sel=', String(newSelection));
+	console.debug('result: selIndex=', this.box.selectedIndex);
+	if (this.box.selectedIndex >=0)
+		console.debug('selected option=', this.box.options[this.box.selectedIndex]);
+	
 	/*
-	2. The same item (unless it's now disabled)
-	2. First non-disabled item for the same account
+	Could not select the best option, try substitutes:
+	2. First non-disabled item for the same account, INCLUDING the account itself
 	3. First non-disabled item in the list
 	4. Nothing (-1)
 	*/
-	this.box.value = oldSelection;
-	if (((this.box.selectedIndex < 0) && (this.box.length > 0)) || this.box.options[this.box.selectedIndex].disabled) {
-		console.debug('tasklistBox.reload: Old selection', oldSelection, 'is lost, selecting the first appropriate item');
-		oldSelection = TaskListHandle.fromString(oldSelection); //parse the old selection
-		let newIndex = -1;
-		let firstNonDisabledIndex = -1;
-		for (let i=0; i<this.box.options.length; i++) {
-			let option = this.box.options[i];
-			if (option.disabled || !option.value)
-				continue;
-			if (firstNonDisabledIndex < 0)
-				firstNonDisabledIndex = i;
-			if (!oldSelection || !oldSelection.account)
-				break; //found the first entry; no point in iterating further
-			let handle = TaskListHandle.fromString(option.value);
-			if (!!handle && (handle.account == oldSelection.account)) {
-				newIndex = i;
-				break;
-			}
+	console.debug('tasklistBox.reload: Selection', String(newSelection), 'is lost, selecting a substitutde');
+	if (typeof newSelection == 'string')
+		newSelection = TaskListHandle.fromString(newSelection); //parse the selection string
+
+	let newIndex = -1;
+	let firstNonDisabledIndex = -1;
+	for (let i=0; i<this.box.options.length; i++) {
+		let option = this.box.options[i];
+		if (option.disabled || !option.value)
+			continue;
+		if (firstNonDisabledIndex < 0)
+			firstNonDisabledIndex = i;
+		if (!oldSelection || !oldSelection.account)
+			break; //found the first entry; no point in iterating further
+		let handle = TaskListHandle.fromString(option.value);
+		if (!!handle && (handle.account == oldSelection.account)) {
+			newIndex = i;
+			break;
 		}
-		console.debug('newIndex:', newIndex, 'firstNonDisabledIndex:', firstNonDisabledIndex, 'old sel:', oldSelection);
-		if (newIndex < 0)
-			newIndex = firstNonDisabledIndex;
-		this.box.selectedIndex = newIndex; //may even be -1
-		return this.changedSkipUrl(); //in this case we have to
 	}
+	console.debug('newIndex:', newIndex, 'firstNonDisabledIndex:', firstNonDisabledIndex, 'old sel:', newSelection);
+	if (newIndex < 0)
+		newIndex = firstNonDisabledIndex;
+	this.box.selectedIndex = newIndex; //may even be -1
+	
+	/*
+	URL permanency rules:
+	1. Anything (tasklist or account page in any state) is permanent if selected manually by user.
+	2. Task list substitutions are permanent. We don't want the user yanked out of the list when the URL match loads.
+	3. Account page substitutions are:
+	  - Transient when "Loading..." - don't change the URL.
+	  - Permanent when loaded (but can only remain selected if that's enabled in options).
+	  - Permanent/transient when errored, doesn't matter.
+	*/
+	let resultSelection = this.selected();
+	if (String(oldSelection) == String(resultSelection))
+		return; //Nothing in fact changed, somehow
+	if (!resultSelection || !resultSelection.account) {
+		this.changedSkipUrl(); //Nothing is now selected -- don't make this permanent
+		return;
+	}
+	if (resultSelection.tasklist) {
+		this.changed(); //Task lists are always permanent
+		return;
+	}
+	if (!resultSelection.account.ui || !resultSelection.account.ui.tasklists || !!resultSelection.account.error) {
+		this.changedSkipUrl(); //Not yet loaded, the substitution is transient
+		return;
+	}
+	this.changed(); //Otherwise permanent
 }
 MainTaskListBox.prototype.changedSkipUrl = function() {
 	console.debug('changedSkipUrl()');
@@ -1144,19 +1182,24 @@ MainTaskListBox.prototype.changedSkipUrl = function() {
 	this.changed();
 }
 MainTaskListBox.prototype._handleChanged = function() {
+	console.debug('handleChanged(), skipUrl=',this.skipUrl);
 	if (this.skipUrl)
 		this.skipUrl = false;
-	else
+	else {
 		urlSaveState(this.selected());
+	}
 }
 var tasklistBox = new MainTaskListBox(document.getElementById('listSelectBox'));
 
 //Save/restore the selected task list via the URL
 function urlSaveState(selected) {
-	if (!!selected && !!selected.account)
-		urlWrite({ a: selected.account.id, l: selected.tasklist, });
-	else
-		urlWrite(null);
+	let state = {};
+	if (!!selected && !!selected.account) {
+		state['a'] = selected.account.id;
+		if (!!selected.tasklist)
+			state['l'] = selected.tasklist;
+	}
+	urlWrite(state);
 }
 function urlReadState() {
 	let data = urlRead();

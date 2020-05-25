@@ -197,7 +197,7 @@ function urlRead() {
 		data[nameVal[0]] = decodeURIComponent(nameVal[1]);
 	}
 	console.debug('url data:', data);
-	return parts;
+	return data;
 }
 
 
