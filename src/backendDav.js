@@ -158,7 +158,7 @@ BackendDav.prototype.datetimeToPosition = function(dt) {
 	if (!dt) return 0; //  ¯\_(ツ)_/¯
 	if (dt instanceof ICAL.Time)
 		dt = dt.toJSDate();
-	return (dt - new Date(2001, 01, 01, 0, 0, 0)) / 1000
+	return Math.floor((dt - new Date(2001, 01, 01, 0, 0, 0)) / 1000);
 }
 BackendDav.prototype.newTopmostPosition = function(parentId, tasklistId) {
 	return -this.datetimeToPosition(new Date()); //minus current time
