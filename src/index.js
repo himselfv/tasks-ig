@@ -1393,7 +1393,7 @@ function tasksActionsUpdate() {
 	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
 	element("taskCopyJSON").classList.toggle("hidden", !entry);
 	element("taskExportToFile").classList.toggle("hidden", !entry);
-	element("taskEditFocused").classList.toggle("hidden", !backend || !backend.update || !entry);
+	element("taskEditFocused").classList.toggle("hidden", !backend || !entry); //even without !backend.update -- the task can be copied or moved
 	element("taskDeleteRecursive").classList.toggle("hidden", !backend || !backend.move ||!entry);
 }
 
@@ -2338,9 +2338,30 @@ Editor.prototype.taskListChanged = function() {
 	let oldTaskList = selectedTaskList();
 	let newTaskList = this.taskListBox.selected();
 	//console.debug('taskListChanged: new=', newTaskList, ', old=', oldTaskList);
+
+	//Backends may support smart copyToList/moveToList even while not supporting insert()/delete() directly,
+	//but we have no way to check for that so stick to these simple rules:
+	let haveSaveCopy = false;
+	let haveSave = false;
+	let targetReadOnly = false;
+	if (String(newTaskList) == String(oldTaskList)) {
+		haveSaveCopy = false; //"Save as copy" is unavailable for the same list to prevent confusion
+		targetWriteable = newTaskList.account && newTaskList.account.update;
+		haveSave = targetWriteable; //"Save" is avilable if we can update
+	} else {
+		haveSaveCopy = newTaskList.account && newTaskList.account.insert; //"Save as copy" is available if target has insert
+		targetWriteable = newTaskList.account && newTaskList.account.insert;
+		haveSave = targetWriteable && oldTaskList.account && oldTaskList.account.delete; //"Save" if the target has insert and the source has delete
+	}
+	
+	document.getElementById("editorSaveCopy").disabled = !haveSaveCopy;
+	document.getElementById("editorSave").disabled = !haveSave;
+	
 	document.getElementById("editorSaveCopy").classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
 	document.getElementById("editorMoveNotice").classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
 	document.getElementById("editorMoveBackendNotice").classList.toggle('hidden', newTaskList.account == oldTaskList.account);
+	//Indicate that the target list is read-only
+	document.getElementById("editorCannotEditNotice").classList.toggle('hidden', targetWriteable);
 }
 //Retrieves a patch based on the changes in the editor
 Editor.prototype.getPatch = function() {

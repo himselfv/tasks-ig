@@ -136,3 +136,20 @@ BackendSettingsTest.prototype.signin = function(params) {
 	}
 	return this.__proto__.__proto__.signin.call(this, params);
 }
+
+
+
+//BackendLocalStorage, but read-only
+function BackendLocalStorageRO() {
+	BackendLocalStorage.call(this);
+}
+newTestBackend(BackendLocalStorage, BackendLocalStorageRO, "Local Storage (RO)");
+BackendLocalStorageRO.prototype.reset = null;
+BackendLocalStorageRO.prototype.update = null;
+BackendLocalStorageRO.prototype.insert = null;
+BackendLocalStorageRO.prototype.delete = null;
+BackendLocalStorageRO.prototype._moveOne = null;
+BackendLocalStorageRO.prototype.moveToList = null;
+BackendLocalStorageRO.prototype.tasklistAdd = null;
+BackendLocalStorageRO.prototype.tasklistUpdate = null;
+BackendLocalStorageRO.prototype.tasklistDelete = null;
