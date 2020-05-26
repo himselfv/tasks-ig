@@ -1135,15 +1135,15 @@ MainTaskListBox.prototype.reload = function() {
 			continue;
 		if (firstNonDisabledIndex < 0)
 			firstNonDisabledIndex = i;
-		if (!oldSelection || !oldSelection.account)
+		if (!newSelection || !newSelection.account)
 			break; //found the first entry; no point in iterating further
 		let handle = TaskListHandle.fromString(option.value);
-		if (!!handle && (handle.account == oldSelection.account)) {
+		if (!!handle && (handle.account == newSelection.account)) {
 			newIndex = i;
 			break;
 		}
 	}
-	console.debug('newIndex:', newIndex, 'firstNonDisabledIndex:', firstNonDisabledIndex, 'old sel:', newSelection);
+	console.debug('newIndex:', newIndex, 'firstNonDisabledIndex:', firstNonDisabledIndex, 'base sel:', newSelection);
 	if (newIndex < 0)
 		newIndex = firstNonDisabledIndex;
 	this.box.selectedIndex = newIndex; //may even be -1
@@ -1205,7 +1205,8 @@ function urlReadState() {
 	let data = urlRead();
 	if (!data || !('a' in data))
 		return null; //nothing useful
-	let selected = new TaskListHandle(data['a'], data['l']);
+	let account = accountFind(data['a']) || data['a']; //resolve account if possible
+	let selected = new TaskListHandle(account, data['l']);
 	return selected;
 }
 
