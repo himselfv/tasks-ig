@@ -386,26 +386,32 @@ BackendDav.prototype.taskIdSubfilter = function(taskId) {
 }
 //Same but for multiple task IDs and returns a complete filter
 BackendDav.prototype.taskIdsFilter = function(taskIds) {
-	//Compile the set of TODO filters (each is internally AND)
-	let vtodos = [];
+	let uids = [];
 	for (let i=0; i<taskIds.length; i++) {
-		let taskIdFilter = this.taskIdSubfilter(taskIds[i]);
-		if (!taskIdFilter)
-			return Promise.Reject('Invalid taskId: '+taskId);
-		vtodos.push({
-			type: 'comp-filter',
-			attrs: { name: 'VTODO' },
-			children: taskIdFilter,
-		});
+		let uidFilter = {
+				type: 'text-match',
+				attrs: { collation: 'i;octet' },
+				value: taskIds[i],
+			};
+		uids.push(uidFilter);
 	}
 	
-	attrs = {name: 'VCALENDAR'};
-	if (vtodos.length > 1)
-		attrs.test = 'anyof'; //OR the set of filters
+	let uidFilter = {
+			type: 'prop-filter',
+			attrs: { name: 'UID' },
+			children: uids,
+		};
+	if (uids.length > 1)
+		uidFilter.attrs.test = 'anyof'; //OR the set of filters
+	
 	return [{
 		type: 'comp-filter',
-		attrs: attrs,
-		children: vtodos,
+		attrs: { name: 'VCALENDAR' },
+		children: [{
+			type: 'comp-filter',
+			attrs: { name: 'VTODO' },
+			children: [uidFilter],
+		}],
 	}];
 }
 
