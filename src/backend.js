@@ -482,6 +482,7 @@ A: Override deleteWithChildren() and forward to delete()
 
 //Deletes the task with all children. If tasklistId is not given, assumes current task list.
 Backend.prototype.deleteWithChildren = function (taskId, tasklistId) {
+	//console.debug('Backend.deleteWithChildren:', arguments);
 	if (taskId && taskId.id) taskId = taskId.id;
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	
@@ -492,16 +493,23 @@ Backend.prototype.deleteWithChildren = function (taskId, tasklistId) {
 		prom = this.getAllChildren(taskId, tasklistId)
 		.then(children => {
 			children.forEach(child => ids.push(child.id))
+			//console.debug('Collected child ids:',ids);
 		});
 	} else
 		prom = Promise.resolve();
 	
 	return prom
 	.then(() => {
-		//We need to remove everything from cache too
-		ids.forEach(id => this.cache.delete(id));
+		//Remove everything from cache first, the deletion may take a while and people may look into cache
+		//Some delete() implementations need cached objects for etags and such so retrieve these from cache and pass directly
+		for (let i=0; i<ids.length; i++) {
+			ids[i] = this.cache.get(ids[i]) || ids[i];
+			this.cache.delete(ids[i].id || ids[i]);
+		}
 	})
-	.then(this.delete(ids, tasklistId));
+	.then(() => {
+		return this.delete(ids, tasklistId);
+	});
 }
 
 
@@ -918,6 +926,7 @@ TaskCache.prototype.deleteList = function (tasklistId) {
 			delete this.items[key];
 }
 TaskCache.prototype.get = function (taskId) {
+	//console.debug('cache.get:', taskId, this.items);
 	return this.items[taskId];
 }
 TaskCache.prototype.update = function (tasks) {
@@ -949,13 +958,15 @@ Backend.prototype.cacheLoadList = function(tasklistId) {
 //Similar to .get(), but can return from cache.
 //+ If you pass it a Task object, will simply return that.
 Backend.prototype.cachedGet = function(taskIds, tasklistId) {
+	//console.debug('cachedGet:', taskIds, tasklistId);
 	if (!taskIds) return Promise.resolve();
 	let isArray = Array.isArray(taskIds);
 	if (!isArray) taskIds = [taskIds];
 
 	let tasks = {};
 	let requestIds = [];
-	for (let taskId in taskIds) {
+	for (let i in taskIds) {
+		let taskId = taskIds[i];
 		if (taskId.id) {
 			tasks[taskId.id] = taskId; //already a task
 			continue;
@@ -966,6 +977,7 @@ Backend.prototype.cachedGet = function(taskIds, tasklistId) {
 		else
 			requestIds.push(taskId);
 	}
+	console.debug('cachedGet: will query:', requestIds);
 	let prom = (requestIds.length <= 0) ? Promise.resolve({}) :
 		this.get(taskIds, tasklistId);
 	return prom.then(results => {

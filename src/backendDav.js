@@ -365,7 +365,10 @@ BackendDav.prototype.queryTasklist = function(tasklistId, filters) {
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
 	return dav.listCalendarObjects(calendar, { xhr: this.xhr, filters: filters })
-		.then(objects => this.parseTodoObjects(objects, tasklistId));
+	.then(objects => {
+		//console.debug('queryTaskList: objects=', objects);
+		return this.parseTodoObjects(objects, tasklistId);
+	});
 }
 
 //Returns a set of prop-filters which uniquely identify a task with a given taskId
@@ -724,6 +727,7 @@ BackendDav.prototype.insertTodoObject = function(calendar, data, filename) {
 //Deletes multiple tasks from a single task list, non-recursively.
 BackendDav.prototype.delete = function (taskIds, tasklistId) {
 	if (!Array.isArray(taskIds)) taskIds = [taskIds];
+	console.debug('Dav.delete:', taskIds, tasklistId);
 	
 	let calendar = this.findCalendar(tasklistId);
 	if (!calendar)
