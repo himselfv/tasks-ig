@@ -2358,8 +2358,8 @@ Editor.prototype.taskListChanged = function() {
 	document.getElementById("editorSave").disabled = !haveSave;
 	
 	document.getElementById("editorSaveCopy").classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
-	document.getElementById("editorMoveNotice").classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
-	document.getElementById("editorMoveBackendNotice").classList.toggle('hidden', newTaskList.account == oldTaskList.account);
+	document.getElementById("editorMoveNotice").classList.toggle('hidden', (String(newTaskList) == String(oldTaskList)) || (!haveSave && !haveSaveCopy));
+	document.getElementById("editorMoveBackendNotice").classList.toggle('hidden', (newTaskList.account == oldTaskList.account) || (!haveSave && !haveSaveCopy));
 	//Indicate that the target list is read-only
 	document.getElementById("editorCannotEditNotice").classList.toggle('hidden', targetWriteable);
 }
