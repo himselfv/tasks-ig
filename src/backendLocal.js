@@ -13,9 +13,17 @@ BackendLocal.prototype.constructor = BackendLocal;
 function BackendLocalStorage() {
 	BackendLocal.call(this);
 	window.addEventListener('storage', (event) => this.localStorageChanged(event));
+	this.storage = window.localStorage;
 }
 BackendLocalStorage.prototype = Object.create(BackendLocal.prototype);
 BackendLocalStorage.prototype.constructor = BackendLocalStorage;
+
+//A variation of LocalStorage. Stores tasks while the page is open. Only for debug.
+function BackendSessionStorage() {
+	BackendLocalStorage.call(this);
+	this.storage = window.sessionStorage;
+}
+inherit(BackendLocalStorage, BackendSessionStorage);
 
 
 //Pass browser.storage.sync or browser.storage.local
@@ -93,41 +101,45 @@ if (getBrowserStorageLocal())
 	registerBackend(BackendBrowserStorageLocal, "Browser storage (local)");
 else
 	registerBackend(BackendLocalStorage, "Local storage");
+//This one should not be registered, only for debug purposes
+if (options.debug)
+	registerBackend(BackendSessionStorage, "Session storage");
 
 
 /*
 Local backend can use several actual backends:
 - Local storage
+- Session storage (for debug only)
 - Extension storage (local)
 - Extension storage (synced)
 All must implement _get, _set, _remove and optionally "reset()".
 */
 BackendLocalStorage.prototype._get = function(key) {
-	var data = window.localStorage.getItem(this.STORAGE_PREFIX+key);
+	var data = this.storage.getItem(this.STORAGE_PREFIX+key);
 	//console.log("_get: ", key, " -> ", data);
 	return Promise.resolve((data) ? JSON.parse(data) : null);
 }
 BackendLocalStorage.prototype._set = function(key, value) {
 	//console.log("_set: ", key, " := ", value);
-	window.localStorage.setItem(this.STORAGE_PREFIX+key, JSON.stringify(value));
+	this.storage.setItem(this.STORAGE_PREFIX+key, JSON.stringify(value));
 	return Promise.resolve();
 }
 BackendLocalStorage.prototype._remove = function(key) {
-	window.localStorage.removeItem(this.STORAGE_PREFIX+key);
+	this.storage.removeItem(this.STORAGE_PREFIX+key);
 	return Promise.resolve();
 }
 BackendLocalStorage.prototype.reset = function() {
-	for (let i=window.localStorage.length-1; i>=0; i--) {
-		let key = window.localStorage.key(i);
+	for (let i=this.storage.length-1; i>=0; i--) {
+		let key = this.storage.key(i);
 		if (key.startsWith(this.STORAGE_PREFIX))
-			window.localStorage.removeItem(key);
+			this.storage.removeItem(key);
 	}
 	return Promise.resolve();
 }
 //Fired when the localStorage contents changes
 //https://developer.mozilla.org/en-US/docs/Web/API/StorageEvent
 BackendLocalStorage.prototype.localStorageChanged = function(event) {
-	if (event.storageArea != window.localStorage)
+	if (event.storageArea != this.storage)
 		return;
 	//console.log(event);
 	var key = event.key;
