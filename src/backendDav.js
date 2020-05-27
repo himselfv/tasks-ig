@@ -545,6 +545,7 @@ BackendDav.prototype.getMultiple = function(taskIds, tasklistId) {
 	if the # of todos needed is high enough, otherwise default to one-by-one.
 	*/
 	if (!tasklistId) tasklistId = this.selectedTaskList;
+	//console.debug('dav.getMultiple:', taskIds, tasklistId);
 	let filters = this.taskIdsFilter(taskIds);
 	
 	return this.queryTasklist(tasklistId, filters)
@@ -561,7 +562,7 @@ BackendDav.prototype.getMultiple = function(taskIds, tasklistId) {
 					break;
 				}
 			if (j >= tasks.length)
-				throw "Task not found: "+taskIds[j];
+				throw "Task not found: "+taskIds[i];
 		}
 		return results;
 	});
