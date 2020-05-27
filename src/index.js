@@ -433,6 +433,7 @@ function accountListChanged() {
 	//Whoever is adding/changing individual accounts must trigger their reloadAccountTaskList() if needed.
 	//Reload the combo though -- the order of the lists could've changed
 	tasklistBox.reload();
+	leftPanelReload();
 }
 // Called when the signed in status changes, whether after a button click or automatically
 function accountSigninStateChanged(account, isSignedIn) {
@@ -458,6 +459,7 @@ function accountStateChanged(account) {
 	// 1. Account's own combobox entry
 	// 2. Account's tasklist comobobox entries
 	tasklistBox.reload();
+	leftPanelReload();
 	let newSelected = selectedTaskList();
 	
 	// 3. Account's accountPage, if it's open
@@ -918,6 +920,7 @@ function reloadAllAccountsTaskLists() {
 	if (accounts.length <= 0) {
 		console.debug('reloadAllAccontsTaskLists: No accounts, tasklistBox.reload() to empty');
 		tasklistBox.reload(); //no accounts => no one will trigger visuals
+		leftPanelReload();
 	}
 }
 //Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
@@ -1194,6 +1197,55 @@ function urlReadState() {
 	let account = accountFind(data['a']) || data['a']; //resolve account if possible
 	let selected = new TaskListHandle(account, data['l']);
 	return selected;
+}
+
+
+/*
+Left panel
+*/
+function leftPanelReload() {
+	let panel = document.getElementById('listPanel');
+	nodeRemoveAllChildren(panel);
+	
+	for (let i in accounts) {
+		let account = accounts[i];
+		if (!account)
+			continue;
+		
+		//Add a "grayed line" representing the account
+		let option = document.createElement("li");
+		option.textContent = account.uiName();
+		option.value = String(new TaskListHandle(account.id, undefined));
+		//if (!this.selectAccounts)
+			option.disabled = true; //Normally can't select this
+		
+		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists || isArrayEmpty(account.ui.tasklists)) {
+			if (this.selectFailedAccounts)
+				option.disabled = false; //No task lists => make the account always selectable
+			if (account.error)
+				option.textContent = option.textContent+' (error)';
+			else if (!account.isSignedIn())
+				option.textContent = option.textContent+' (signing in)';
+			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
+				option.textContent = option.textContent+' (no lists)';
+			option.classList.add("grayed");
+			panel.appendChild(option);
+			continue;
+		} else
+			panel.appendChild(option);
+		
+		let ul = document.createElement('ul');
+		option.appendChild(ul);
+		
+		for (let j in account.ui.tasklists) {
+			let tasklist = account.ui.tasklists[j];
+			let option = document.createElement("li");
+			option.value = String(new TaskListHandle(account.id,  tasklist.id));
+			option.textContent = tasklist.title;
+			option.classList.add('offset');
+			ul.appendChild(option);
+		}
+	}
 }
 
 

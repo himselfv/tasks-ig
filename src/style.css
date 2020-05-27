@@ -70,7 +70,17 @@ Used in the main list and in the editor
 Task list page
 Header sticks to top, footer sticks to bottom, the rest expands as content grows.
 */
-#listPage {} /* a .page */
+#listPage { /* a .page */
+  flex-direction: row;
+}
+#listPanel {
+  width: 200px;
+}
+#listBody {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
 #listHeader {
   display: flex;
   flex-direction: row;
@@ -134,6 +144,15 @@ Activity indicator
 }
 #activityIndicator.error {
   background-color: red;
+}
+
+
+/*
+Left panel
+*/
+#listPanel {
+  display: flex;
+  flex-direction: column;
 }
 
 
