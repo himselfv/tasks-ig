@@ -632,6 +632,7 @@ function accountReset(account) {
 }
 //Opens the account settings page, lets the user edit, try to apply and then save the settings
 function accountEditSettings(account) {
+	alert('At the moment, please delete and re-add the account to edit its settings');
 	//TODO: Implement.
 	//TODO: Return a Page prototype to wait on
 	return Promise.resolve();
