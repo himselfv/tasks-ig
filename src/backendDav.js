@@ -731,7 +731,7 @@ BackendDav.prototype.delete = function (taskIds, tasklistId) {
 	if (!calendar)
 		return Promise.reject("Task list not found: "+tasklistId);
 	
-	return this.getMaybeCached(taskIds, tasklistId)
+	return this.cachedGet(taskIds, tasklistId)
 	.then(tasks => {
 		let batch = [];
 		for (let taskId in tasks) {

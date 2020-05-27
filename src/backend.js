@@ -401,47 +401,6 @@ Backend.prototype.get = function(taskIds, tasklistId) {
 //If tasklistId is not given, selected task list is assumed.
 //Backend.prototype.getMultiple = function(taskIds, tasklistId)
 
-//Same as getMultiple(), but 1. looks in cache first, 2. if any of taskIds are already Tasks(), uses them as is
-Backend.prototype.getMaybeCached = function(taskIds, tasklistId) {
-	let results = {};
-	
-	taskIds = taskIds.slice();
-	
-	//If any of taskIds are already Tasks(), use them as is
-	for (let i=taskIds.length-1; i>=0; i--)
-		if (taskIds[i].id) {
-			results[taskIds[i].id] = taskIds[i];
-			taskIds.splice(i, 1);
-		}
-	
-	//If this is a selected list we can optimize by looking in cache
-	if (!tasklistId || (tasklistId == this.selectedTaskList)) {
-		for (let i=taskIds.length-1; i>=0; i--) {
-			let task = this.cache.get(taskIds[i]);
-			if (task) {
-				results[taskIds[i]] = task;
-				taskIds.splice(i, 1);
-			};
-		}
-		if (taskIds.length > 0)
-			console.log('Not all taskIds found in cache, strange; querying');
-	};
-	
-	if (taskIds.length <= 0)
-		return Promise.resolve(results);
-	
-	//Maybe we should just query everything at this point? It's a single request anyway.
-	
-	return this.getMultiple(taskIds, tasklistId)
-	.then(tasks => {
-		for (let taskId in tasks)
-			results[taskId] = tasks[taskId];
-		return results;
-	});
-}
-
-
-
 //Backend.prototype.update = function (task, tasklistId)
 //Updates the contents of the task on the server. Missing or null fields will be deleted.
 //Returns the new task content (may be adjusted by the server).
@@ -623,7 +582,7 @@ Backend.prototype.newDownmostPosition = function(parentId, tasklistId) {
 //Chooses a new sort-order value for a task under a given parent, after a given previous task.
 //  count: If given, choose that number of positions
 Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
-	//console.log('choosePosition: parent=', parentId, 'previous=', previousId);
+	//console.debug('choosePosition: parent=', parentId, 'previous=', previousId);
 
 	//At least null/undefined needs to work for all lists
 	if (typeof previousId == 'undefined')
@@ -638,7 +597,7 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
 	//Choose a new position betweeen previous.position and previous.next.position
 	return this.getChildren(parentId, tasklistId)
 	.then(children => {
-		//console.log('choosePosition: children=',children);
+		//console.debug('choosePosition: children=',children);
 		let prevPosition = null;
 		let nextPosition = null;
 		let prevIdx = null;
@@ -672,7 +631,7 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
 		//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
 		if (newPosition < prevPosition + 1)
 			newPosition = prevPosition + 1;
-		//console.log('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
+		//console.debug('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
 		return newPosition;
 	});
 }
@@ -821,7 +780,6 @@ Backend.prototype.selectTaskList = function (tasklistId) {
 	if (this.selectedTaskList == tasklistId)
 		return Promise.resolve();
 	this.selectedTaskList = tasklistId;
-	this.cache.clear();
 	if (!this.selectedTaskList)
 		return Promise.resolve();
 	//Reload the cache
@@ -899,6 +857,7 @@ Backend.prototype.cacheLoadList = function(tasklistId) {
 //Similar to .get(), but can return from cache.
 //+ If you pass it a Task object, will simply return that.
 Backend.prototype.cachedGet = function(taskIds, tasklistId) {
+	if (!taskIds) return Promise.resolve();
 	let isArray = Array.isArray(taskIds);
 	if (!isArray) taskIds = [taskIds];
 
