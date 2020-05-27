@@ -362,7 +362,8 @@ Tasks
 */
 
 //Backend.prototype.list = function(tasklistId)
-//Required. Returns a list of all tasks in a taskslist. See BackendGt for more details.
+//Required. Returns a promise to an array of all tasks in a taskslist.
+//Remember to cache retrieved tasks if you're implementing this.
 
 /*
 Returns a promise for the given task or [tasks] content.
@@ -374,14 +375,25 @@ Backend.prototype.get = function(taskIds, tasklistId) {
 	//Single task
 	if (!Array.isArray(taskIds)) {
 		if (this.getOne)
-			return this.getOne(taskIds, tasklistId);
+			return this.getOne(taskIds, tasklistId)
+			.then(result => {
+				this.cache.update(result);
+				return result;
+			});
 		//Forward to many
 		return this.getMultiple([taskIds], tasklistId)
-			.then(results => results[taskIds]);
+			.then(results => {
+				this.cache.update(results[taskIds]);
+				return results[taskIds]
+			});
 	}
 	//Multiple tasks
 	if (this.getMultiple)
-		return this.getMultiple(taskIds);
+		return this.getMultiple(taskIds)
+		.then(results => {
+			this.cache.update(results);
+			return results;
+		});
 	//Query one by one
 	var batch = [];
 	for (let i=0; i<taskIds.length; i++)
@@ -390,6 +402,7 @@ Backend.prototype.get = function(taskIds, tasklistId) {
 	.then(results => {
 		var dict = {};
 		results.forEach(item => dict[item.id] = item);
+		this.cache.update(dict);
 		return dict;
 	});
 }
@@ -527,7 +540,7 @@ Backend.prototype._moveOne = function(taskId, newParentId, newPrevId, tasklistId
 	if (taskId && taskId.id) taskId = taskId.id;
 	
 	//By default just update the task parent and choose a sort-order position
-	return this.choosePosition(newParentId, newPrevId, tasklistId)
+	return this.choosePosition(newParentId, newPrevId, tasklistId, taskId)
 	.then(newPosition => {
 		let taskPatch = { id: taskId, parent: newParentId, position: newPosition, };
 		return this.patch(taskPatch, tasklistId);
@@ -557,18 +570,22 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId, taskl
 Tasks are sorted according to their .position property (required).
 On move() the backend changes the .position of the task:
  * ideally for that task alone.
- * the frontend can tolerate changing other tasks too (e.g. linked lists),
-   but it'll only know new positions on reload.
+ * the frontend can tolerate changes in other tasks too (e.g. linked lists),
+   so long as their order stays as requested.
 
 Every backend has their own strategy for assigning positions.
-Positions cannot be set manually and cannot be transferred between backends, only previousId can be used.
+Positions cannot be set by frontends manually and cannot be transferred between backends, only previousId can be used.
 Special previousId values:
   null:			Place at the top of the list
-  undefined:	Place wherever. The backend can choose the easiest default placement (topmost, bottommost).
+  undefined:	Place wherever but preserve the order with multi-inserts (top to bottom).
+  				The backend can choose the easiest default placement (topmost, bottommost).
 
-The default update()-based implementation of move() selects a position between next/prev
-via choosePosition.
-Override to adjust the selection algorithm or implement proper move().
+The default update()-based implementation of move() assigns new positions directly by passing them
+to insert()/update().
+
+The default implementation of choosePosition():
+* Tries to work with any external assignment of numerical positions: 1, 2, 3, 4...;  -1200, 0, 14, 9999...
+* But works best when produces its own spaced distribution of positions (less updates)
 */
 //Returns a position value that is guaranteed to be topmost => less than any used before
 Backend.prototype.newTopmostPosition = function(parentId, tasklistId) {
@@ -576,23 +593,63 @@ Backend.prototype.newTopmostPosition = function(parentId, tasklistId) {
 }
 //Returns a position value that is guaranteed to be downmost => higher than any used before
 Backend.prototype.newDownmostPosition = function(parentId, tasklistId) {
-	//Default: current time in microseconds since 2001.01.01
+	//Default: current time in millioseconds since 2001.01.01
 	return (new Date() - new Date(2001, 01, 01, 0, 0, 0));
 }
 //Chooses a new sort-order value for a task under a given parent, after a given previous task.
-//  count: If given, choose that number of positions
-Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
-	//console.debug('choosePosition: parent=', parentId, 'previous=', previousId);
+Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, taskId) {
+	//console.debug('choosePosition: parent=', parentId, 'previous=', previousId, 'taskId', taskId);
 
-	//At least null/undefined needs to work for all lists
+	/*
+	Make at least undefined and null work for all lists and without further complications
+	Thankfully if we just assign each task +-currentMilliseconds that's more or less granular enough,
+	and they are really going to be topmost/bottommost in most orderings.
+	And if your ordering had things higher/lower than that, that's the price of simplicity.
+	
+	Otherwise we would need to
+	1. Query all the tasks from that list, find the topmost/bottommost
+	2. Put additional requirements on multi-insert queries as those may need to become sequential --
+	   if they're parallel we risk reusing the same new value.
+	3. OR/AND further complicate caching, cache non-current lists, update with chosen position immediately
+	   to prevent #2, and somehow track if we have the whole list in the cache or only some of its tasks.
+	
+	Let's keep it simple. We choose a low enough, granular enough (so that consequent inserts() get different values)
+	self incrementing value and that's it.
+	null and undefined are used for foreign list inserts, so their main function is just to be sequential.
+	It doesn't matter _that_ much that the inserted set is really going to be the absolutely topmost ever
+	*/
 	if (typeof previousId == 'undefined')
 		return Promise.resolve(this.newDownmostPosition());
 	if (previousId == null)
 		return Promise.resolve(this.newTopmostPosition());
 	
-	//Otherwise we need the children list
+	//For all the more compicated jobs we need the children list
 	if (tasklistId && (tasklistId != this.selectedTaskList))
 		throw "ChoosePosition: Currently unsupported for lists other than current";
+
+	/*
+	Note again:
+	We try hard to choose positions with plently of space inbetween so that most of the times
+	we can find a free position if the task is moved between others.
+	But this space can be exhausted by lots of movings, and we also have to support foreign lists
+	which can be simply 1,2,3,...
+	So if there's not enough space we have to shift the following task positions.
+	1. This requires multiple updates (which often cannot be batched, e.g. CalDAV)
+	2. With multi-inserts we're screwed.
+	
+	How screwed are we?
+	If inserts run in parallel and several of them do these shifts they may conflict first over
+	reassigning positions, then over applying that to backend. Any combination of positions may
+	thus be produced.
+	Even if we serialize them (and screw performance) we'll still have way too many position updates.
+	
+	But:
+	We in fact only insert() singular tasks between other tasks. Multi-inserts are only used when
+	copying/moving "all childrne" to another list. So all multi-inserts are in fact null/undefined-inserts.
+	And we only move() singular tasks too (the children don't need explicit moving).
+	
+	So let's ignore the obvious problems for the sake of simplicity.
+	*/
 
 	//Choose a new position betweeen previous.position and previous.next.position
 	return this.getChildren(parentId, tasklistId)
@@ -627,13 +684,47 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId) {
 		//Ensure everything is integer before doing math or comparisons and additions will hopelessly surprise you
 		nextPosition = +nextPosition;
 		prevPosition = +prevPosition;
+		
 		let newPosition = Math.floor((nextPosition + prevPosition) / 2);
-		//Don't position higher than requested. If we've exhaused the inbetween value space, sorry
+		//Never position higher than the previous one.
 		if (newPosition < prevPosition + 1)
 			newPosition = prevPosition + 1;
 		//console.debug('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
-		return newPosition;
+		
+		//If we've exhaused the inbetween value space, shift
+		let ret = null;
+		if (newPosition >= nextPosition)
+			return this._positionShiftDown(children, prevIdx+1, taskId)
+				.then(() => newPosition);
+		else
+			return newPosition;
 	});
+}
+
+/*
+Updates position values for multiple sequential sibling tasks starting with #i1,
+so that each task's position is strictly > than the previous one.
+If #taskId is given, stops before that task. (Usually that's the task being moved, creating a slot at that point)
+
+This is a last-resort effort for tightly-packed sort orders. Try to leave enough space
+between positions.
+*/
+Backend.prototype._positionShiftDown = function(children, i1, taskId) {
+	let patches = [];
+	let pos = children[i1].position;
+	for (let i=i1; i<children.length; i++) {
+		if (children[i].id == taskId)
+			break;
+		if (children[i].position > pos)
+			break; //Enough empty space, no further shift needed
+		pos = pos + 1;
+		children[i].position = pos;
+		patches.push(this.patch({ id: children[i].id, position: children[i].position, }))
+	}
+	if (patches.length <= 0)
+		return Promise.resolve();
+	else
+		return Promise.all(patches);
 }
 
 
@@ -780,6 +871,7 @@ Backend.prototype.selectTaskList = function (tasklistId) {
 	if (this.selectedTaskList == tasklistId)
 		return Promise.resolve();
 	this.selectedTaskList = tasklistId;
+	this.cache.clear();
 	if (!this.selectedTaskList)
 		return Promise.resolve();
 	//Reload the cache

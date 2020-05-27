@@ -150,7 +150,12 @@ The only even remotely widespread approach is X-APPLE-SORT-ORDER.
 By default (if not present) it's the number of seconds between the creation of a task and 20010101T000000Z.
 Moving a task assigns it a value between prevTask...nextTask. Midway is a good choice.
 
-Reuse the default backend ordering mechanics to implement X-APPLE-SORT-ORDER
+The default choosePosition() is compatible with X-APPLE-SORT-ORDER but uses milliseconds instead.
+And we're not going to fix that because seconds are too non-granular and a lot of things
+become much more complicated.
+
+So this produces a compatible numeric order and it will work with any reasonable numeric order,
+but if your apple tasks do not have explicit SORT-ORDER set, they're going to be sorted wrong.
 */
 //Converts a datetime to the default associated X-APPLE-SORT-ORDER
 //Datetime accepted: Date(), ICAL.Time(), undefined
@@ -158,15 +163,8 @@ BackendDav.prototype.datetimeToPosition = function(dt) {
 	if (!dt) return 0; //  ¯\_(ツ)_/¯
 	if (dt instanceof ICAL.Time)
 		dt = dt.toJSDate();
-	return Math.floor((dt - new Date(2001, 01, 01, 0, 0, 0)) / 1000);
+	return Math.floor((dt - new Date(2001, 01, 01, 0, 0, 0)));
 }
-BackendDav.prototype.newTopmostPosition = function(parentId, tasklistId) {
-	return -this.datetimeToPosition(new Date()); //minus current time
-}
-BackendDav.prototype.newDownmostPosition = function(parentId, tasklistId) {
-	return this.datetimeToPosition(new Date()); //current time
-}
-//Otherwise the default choosePosition() is compatible with X-APPLE-SORT-ORDER
 
 
 /*
