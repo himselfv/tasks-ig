@@ -2344,6 +2344,7 @@ Editor.prototype.taskListChanged = function() {
 	//but we have no way to check for that so stick to these simple rules:
 	let haveSaveCopy = false;
 	let haveSave = false;
+	let haveDelete = oldTaskList.account && oldTaskList.account.delete;
 	let targetReadOnly = false;
 	if (String(newTaskList) == String(oldTaskList)) {
 		haveSaveCopy = false; //"Save as copy" is unavailable for the same list to prevent confusion
@@ -2352,9 +2353,10 @@ Editor.prototype.taskListChanged = function() {
 	} else {
 		haveSaveCopy = newTaskList.account && newTaskList.account.insert; //"Save as copy" is available if target has insert
 		targetWriteable = newTaskList.account && newTaskList.account.insert;
-		haveSave = targetWriteable && oldTaskList.account && oldTaskList.account.delete; //"Save" if the target has insert and the source has delete
+		haveSave = targetWriteable && haveDelete; //"Save" if the target has insert and the source has delete
 	}
 	
+	document.getElementById("editorDelete").disabled = !haveDelete;
 	document.getElementById("editorSaveCopy").disabled = !haveSaveCopy;
 	document.getElementById("editorSave").disabled = !haveSave;
 	
