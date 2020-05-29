@@ -6,17 +6,15 @@ This project reimplements everything in that frontend from scratch. It uses Goog
 
 ![Screenshot](docs/screen-features.png)
 
-**[Try it here on GitHub](https://himselfv.github.io/tasks-ig/)** (local storage only)
+**[Try it here on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
 
 
 ### Features
 * Runs in the browser, locally or self-hosted (for Google Tasks)
-* Works with Google Tasks
+* Works with Google Tasks and CalDAV
 * Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands. If something is missing, file an issue.
 * Async requests, fast UI with neat activity indicator
 * Export tasks
-
-Once Google shuts down Tasks which they will eventually do because they shut down everything, I might write a CalDAV Tasks backend.
 
 ### Runs as a:
 

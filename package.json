@@ -1,0 +1,34 @@
+{
+  "name": "tasks-ig",
+  "version": "1.0.0",
+  "description": "Serverless JS client for CalDAV Tasks and Google Tasks",
+  "main": "src/index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/himselfv/tasks-ig.git"
+  },
+  "keywords": [
+    "google tasks",
+    "gtasks",
+    "tasks",
+    "caldav",
+    "tasks-ig"
+  ],
+  "author": "me@boku.ru",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/himselfv/tasks-ig/issues"
+  },
+  "homepage": "https://github.com/himselfv/tasks-ig#readme",
+  "devDependencies": {
+    "@babel/plugin-transform-modules-commonjs": "^7.10.1",
+    "babel": "^6.23.0",
+    "jest": "^26.0.1"
+  }
+}

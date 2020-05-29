@@ -10,15 +10,18 @@ https://developers.google.com/tasks/v1/reference/tasklists#resource
 Even if a backend has nothing to do with GTasks it needs to provide the same resources.
 See below for minimal structures.
 */
+exports = exports || {};
 
 //Lists all registered backend types for the application.
 //Backend normally self-register when they're available.
 var backends = [];
+exports.backends = backends;
 function registerBackend(ctor, name) {
 	if (name)
 		ctor.uiName = name;
 	backends.push(ctor);
 }
+exports.registerBackend = registerBackend;
 /*
 A backend must be an object, its constructor correct -- it will be used to recreate it.
   Derived.prototype = Object.create(Base.prototype); //or new Base(), if running Base() breaks nothing
@@ -28,6 +31,7 @@ function inheritBackend(fromWhat, what) {
 	what.prototype = Object.create(fromWhat.prototype);
 	what.prototype.constructor = what;
 }
+exports.inheritBackend = inheritBackend;
 
 
 /*
@@ -124,36 +128,41 @@ and of either Task objects or IDs.
 These helpers normalize these things.
 */
 function toArray(tasks) {
-	if (typeof tasks == 'undefined') return tasks;
+	if ((typeof tasks == 'undefined') || (tasks==null)) return tasks;
 	if (!Array.isArray(tasks))
 		tasks = [tasks];
 	return tasks;
 }
+exports.toArray = toArray;
 function toTaskIds(taskIds) {
-	if (typeof taskIds == 'undefined') return taskIds;
+	if ((typeof taskIds == 'undefined') || (taskIds==null)) return taskIds;
 	if (!Array.isArray(taskIds))
 		taskIds = [taskIds];
 	for (let i=0; i<taskIds.length; i++)
 		if (taskIds[i].id) taskIds[i] = taskIds[i].id;
 	return taskIds;
 }
+exports.toTaskIds = toTaskIds;
 function toTaskId(taskId) {
-	if (taskId.id)
+	if (taskId && taskId.id)
 		taskId = taskId.id;
 	return taskId;
 }
+exports.toTaskId = toTaskId
 //True if a dictionary or an array is empty, or undefined
 function isEmpty(list) {
 	//Arrays: we can check .length, but for !arrays it might be undefined (!<=0).
 	//Checking .keys() works for both.
 	return (!list || !Object.keys(list).length);
 }
+exports.isEmpty = isEmpty;
 //Same but requires the parameter to be an array
 function isArrayEmpty(list) {
 	if (list && !Array.isArray(list))
 		throw "Array expected, found: "+list;
 	return (!list || (list.length <= 0));
 }
+exports.isArrayEmpty = isArrayEmpty;
 
 
 /*
@@ -161,8 +170,9 @@ Detects additions, deletions and edits between two dictionaries
 Returns a dict of key => {oldValue, newValue} pairs.
 */
 function diffDict(oldDict, newDict, comparer) {
-	oldDict = oldDict ? oldDict : {};
-	newDict = newDict ? newDict : {};
+	comparer = comparer || ((a, b) => { return (a==b)}); //The default naive comparer
+	oldDict = oldDict || {};
+	newDict = newDict || {};
 	var res = {};
 	Object.keys(oldDict).forEach(key => {
 		let oldValue = oldDict[key];
@@ -173,10 +183,11 @@ function diffDict(oldDict, newDict, comparer) {
 	Object.keys(newDict).forEach(key => {
 		let oldValue = oldDict[key];
 		if (!oldValue)
-			res[key] = { 'oldValue': null, 'newValue': newDict[key] };
+			res[key] = { 'oldValue': oldValue, 'newValue': newDict[key] };
 	});
 	return res;
 }
+exports.diffDict = diffDict;
 
 
 /*
@@ -197,6 +208,7 @@ Callback.prototype.unsubscribe = function(f) {
 Callback.prototype.notify = function(param1, param2, param3) {
 	this.observers.forEach(observer => observer(param1, param2, param3));
 }
+exports.Callback = Callback;
 
 
 /*
@@ -227,6 +239,7 @@ function Backend() {
 	
 	this.cache = new TaskCache();
 }
+exports.Backend = Backend;
 
 //Initialize the backend instance, load any neccessary libraries
 Backend.prototype.init = function() {
@@ -597,12 +610,12 @@ The default implementation of choosePosition():
 */
 //Returns a position value that is guaranteed to be topmost => less than any used before
 Backend.prototype.newTopmostPosition = function(parentId, tasklistId) {
-	return (new Date(2001, 01, 01, 0, 0, 0) - new Date());
+	return (new Date(2001, 1, 1, 0, 0, 0) - new Date());
 }
 //Returns a position value that is guaranteed to be downmost => higher than any used before
 Backend.prototype.newDownmostPosition = function(parentId, tasklistId) {
 	//Default: current time in millioseconds since 2001.01.01
-	return (new Date() - new Date(2001, 01, 01, 0, 0, 0));
+	return (new Date() - new Date(2001, 1, 1, 0, 0, 0));
 }
 //Chooses a new sort-order value for a task under a given parent, after a given previous task.
 Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, taskId) {
@@ -906,6 +919,7 @@ Backends: Remember to update changed tasks!
 function TaskCache() {
 	this.items = [];
 }
+exports.TaskCache = TaskCache;
 TaskCache.prototype.clear = function() {
 	this.items = [];
 }
@@ -1030,6 +1044,7 @@ function DummyBackend(name, error) {
 	this.__proto__.constructor.name = name;
 	console.log(this);
 }
+exports.DummyBacked = DummyBackend;
 inheritBackend(Backend, DummyBackend);
 DummyBackend.prototype.init = function() { return Promise.reject(this.error); }
 DummyBackend.prototype.isSignedIn = function() { return false; }
