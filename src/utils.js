@@ -1,3 +1,4 @@
+exports = exports || {};
 
 /*
 Application-wide options
@@ -117,6 +118,7 @@ function loadScript(scriptId, scriptSrc) {
 		});
 	});
 }
+exports.loadScript = loadScript;
 
 //Accepts a dictionary ID->src
 //Returns a promise that's fulfilled when ALL the given JSs are loaded
@@ -127,6 +129,7 @@ function loadScripts(scripts) {
 	});
 	return Promise.all(batch);
 }
+exports.loadScripts = loadScripts;
 
 
 /*
@@ -141,6 +144,7 @@ function newGuid() {
     }
     return u;
 }
+exports.newGuid = newGuid;
 
 
 /*
@@ -150,6 +154,7 @@ function inherit(fromWhat, what) {
 	what.prototype = Object.create(fromWhat.prototype);
 	what.prototype.constructor = what;
 }
+exports.inherit = inherit;
 
 
 /*
@@ -159,9 +164,11 @@ function getLocalStorageItem(key) {
 	var data = window.localStorage.getItem(key);
 	return (data) ? JSON.parse(data) : null;
 }
+exports.getLocalStorageItem = getLocalStorageItem;
 function setLocalStorageItem(key, value) {
 	window.localStorage.setItem(key, JSON.stringify(value));
 }
+exports.setLocalStorageItem = setLocalStorageItem;
 
 
 /*
@@ -176,11 +183,12 @@ function urlWrite(dict) {
 	if (url=='') url='#';
 	document.location.href = url;
 }
+exports.urlWrite = urlWrite;
 function urlRead() {
-	let url = document.location.href;
-	let hashIdx = url.indexOf('#');
+	let data = document.location.href;
+	let hashIdx = data.indexOf('#');
 	if (hashIdx >= 0)
-		data = url.slice(hashIdx+1);
+		data = data.slice(hashIdx+1);
 	else
 		data = "";
 	if (!data || (data.length <= 0))
@@ -199,6 +207,7 @@ function urlRead() {
 	console.debug('url data:', data);
 	return data;
 }
+exports.urlRead = urlRead;
 
 
 
