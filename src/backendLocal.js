@@ -212,7 +212,8 @@ Items are stored as:
   PREFIX_item_[id] = item data for item #id
 */
 BackendLocal.prototype._newId = function() {
-	return new Date().toISOString();
+	//Add a random bit in case we're creating multiple lists very quickly
+	return new Date().toISOString() + Math.floor(Math.random() * 1000);
 }
 BackendLocal.prototype._getTasklists = function() {
 	return this._get("tasklists").then(result => result || {});
@@ -296,7 +297,7 @@ BackendLocal.prototype.tasklistGet = function(tasklistId) {
 	return this._getTasklists()
 	.then(lists => {
 		if (!(tasklistId in lists))
-			return Promise.reject("No such task list");
+			return Promise.reject("No such task list: "+String(tasklistId));
 		return lists[tasklistId];
 	});
 }
@@ -304,7 +305,7 @@ BackendLocal.prototype.tasklistUpdate = function(tasklist) {
 	return this._getTasklists()
 	.then(lists => {
 		if (!(tasklist.id in lists))
-			return Promise.reject("No such task list");
+			return Promise.reject("No such task list: "+String(tasklistId));
 		lists[tasklist.id] = tasklist;
 		return this._setTasklists(lists);
 	})
@@ -315,7 +316,7 @@ BackendLocal.prototype.tasklistDelete = function(tasklistId) {
 	return this._getTasklists()
 	.then(lists => {
 		if (!(tasklistId in lists))
-			return Promise.reject("No such task list");
+			return Promise.reject("No such task list: "+String(tasklistId));
 		delete lists[tasklistId];
 		return Promise.all([
 			this._setTasklists(lists),

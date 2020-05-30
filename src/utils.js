@@ -9,7 +9,6 @@ var options = options || {};
 exports.options = options;
 function optionsLoad() {
 	options = Object.assign({}, options, getLocalStorageItem("tasksIg_options"));
-	console.debug('options loaded:', options);
 }
 exports.optionsLoad = optionsLoad;
 function optionsSave() {

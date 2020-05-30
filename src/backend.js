@@ -334,6 +334,8 @@ Task lists
 //Implement to enable new tasklists creation.
 
 Backend.prototype.tasklistPatch = function(tasklist) {
+	if (!tasklist.id)
+		return Promise.reject('Backend.tasklistPatch(): id not specified');
 	//Default: query + update
 	return this.tasklistGet(tasklist.id).then(result => {
 		resourcePatch(result, tasklist);
@@ -439,6 +441,8 @@ Backend.prototype.get = function(taskIds, tasklistId) {
 //Updates only the fields present in Task objet. Fields set to null will be deleted. ID must be set.
 //Returns a task-update or task-patch request
 Backend.prototype.patch = function (task, tasklistId) {
+	if (!task.id)
+		return Promise.reject('Backend.patch(): id not specified');
 	//Default: query + update
 	return this.get(task.id).then(result => {
 		resourcePatch(result, task);
