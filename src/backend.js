@@ -11,6 +11,10 @@ Even if a backend has nothing to do with GTasks it needs to provide the same res
 See below for minimal structures.
 */
 exports = exports || {};
+if (require) {
+	let utils = require('./utils.js');
+	utils.importAll(utils);
+}
 
 //Lists all registered backend types for the application.
 //Backend normally self-register when they're available.
@@ -295,7 +299,7 @@ Backend.prototype.signout = function() {
 	return Promise.resolve();
 }
 Backend.prototype.isSignedIn = function() {
-	return this._signedIn;
+	return this._signedIn || false;
 }
 //Notifies the subscribers about the signin change
 Backend.prototype.notifySignInStatus = function(status) {

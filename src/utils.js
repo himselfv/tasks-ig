@@ -6,20 +6,24 @@ Loaded at this point because all scripts may rely on them - more thorough handli
 Note: Before the main code sets default values, all defaults are undefined.
 */
 var options = options || {};
+exports.options = options;
 function optionsLoad() {
 	options = Object.assign({}, options, getLocalStorageItem("tasksIg_options"));
 	console.debug('options loaded:', options);
 }
+exports.optionsLoad = optionsLoad;
 function optionsSave() {
 	setLocalStorageItem("tasksIg_options", options);
 	//Update everything in the UI that depends on options. We are lazy:
 	document.location.reload();
 }
+exports.optionsSave = optionsSave;
 function optionsSetDefaults(optionSet) {
 	for (let key in optionSet)
 		if (!(key in options))
 			options[key] = optionSet[key].default;
 }
+exports.optionsSetDefaults = optionsSetDefaults;
 optionsLoad();
 
 
@@ -130,6 +134,19 @@ function loadScripts(scripts) {
 	return Promise.all(batch);
 }
 exports.loadScripts = loadScripts;
+
+
+/*
+NodeJS-import() module and make its exports global.
+Pass either filename or an already imported exports dict.
+*/
+function importAll(imp) {
+	if (typeof imp == 'string') //filename
+		imp = require(imp);
+	for (let key in imp)
+		global[key] = imp[key];
+}
+exports.importAll = importAll;
 
 
 /*
@@ -619,7 +636,7 @@ CustomPage.prototype.close = function() {
 /*
 Debug
 */
-if (!options.debug)
+if (options && !options.debug)
 	console.debug = () => {}; //Let's be evil; no printing
 else if (!console.debug)
 	console.debug = () => { console.log.apply(arguments); }
