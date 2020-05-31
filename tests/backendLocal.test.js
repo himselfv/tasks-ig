@@ -6,6 +6,7 @@ import * as imp3 from 'backendLocal.js';
 importAll(imp3);
 import * as jestUtils from 'jest-utils.js';
 importAll(jestUtils);
+import * as settingsTest from 'settings.test.js';
 
 
 /*
@@ -114,6 +115,19 @@ BackendTester.prototype.newDemoTasklist = async function() {
 
 BackendTester.prototype.test_init = async function() {
 	//Nothing.
+}
+
+BackendTester.prototype.test_uiName = function() {
+	//uiName() must at least not fail and not be async.
+	//Simple default implementation works so this just verifies that no overrode it with a broken one
+	let uiName = this.backend.uiName();
+	expect(typeof uiName).toBe('string');
+}
+
+BackendTester.prototype.test_settingsPage = async function() {
+	if (!this.backend.settingsPage) return;
+	let page = this.backend.settingsPage();
+	settingsTest.testSettingsPage(page);
 }
 
 BackendTester.prototype.test_tasklistList = async function() {
@@ -347,8 +361,6 @@ BackendTester.prototype.test_delete = async function() {
 	//Not testing deleteWithChildren(), that'll happen after caching
 }
 
-//uiName
-//settingsPage проверить на корректность параметров -- какой-то стандартный тестер сделать, также и для options
 //get/getOne/getMultiple
 //update
 //patch
