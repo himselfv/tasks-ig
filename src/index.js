@@ -1,3 +1,16 @@
+if (typeof exports == 'undefined')
+	exports = {};
+if (typeof require != 'undefined') {
+	let utils = require('./utils.js');
+	utils.importAll(utils);
+	utils.importAll(require('./backend.js'));
+	utils.importAll(require('./backendDav.js'));
+	utils.importAll(require('./backendGt.js'));
+	utils.importAll(require('./backendLocal.js'));
+	utils.importAll(require('./backendTests.js'));
+	utils.importAll(require('./tasklist.js'));
+}
+
 /*
 Security considerations in some contexts require:
  * No inline JS in HTML
