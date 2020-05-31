@@ -27,6 +27,10 @@
     "url": "https://github.com/himselfv/tasks-ig/issues"
   },
   "homepage": "https://github.com/himselfv/tasks-ig#readme",
+  "jest": {
+    "testMatch": ["**/tests/**/*.[jt]s?(x)"],
+    "modulePaths": ["<rootDir>/src/", "<rootDir>/tests/"]
+  },
   "devDependencies": {
     "@babel/cli": "^7.10.1",
     "@babel/core": "^7.10.2",

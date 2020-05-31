@@ -1,4 +1,4 @@
-import * as backendJs from './backend.js'
+import * as backendJs from 'backend.js'
 for (let key in backendJs)
 	global[key] = backendJs[key];
 

@@ -1,65 +1,11 @@
-import * as imp1 from './utils.js';
-imp1.importAll(imp1);
-import * as imp2 from './backend.js';
+import * as utils from 'utils.js';
+utils.importAll(utils);
+import * as imp2 from 'backend.js';
 importAll(imp2);
-import * as imp3 from './backendLocal.js';
+import * as imp3 from 'backendLocal.js';
 importAll(imp3);
-
-
-/*
-async howto:
-	async function is basically a normal function that returns Promise() of what it would have returned.
-	that's it
-	they're interchangeable
-	async function() decoration only matters inside the function. You can pass Promise()-returning function where async function is expected.
-	
-expect() howto:
-1. 	expect() always expects a VALUE (maybe a Promise).
-  	async () => {} declares a FUNCTION which may RETURN a promise.
-  	So you shouldn't expect(async () => {}). That'l create Expect with a FUNCTION object.
-  	You can expect( (async () => {})() ). Here you're CALLING that function. That'll produce a promise object.
-
-2.	toBe()/toEqual()/... study the VALUE inside expect() directly (as a Promise/as a Function, if it is that)
-	resolves/rejects family of functions assumes the value is a Promise and studies its result.
-	toThrow() assumes the value is a Function, calls it and studies its result.
-
-3.	resolves/rejects.*() family of functions returns promises which you can wait on.
-	But you cannot wait on expect() itself.
-*/
-
-/*
-Normal toThrow() doesn't catch non-Error()-based throws, so we need something better.
-
-Runs the potentially async / Promise-returning function and catches any throws.
-Returns the Promise of an expect(error wrapped in CatchResult()) or expect(undefined).
-Usage:
-	await expectCatch(myFunc).toBeDefined()/toBeUndefined()
-*/
-function CatchResult(error) {
-	this.error = error;
-}
-exports.CatchResult = CatchResult;
-function expectCatch(fn) {
-	return expect((async () => {
-		try {
-			await fn();
-			return undefined;
-		}
-		catch(error) {
-			return new CatchResult(error);
-		}
-	})()).resolves; //this returns a promise
-}
-exports.expectCatch = expectCatch;
-
-test('Jest helpers', async () => {
-	await expectCatch(() => {throw "asd"}).toBeDefined();
-	await expectCatch(() => "asd").toBeUndefined();
-	//With promises
-	await expectCatch(() => Promise.reject("asd") ).toBeDefined();
-	await expectCatch(() => Promise.reject() ).toBeDefined();
-	await expectCatch(() => Promise.resolve() ).toBeUndefined();
-});
+import * as jestUtils from 'jest-utils.js';
+importAll(jestUtils);
 
 
 /*
@@ -67,41 +13,22 @@ One instance of BackendTester will be created for every test_* function.
 Override to personalize BackendTester for your Backend's peculiarities.
 */
 function BackendTester(params) {
+	jestUtils.Tester.call(this, params);
 	this.backend = null;
 	this.backendCtor = params.ctor;
 }
+inherit(jestUtils.Tester, BackendTester);
 exports.BackendTester = BackendTester;
 
 //Use this for additional async initialization
 //The default implementation just creates a backend and signs it in as if it requires no params
 BackendTester.prototype.init = async function() {
+	jestUtils.Tester.prototype.init.call(this);
 	this.backend = new this.backendCtor();
 	expect(this.backend.isSignedIn()).toBe(false);
 	await this.backend.init();
 	await this.backend.signin();
 	expect(this.backend.isSignedIn()).toBe(true);
-}
-
-//This is a CLASS function -- can be called on an uninitialized backendTester
-BackendTester.prototype.getAllTests = function() {
-	let dict = {};
-	function listTestMethods(obj) {
-		if (obj == null) return;
-		let names = Object.getOwnPropertyNames(obj);
-		for (let i=0; i<names.length; i++) {
-			let name = names[i];
-			if (!name.startsWith('test_'))
-				continue;
-			if (typeof obj[name] != 'function')
-				continue;
-			if (name in dict)
-				continue; //override is already present
-			dict[name] = obj[name];
-		}
-		listTestMethods(Object.getPrototypeOf(obj));
-	}
-	listTestMethods(this);
-	return dict;
 }
 
 
@@ -463,34 +390,6 @@ BackendTester.prototype.test_deleteWithChildren = async function() {
 }
 
 
-//Expects params to pass to backendTesterCtor
-function testBackend(backendTesterCtor, params) {
-	describe(backendTesterCtor.name, () => {
-		let backendTester = null;
-		
-		beforeEach(async () => {
-			backendTester = new backendTesterCtor(params);
-			await backendTester.init();
-		});
-		
-		//Create a fake non-initialized object to call class method getAllTests
-		let proto = Object.create(backendTesterCtor.prototype);
-		let tests = proto.getAllTests();
-		
-		//Create tests for all prototype methods
-		for (let name in tests) {
-			let thisTest = tests[name]; //before we edit name
-			if (name.startsWith('test_'))
-				name = name.slice(5);
-			test(name, () => thisTest.call(backendTester) );
-			
-		}
-	});
-	
-}
-exports.testBackend = testBackend;
-
-
 function BackendLocalStorageTester(params) {
 	BackendTester.call(this, params);
 }
@@ -501,8 +400,8 @@ BackendLocalStorageTester.prototype.init = async function() {
 	await this.backend.reset();
 }
 
-testBackend(BackendLocalStorageTester, {'ctor': BackendSessionStorage});
-testBackend(BackendLocalStorageTester, {'ctor': BackendLocalStorage});
+Tester.run(BackendLocalStorageTester, {'ctor': BackendSessionStorage});
+Tester.run(BackendLocalStorageTester, {'ctor': BackendLocalStorage});
 //browser.storage.* is unavailable and otherwise it's ~= BackendLocalStorage
 //testBackend(BackendLocalStorageTester, BackendBrowserStorageSync);
 //testBackend(BackendLocalStorageTester, BackendBrowserStorageLocal);
