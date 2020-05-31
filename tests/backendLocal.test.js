@@ -375,7 +375,7 @@ BackendTester.prototype.test_getOne = async function() {
 	expect(task1).toStrictEqual(tasks[0]);
 	
 	//get by Task
-	let task2 = await this.backend.getOne(tasks[1].id, listId);
+	let task2 = await this.backend.getOne(tasks[1], listId);
 	expect(task2).toStrictEqual(tasks[1]);
 	
 	//Crash and burn on bad input
@@ -386,6 +386,7 @@ BackendTester.prototype.test_getOne = async function() {
 }
 BackendTester.prototype.test_getMultiple = async function() {
 	if (!this.backend.getMultiple) return;
+	//getMultiple returns an id->task dict
 	
 	let listId = await this.newDemoTasklist();
 	let tasks = await this.backend.list(listId);
@@ -393,17 +394,23 @@ BackendTester.prototype.test_getMultiple = async function() {
 	
 	//get by id
 	let tasks1 = await this.backend.getMultiple([tasks[0].id], listId);
+	expect(typeof tasks1).toBe('object');
+	tasks1 = Object.values(tasks1); //easier to us
 	expect(tasks1.length).toBe(1);
 	expect(tasks1[0]).toStrictEqual(tasks[0]);
 	
 	//get by Task
 	let tasks2 = await this.backend.getMultiple([tasks[1], tasks[0]], listId);
-	expect(tasks2.length).toBe(2);
+	expect(typeof tasks2).toBe('object');
+	tasks2 = Object.values(tasks2);
+	expect(tasks2).toBe(2);
 	expect(tasks2[0]).toStrictEqual(tasks[1]);
 	expect(tasks2[1]).toStrictEqual(tasks[0]);
 	
 	//get nothing
 	let tasks3 = await this.backend.getMultiple([], listId);
+	expect(typeof tasks3).toBe('object');
+	tasks3 = Object.values(tasks3);
 	expect(tasks3.length).toBe(0);
 	
 	//Crash and burn on bad input
@@ -415,13 +422,115 @@ BackendTester.prototype.test_getMultiple = async function() {
 BackendTester.prototype.test_get = async function() {
 	//Do not require (getOne||getMultiple) here cause backends can override get()
 	//entirely independently
+	
+	let listId = await this.newDemoTasklist();
+	let tasks = await this.backend.list(listId);
+	expect(tasks.length).toBeGreaterThanOrEqual(2);
+	
+	//get by single id
+	let task1 = await this.backend.get(tasks[0].id, listId);
+	expect(task1).toStrictEqual(tasks[0]);
+	
+	//get by Task
+	let task2 = await this.backend.get(tasks[1], listId);
+	expect(task2).toStrictEqual(tasks[1]);
+	
+	//get by multiple ids/objects
+	let tasks3 = await this.backend.get([tasks[1].id, tasks[0]], listId);
+	expect(typeof tasks3).toBe('object');
+	tasks3 = Object.values(tasks3);
+	expect(tasks3.length).toBe(2);
+	expect(tasks3[0]).toStrictEqual(tasks[1]);
+	expect(tasks3[1]).toStrictEqual(tasks[0]);
+	
+	//get nothing
+	let tasks4 = await this.backend.get([], listId);
+	expect(typeof tasks4).toBe('object');
+	tasks4 = Object.values(tasks4);
+	expect(tasks4.length).toBe(0);
+	
+	//Crash and burn on bad input
+	await expectCatch(() => this.backend.get([tasks[0].id], 'clearly wrong tasklistId')).toBeDefined();
+	await expectCatch(() => this.backend.get(['clearly wrong taskId'], listId)).toBeDefined();
+	await expectCatch(() => this.backend.get()).toBeDefined();
 }
 
-//get/getOne/getMultiple
-//update
-//patch
+BackendTester.prototype.test_update = async function() {
+	if (!this.backend.update) return;
+	
+	let listId = await this.newDemoTasklist();
+	let tasks = await this.backend.list(listId);
+	expect(tasks.length).toBeGreaterThanOrEqual(2);
+	
+	//Find TEST_TASK1
+	let idx = tasks.findIndex(task => task.title == this.TEST_TASK1.title);
+	expect(idx).toBeGreaterThanOrEqual(0);
+	this.verifyTask1(tasks[idx]);
+	
+	//Convert to TEST_TASK2 in all but id
+	//We're going over keys from both sources so that if one leaves something undefined that's still applied
+	for (let key in Object.assign({}, this.TEST_TASK1, this.TEST_TASK2))
+		tasks[idx][key] = this.TEST_TASK2[key];
+	this.verifyTask2(tasks[idx]);
+	
+	//Update
+	let result = await this.backend.update(tasks[idx], listId);
+	this.verifyTask2(result);
+	
+	//Other fields must've remained the same but it's hard to expect().toStrictEqual()
+	//because the backend can change them arbitrarily
+	//So we're only checking that the fields we've changed have been changed.
+	
+	let task_copy = await this.backend.get(tasks[idx].id, listId);
+	this.verifyTask2(task_copy);
+	
+	//Crash and burn on bad input
+	await expectCatch(() => this.backend.update(tasks[idx], 'clearly wrong tasklistId')).toBeDefined();
+	await expectCatch(() => this.backend.update({id: 'clearly wrong id'}, listId)).toBeDefined();
+	await expectCatch(() => this.backend.update({title: 'Task with no id'}, listId)).toBeDefined();
+	await expectCatch(() => this.backend.update()).toBeDefined();
+}
+
+BackendTester.prototype.test_patch = async function() {
+	if (!this.backend.update) return;
+	
+	let listId = await this.newDemoTasklist();
+	let tasks = await this.backend.list(listId);
+	expect(tasks.length).toBeGreaterThanOrEqual(2);
+	
+	//Find TEST_TASK1
+	let idx = tasks.findIndex(task => task.title == this.TEST_TASK1.title);
+	expect(idx).toBeGreaterThanOrEqual(0);
+	this.verifyTask1(tasks[idx]);
+	
+	//Create a patch from that to TEST_TASK2
+	let patch = {id: tasks[idx].id};
+	for (let key in Object.assign({}, this.TEST_TASK1, this.TEST_TASK2)) {
+		patch[key] = this.TEST_TASK2[key];
+		if (typeof patch[key] == 'undefined')
+			patch[key] = null; //currently patch() is peculiar about this
+	}
+	this.verifyTask2(patch);
+	
+	//Update
+	let result = await this.backend.patch(patch, listId);
+	this.verifyTask2(result);
+	
+	let task_copy = await this.backend.get(patch.id, listId);
+	this.verifyTask2(task_copy);
+	
+	//Crash and burn on bad input
+	await expectCatch(() => this.backend.patch(tasks[idx], 'clearly wrong tasklistId')).toBeDefined();
+	await expectCatch(() => this.backend.patch({id: 'clearly wrong id'}, listId)).toBeDefined();
+	await expectCatch(() => this.backend.patch({title: 'Task with no id'}, listId)).toBeDefined();
+	await expectCatch(() => this.backend.patch()).toBeDefined();
+}
 
 //TODO: In most requests, crash and burn on tasklist==undefined, when selected tasklist is also undefined
+//TODO: In most requests, task1.toStrictEqual(task2) should be replaced with comparing only the main properties
+//  as there could be additional ones, including internal ones, that may change without reason
+
+//resourcePatch -- especially the behavior with nulls/undefineds. Support undefineds?
 
 //move/_moveOne
 //moveToList

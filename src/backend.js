@@ -476,7 +476,8 @@ Backend.prototype.patch = function (task, tasklistId) {
 	if (!task.id)
 		return Promise.reject('Backend.patch(): id not specified');
 	//Default: query + update
-	return this.get(task.id).then(result => {
+	return this.get(task.id, tasklistId)
+	.then(result => {
 		resourcePatch(result, task);
 		return this.update(result, tasklistId);
 	}).then(result => {

@@ -253,7 +253,6 @@ BackendLocal.prototype._removeList = function(id) {
 BackendLocal.prototype._getItem = function(id) {
 	return this._get("item_"+id) //null is okay
 	.then(result => {
-		console.log(result);
 		if (!result)
 			return Promise.reject('Task not found: '+id);
 		return this.resourceToTask(result);
@@ -364,6 +363,7 @@ BackendLocal.prototype.list = function(tasklistId) {
 //Returns a promise for the given task content
 BackendLocal.prototype.getOne = function (taskId, tasklistId) {
 	if (!tasklistId) tasklistId = this.selectedTaskList;
+	taskId = toTaskId(taskId);
 	let task = null;
 	return this._getItem(taskId)
 	.then(item => {
@@ -376,8 +376,9 @@ BackendLocal.prototype.getOne = function (taskId, tasklistId) {
 		return task;
 	});
 }
-BackendLocal.prototype.update = function (task) {
-	var prom = this._getListIds(this.selectedTaskList)
+BackendLocal.prototype.update = function (task, tasklistId) {
+	if (!tasklistId) tasklistId = this.selectedTaskList;
+	var prom = this._getListIds(tasklistId)
 	.then(list => {
 		if (!list.includes(task.id)) {
 			//console.log("update(): list="+JSON.stringify(list)+", task="+task.id+", not found.");
