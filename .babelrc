@@ -1,19 +1,22 @@
 {
 "env": {
   "test": {
+    comments: true,
     "plugins": ["@babel/plugin-transform-modules-commonjs"]
   },
-  "build": {}
+  "build": {
+    comments: false,
+    "presets": [
+      ["@babel/preset-env", {
+        "targets": {
+          edge: "15",
+          firefox: "54",
+          chrome: "60",
+          safari: "11.1",
+        },
+        "modules": false
+      }]
+    ]
+  }
 },
-"presets": [
-  ["@babel/preset-env", {
-    "targets": {
-      edge: "15",
-      firefox: "54",
-      chrome: "60",
-      safari: "11.1",
-    },
-    "modules": false
-  }]
-]
 }

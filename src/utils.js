@@ -1,4 +1,5 @@
-var exports = exports || {};
+if (typeof exports == 'undefined')
+	exports = {};
 
 /*
 Application-wide options
