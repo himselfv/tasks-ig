@@ -80,6 +80,20 @@ A: The backend API should require explicit tasklistId everywhere where this migh
    E.g.: get(taskId) must also require tasklistId.
 */
 
+function Tasks() {}
+exports.Tasks = Tasks;
+//Sorts an array of tasks according to their positions
+Tasks.sort = function(tasks) {
+	return tasks.sort((a, b) => { return a.position - b.position; });
+}
+//Converts an array of tasks to an id->task dictionary 
+Tasks.dict = function(tasks) {
+	let dict = {};
+	for (let i in tasks)
+		dict[tasks[i].id] = tasks[i];
+	return dict;
+}
+
 
 //Clones a task resource without preserving its unique IDs
 function taskResClone(oldTask) {
@@ -192,6 +206,18 @@ function diffDict(oldDict, newDict, comparer) {
 	return res;
 }
 exports.diffDict = diffDict;
+
+//Many backends store dates in variations of ISO8601.
+//Parses that if it can, or returns the original value:
+function maybeStrToDate(d) {
+	if (typeof d == 'string') {
+		let date = new Date(d);
+		if ((date instanceof Date) && !isNaN(date))
+			return date;
+	}
+	return d;
+}
+exports.maybeStrToDate = maybeStrToDate;
 
 
 /*
@@ -366,13 +392,18 @@ Backend.prototype.taskToResource = function(task) {
 	//console.debug('Backend.taskToResource', task);
 	let taskRes = {};
 	//Copy only the GTasks supported fields
-	for (key in task)
+	for (let key in task)
 		if (this.TASK_FIELDS.indexOf(key) != -1)
 			taskRes[key] = task[key];
 	//Normalize fields
 	taskResNormalize(taskRes);
 	//console.debug('Backend.taskToResource -> ', taskRes);
 	return taskRes;
+}
+Backend.prototype.resourceToTask = function(res) {
+	if (res instanceof Task)
+		return res; //safety: already a Task
+	return new Task(res);
 }
 
 
@@ -461,7 +492,7 @@ Backend.prototype.patch = function (task, tasklistId) {
 //Required, or you cannot add new tasks.
 
 /*
-Accepts a _id -> task,previousId list.
+Accepts a _id -> task list.
 Inserts all tasks to the target tasklist and returns a _id->insertedTask map.
 
 task.parent: The parent to insert under
@@ -473,8 +504,8 @@ The _id is only used to identify tasks in the results.
 Backend.prototype.insertMultiple = function (tasks, tasklistId) {
 	//console.log('Backend.insertMultiple:',arguments);
 	//Default: Call insert() multiple times.
-	results = {};
-	batch = [];
+	let results = {};
+	let batch = [];
 	for (let _id in tasks) {
 		batch.push(
 			this.insert(tasks[_id], tasks[_id].previousId, tasklistId).
@@ -504,10 +535,10 @@ A: Override deleteWithChildren() and forward to delete()
 //Deletes the task with all children. If tasklistId is not given, assumes current task list.
 Backend.prototype.deleteWithChildren = function (taskId, tasklistId) {
 	//console.debug('Backend.deleteWithChildren:', arguments);
-	if (taskId && taskId.id) taskId = taskId.id;
+	taskIds = toTaskIds(taskIds);
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	
-	ids = [taskId];
+	ids = taskIds.slice(); //will be modifying, copy
 	let prom = null;
 	//Currently only selected list supports recursive deletion
 	if (tasklistId == this.selectedTaskList) {

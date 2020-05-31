@@ -246,7 +246,8 @@ BackendLocal.prototype._removeList = function(id) {
 	return this._remove("list_"+id);
 }
 BackendLocal.prototype._getItem = function(id) {
-	return this._get("item_"+id); //null is okay
+	return this._get("item_"+id) //null is okay
+		.then(result => this.resourceToTask(result));
 }
 BackendLocal.prototype._setItem = function(id, item) {
 	//console.log("_setItem: id=", id, "item=", JSON.stringify(item));
@@ -255,6 +256,15 @@ BackendLocal.prototype._setItem = function(id, item) {
 }
 BackendLocal.prototype._removeItem = function(id) {
 	return this._remove("item_"+id);
+}
+
+BackendLocal.prototype.resourceToTask = function(res) {
+	let task = Backend.prototype.resourceToTask.call(this, res);
+	//Dates are in ISO so the default  parser works
+	task.completed = maybeStrToDate(task.completed);
+	task.due = maybeStrToDate(task.due);
+	task.updated = maybeStrToDate(task.updated);
+	return task;
 }
 
 //Converts tasklist contents into "id -> parentId, prevId" dict (calculates prevIds)

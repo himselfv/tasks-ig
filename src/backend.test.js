@@ -67,6 +67,8 @@ test('diffDict', () => {
 	expect(diffDict({'a': 'abcd'}, {'a': 'abcd', 'b': 2})).toStrictEqual({'b': {'oldValue': undefined, 'newValue': 2}});
 });
 
+//Tasks.sort
+//Tasks.dict
 //Callback
 //TaskCache
 //Backend

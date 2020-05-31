@@ -373,6 +373,14 @@ BackendGTasks.prototype.taskToResource = function(task) {
 		taskRes.due = taskRes.due.toISOString();
 	return taskRes;
 }
+Backend.prototype.resourceToTask = function(res) {
+	let task = Backend.prototype.resourceToTask.call(this, res);
+	//Dates are in ISO so the default  parser works
+	task.completed = maybeStrToDate(task.completed);
+	task.due = maybeStrToDate(task.due);
+	task.updated = maybeStrToDate(task.updated);
+	return task;
+}
 
 //Returns a task-update request
 //https://developers.google.com/tasks/v1/reference/tasks/update
