@@ -229,7 +229,7 @@ function TasklistEntry(id, parentId) {
 }
 BackendLocal.prototype._getList = function(id) {
 	return this._get("list_"+id).then(result => {
-		if (typeof result == 'undefined')
+		if (!result)
 			return Promise.reject('Task list not found: '+id)
 		return result;
 	});
@@ -252,7 +252,12 @@ BackendLocal.prototype._removeList = function(id) {
 }
 BackendLocal.prototype._getItem = function(id) {
 	return this._get("item_"+id) //null is okay
-		.then(result => this.resourceToTask(result));
+	.then(result => {
+		console.log(result);
+		if (!result)
+			return Promise.reject('Task not found: '+id);
+		return this.resourceToTask(result);
+	});
 }
 BackendLocal.prototype._setItem = function(id, item) {
 	//console.log("_setItem: id=", id, "item=", JSON.stringify(item));
@@ -347,18 +352,29 @@ Tasks
 */
 BackendLocal.prototype.list = function(tasklistId) {
 	return this._getListIds(tasklistId)
-	.then(ids => this.get(ids))
+	.then(ids => this.get(ids, tasklistId)) //this'll call getListIds() again but whatever
 	.then(items => {
 		items = Object.values(items);
 		for (let i=0; i<items.length; i++)
-			items[i].position = i;
+			items[i].position = i; //don't really need this as get() does this too
 		//console.log("list(): returning "+JSON.stringify(items));
 		return items;
 	});
 }
 //Returns a promise for the given task content
 BackendLocal.prototype.getOne = function (taskId, tasklistId) {
-	return this._getItem(taskId);
+	if (!tasklistId) tasklistId = this.selectedTaskList;
+	let task = null;
+	return this._getItem(taskId)
+	.then(item => {
+		task = item;
+		//We also need its position
+		return this._getListIds(tasklistId);
+	})
+	.then(ids => {
+		task.position = ids.indexOf(taskId);
+		return task;
+	});
 }
 BackendLocal.prototype.update = function (task) {
 	var prom = this._getListIds(this.selectedTaskList)

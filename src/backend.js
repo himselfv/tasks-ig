@@ -440,7 +440,7 @@ Backend.prototype.get = function(taskIds, tasklistId) {
 	}
 	//Multiple tasks
 	if (this.getMultiple)
-		return this.getMultiple(taskIds)
+		return this.getMultiple(taskIds, tasklistId)
 		.then(results => {
 			this.cache.update(results);
 			return results;
@@ -448,7 +448,7 @@ Backend.prototype.get = function(taskIds, tasklistId) {
 	//Query one by one
 	var batch = [];
 	for (let i=0; i<taskIds.length; i++)
-		batch.push(this.get(taskIds[i], tasklistId));
+		batch.push(this.getOne(taskIds[i], tasklistId));
 	return Promise.all(batch)
 	.then(results => {
 		var dict = {};

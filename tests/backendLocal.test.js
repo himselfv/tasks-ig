@@ -361,9 +361,67 @@ BackendTester.prototype.test_delete = async function() {
 	//Not testing deleteWithChildren(), that'll happen after caching
 }
 
+//We will separately test getOne/getMultiple even though get() relies on them,
+//because who knows how get() could be overriden
+BackendTester.prototype.test_getOne = async function() {
+	if (!this.backend.getOne) return;
+	
+	let listId = await this.newDemoTasklist();
+	let tasks = await this.backend.list(listId);
+	expect(tasks.length).toBeGreaterThanOrEqual(2);
+	
+	//get by id
+	let task1 = await this.backend.getOne(tasks[0].id, listId);
+	expect(task1).toStrictEqual(tasks[0]);
+	
+	//get by Task
+	let task2 = await this.backend.getOne(tasks[1].id, listId);
+	expect(task2).toStrictEqual(tasks[1]);
+	
+	//Crash and burn on bad input
+	await expectCatch(() => this.backend.getOne(tasks[0].id, 'clearly wrong tasklistId')).toBeDefined();
+	await expectCatch(() => this.backend.getOne('clearly wrong taskId', listId)).toBeDefined();
+	await expectCatch(() => this.backend.getOne([], listId)).toBeDefined();
+	await expectCatch(() => this.backend.getOne()).toBeDefined();
+}
+BackendTester.prototype.test_getMultiple = async function() {
+	if (!this.backend.getMultiple) return;
+	
+	let listId = await this.newDemoTasklist();
+	let tasks = await this.backend.list(listId);
+	expect(tasks.length).toBeGreaterThanOrEqual(2);
+	
+	//get by id
+	let tasks1 = await this.backend.getMultiple([tasks[0].id], listId);
+	expect(tasks1.length).toBe(1);
+	expect(tasks1[0]).toStrictEqual(tasks[0]);
+	
+	//get by Task
+	let tasks2 = await this.backend.getMultiple([tasks[1], tasks[0]], listId);
+	expect(tasks2.length).toBe(2);
+	expect(tasks2[0]).toStrictEqual(tasks[1]);
+	expect(tasks2[1]).toStrictEqual(tasks[0]);
+	
+	//get nothing
+	let tasks3 = await this.backend.getMultiple([], listId);
+	expect(tasks3.length).toBe(0);
+	
+	//Crash and burn on bad input
+	await expectCatch(() => this.backend.getMultiple([tasks[0].id], 'clearly wrong tasklistId')).toBeDefined();
+	await expectCatch(() => this.backend.getMultiple(['clearly wrong taskId'], listId)).toBeDefined();
+	await expectCatch(() => this.backend.getMultiple()).toBeDefined();
+}
+
+BackendTester.prototype.test_get = async function() {
+	//Do not require (getOne||getMultiple) here cause backends can override get()
+	//entirely independently
+}
+
 //get/getOne/getMultiple
 //update
 //patch
+
+//TODO: In most requests, crash and burn on tasklist==undefined, when selected tasklist is also undefined
 
 //move/_moveOne
 //moveToList
