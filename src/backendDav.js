@@ -163,7 +163,7 @@ BackendDav.prototype.datetimeToPosition = function(dt) {
 	if (!dt) return 0; //  ¯\_(ツ)_/¯
 	if (dt instanceof ICAL.Time)
 		dt = dt.toJSDate();
-	return Math.floor((dt - new Date(2001, 01, 01, 0, 0, 0)));
+	return Math.floor((dt - new Date(2001, 1, 1, 0, 0, 0)));
 }
 
 

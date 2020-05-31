@@ -219,10 +219,7 @@ BackendTester.prototype.test_lists = async function() {
 		
 		//tasklistPatch
 		tasklists[0].title = '2abcd2';
-		try {
-			await this.backend.tasklistPatch({ 'title': tasklists[0].title });
-			expect(false).toBe(true); //should not reach here
-		} catch {}
+		await expectCatch(() => this.backend.tasklistPatch({ 'title': tasklists[0].title }) ).toBeDefined();
 		result = await this.backend.tasklistPatch({ 'id': tasklists[0].id, 'title': tasklists[0].title });
 		expect(result).toStrictEqual(tasklists[0]);
 		
