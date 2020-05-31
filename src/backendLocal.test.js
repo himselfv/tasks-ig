@@ -189,62 +189,100 @@ BackendTester.prototype.test_init = async function() {
 	//Nothing.
 }
 
-BackendTester.prototype.test_lists = async function() {
+BackendTester.prototype.test_tasklistList = async function() {
+	//tasklistList() and tasklistGet() must always be defined
+	//We don't know if tasklistAdd() is available so run basic tests with what we have
+	
+	let list1Id = await this.newEmptyTasklist();
+	let list2Id = await this.newDemoTasklist();
+	
 	let tasklists = await this.backend.tasklistList();
-	expect(tasklists).toStrictEqual([]);
+	let list1 = tasklists.find(list => list.id == list1Id);
+	expect(list1).toBeDefined();
+	let list2 = tasklists.find(list => list.id == list2Id);
+	expect(list2).toBeDefined();
 	
-	//TODO: If we have tasklistAdd, try the add+verify, otherwise REQUIRE we have at least one list and play with that
+	let list1_get = await this.backend.tasklistGet(list1Id);
+	expect(list1_get).toStrictEqual(list1);
+	let list2_get = await this.backend.tasklistGet(list2Id);
+	expect(list2_get).toStrictEqual(list2);
+}
+BackendTester.prototype.test_tasklistAdd = async function() {
+	if (!this.backend.tasklistAdd) return;
 	
-	
-	//tasklistAdd
 	let newList = await this.backend.tasklistAdd('Abcd');
-	tasklists = await this.backend.tasklistList();
+	let tasklists = await this.backend.tasklistList();
 	expect(tasklists.length).toBe(1);
 	expect(tasklists[0].title).toStrictEqual('Abcd');
 	
-	//tasklistAdd
 	newList = await this.backend.tasklistAdd('Test list 2');
 	tasklists = await this.backend.tasklistList();
 	expect(tasklists.length).toBe(2);
 	expect(tasklists[1].title).toStrictEqual('Test list 2');
+}
 	
-	if (this.backend.tasklistUpdate) {
-		//tasklistUpdate
-		tasklists[0].title = '1abcd1';
-		let result = await this.backend.tasklistUpdate(tasklists[0]);
-		expect(result).toStrictEqual(tasklists[0]);
-		
-		let tasklist = await this.backend.tasklistGet(tasklists[0].id);
-		expect(tasklist).toStrictEqual(tasklists[0]);
-		
-		//tasklistPatch
-		tasklists[0].title = '2abcd2';
-		await expectCatch(() => this.backend.tasklistPatch({ 'title': tasklists[0].title }) ).toBeDefined();
-		result = await this.backend.tasklistPatch({ 'id': tasklists[0].id, 'title': tasklists[0].title });
-		expect(result).toStrictEqual(tasklists[0]);
-		
-		tasklist = await this.backend.tasklistGet(tasklists[0].id);
-		expect(tasklist).toStrictEqual(tasklists[0]);
-		
-		//List returns the same
-		let tasklists2 = await this.backend.tasklistList();
-		expect(tasklists2.length).toBe(2);
-		expect(tasklists2).toStrictEqual(tasklists);
-	}
-	//Otherwise leave as it was
+BackendTester.prototype.test_tasklistUpdate = async function() {
+	if (!this.backend.tasklistUpdate) return;
+
+	let list1Id = await this.newEmptyTasklist();
+	let list2Id = await this.newDemoTasklist();
+	let tasklists1 = await this.backend.tasklistList();
+	let list1 = tasklists1.find(list => list.id == list1Id);
+	expect(list1).toBeDefined();
+
+	//tasklistUpdate
+	list1.title = '1abcd1';
+	let result = await this.backend.tasklistUpdate(list1);
+	expect(result).toStrictEqual(list1);
 	
-	//tasklistGet alone, anyways
-	let tasklist = await this.backend.tasklistGet(tasklists[0].id);
-	expect(tasklist).toStrictEqual(tasklists[0]);
+	let list1_copy = await this.backend.tasklistGet(list1.id);
+	expect(list1_copy).toStrictEqual(list1);
 	
-	//tasklistDelete
-	if (this.backend.tasklistAdd && this.backend.tasklistDelete) {
-		await this.backend.tasklistDelete(tasklists[0].id);
-		
-		let tasklists2 = await this.backend.tasklistList();
-		expect(tasklists2.length).toBe(1);
-		expect(tasklists2[0]).toStrictEqual(tasklists[1]);
-	}
+	//tasklistPatch
+	list1.title = '2abcd2';
+	//Do not accept patches without IDs:
+	await expectCatch(() => this.backend.tasklistPatch({ 'title': list1.title }) ).toBeDefined();
+	result = await this.backend.tasklistPatch({ 'id': list1.id, 'title': list1.title });
+	expect(result).toStrictEqual(list1);
+	
+	list1_copy = await this.backend.tasklistGet(list1.id);
+	expect(list1_copy).toStrictEqual(list1);
+	
+	//List returns the same
+	let tasklists2 = await this.backend.tasklistList();
+	expect(tasklists2).toStrictEqual(tasklists1);
+}
+
+BackendTester.prototype.test_tasklistDelete = async function() {
+	if (!this.backend.tasklistDelete) return; //Nothing to test
+	
+	let list1Id = await this.newEmptyTasklist();
+	let list2Id = await this.newDemoTasklist();
+	
+	let tasklists1 = await this.backend.tasklistList();
+	expect(tasklists1.find(list => list.id == list1Id)).toBeDefined();
+	expect(tasklists1.find(list => list.id == list2Id)).toBeDefined();
+	
+	//Delete list1
+	await expectCatch(() => this.backend.tasklistDelete(list1Id)).toBeUndefined();
+	let tasklists2 = await this.backend.tasklistList();
+	expect(tasklists2.length).toBe(tasklists1.length - 1);
+	expect(tasklists2.find(list => list.id == list1Id)).toBeUndefined();
+	expect(tasklists2.find(list => list.id == list2Id)).toBeDefined();
+	
+	//Delete list1 again -- should fail
+	await expectCatch(() => this.backend.tasklistDelete(list1Id)).toBeDefined();
+	//Cannot retrieve list1 anymore
+	await expectCatch(() => this.backend.tasklistGet(list1Id)).toBeDefined();
+	
+	//Delete list2
+	await expectCatch(() => this.backend.tasklistDelete(list2Id)).toBeUndefined();
+	tasklists2 = await this.backend.tasklistList();
+	expect(tasklists2.length).toBe(tasklists1.length - 2);
+	expect(tasklists2.find(list => list.id == list2Id)).toBeUndefined();
+	
+	//Verify that the rest of the lists stayed the same
+	expect(tasklists1).toEqual(expect.arrayContaining(tasklists2));
 }
 
 //insert() -- before list() because list() may already use insert() to produce non-empty list specimen
@@ -382,15 +420,14 @@ BackendTester.prototype.test_delete = async function() {
 	//Not testing deleteWithChildren(), that'll happen after caching
 }
 
+//uiName
+//settingsPage проверить на корректность параметров -- какой-то стандартный тестер сделать, также и для options
 //get/getOne/getMultiple
 //update
 //patch
+
 //move/_moveOne
 //moveToList
-
-//uiName
-//settingsPage проверить на корректность параметров -- какой-то стандартный тестер сделать, также и для options
-
 //selectTaskList
 //cachedGet
 //getChildren
@@ -453,13 +490,19 @@ function testBackend(backendTesterCtor, params) {
 }
 exports.testBackend = testBackend;
 
-function BackendTester2(params) {
+
+function BackendLocalStorageTester(params) {
 	BackendTester.call(this, params);
 }
-inherit(BackendTester, BackendTester2);
+inherit(BackendTester, BackendLocalStorageTester);
+BackendLocalStorageTester.prototype.init = async function() {
+	BackendTester.prototype.init.call(this);
+	//LocalStorage works cleaner with reset() between tests
+	await this.backend.reset();
+}
 
-testBackend(BackendTester2, {'ctor': BackendSessionStorage});
-testBackend(BackendTester2, {'ctor': BackendLocalStorage});
+testBackend(BackendLocalStorageTester, {'ctor': BackendSessionStorage});
+testBackend(BackendLocalStorageTester, {'ctor': BackendLocalStorage});
 //browser.storage.* is unavailable and otherwise it's ~= BackendLocalStorage
-//testBackend(BackendTester, BackendBrowserStorageSync);
-//testBackend(BackendTester, BackendBrowserStorageLocal);
+//testBackend(BackendLocalStorageTester, BackendBrowserStorageSync);
+//testBackend(BackendLocalStorageTester, BackendBrowserStorageLocal);
