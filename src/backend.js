@@ -535,10 +535,10 @@ A: Override deleteWithChildren() and forward to delete()
 //Deletes the task with all children. If tasklistId is not given, assumes current task list.
 Backend.prototype.deleteWithChildren = function (taskId, tasklistId) {
 	//console.debug('Backend.deleteWithChildren:', arguments);
-	taskIds = toTaskIds(taskIds);
+	taskId = toTaskId(taskId);
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	
-	ids = taskIds.slice(); //will be modifying, copy
+	let ids = [taskId];
 	let prom = null;
 	//Currently only selected list supports recursive deletion
 	if (tasklistId == this.selectedTaskList) {

@@ -6,6 +6,62 @@ import * as imp3 from './backendLocal.js';
 importAll(imp3);
 
 
+/*
+async howto:
+	async function is basically a normal function that returns Promise() of what it would have returned.
+	that's it
+	they're interchangeable
+	async function() decoration only matters inside the function. You can pass Promise()-returning function where async function is expected.
+	
+expect() howto:
+1. 	expect() always expects a VALUE (maybe a Promise).
+  	async () => {} declares a FUNCTION which may RETURN a promise.
+  	So you shouldn't expect(async () => {}). That'l create Expect with a FUNCTION object.
+  	You can expect( (async () => {})() ). Here you're CALLING that function. That'll produce a promise object.
+
+2.	toBe()/toEqual()/... study the VALUE inside expect() directly (as a Promise/as a Function, if it is that)
+	resolves/rejects family of functions assumes the value is a Promise and studies its result.
+	toThrow() assumes the value is a Function, calls it and studies its result.
+
+3.	resolves/rejects.*() family of functions returns promises which you can wait on.
+	But you cannot wait on expect() itself.
+*/
+
+/*
+Normal toThrow() doesn't catch non-Error()-based throws, so we need something better.
+
+Runs the potentially async / Promise-returning function and catches any throws.
+Returns the Promise of an expect(error wrapped in CatchResult()) or expect(undefined).
+Usage:
+	await expectCatch(myFunc).toBeDefined()/toBeUndefined()
+*/
+function CatchResult(error) {
+	this.error = error;
+}
+exports.CatchResult = CatchResult;
+function expectCatch(fn) {
+	return expect((async () => {
+		try {
+			await fn();
+			return undefined;
+		}
+		catch(error) {
+			return new CatchResult(error);
+		}
+	})()).resolves; //this returns a promise
+}
+exports.expectCatch = expectCatch.
+
+test('Jest helpers', async () => {
+	await expectCatch(() => {throw "asd"}).toBeDefined();
+	await expectCatch(() => "asd").toBeUndefined();
+	//With promises
+	await expectCatch(() => Promise.reject("asd") ).toBeDefined();
+	await expectCatch(() => Promise.reject() ).toBeDefined();
+	await expectCatch(() => Promise.resolve() ).toBeUndefined();
+});
+
+
 //Expects initialized and signed-in backend which can be poked
 function testBackend(backendCtor, backendInitProc) {
 	if (!backendInitProc)
@@ -105,7 +161,6 @@ function testBackend(backendCtor, backendInitProc) {
 			return list.id;
 		}
 		
-
 		test('init', async () => {
 		});
 		
@@ -199,12 +254,14 @@ function testBackend(backendCtor, backendInitProc) {
 			expect(list2[1]).toMatchObject(task1);
 			
 			//Pass wrong tasklist/previous ids
-			expect(async() => { await backend.insert(TEST_TASK2, null, 'clearly wrong tasklist ID'); }).toThrow();
-			expect(async() => { await backend.insert(TEST_TASK2, 'clearly wrong previousId', listId); }).toThrow();
+			await expectCatch(() => backend.insert(TEST_TASK2, null, 'clearly wrong tasklist ID') ).toBeDefined();
+			await expectCatch(() => backend.insert(TEST_TASK2, 'clearly wrong previousId', listId) ).toBeDefined();
 			//Parent id
+			/* OK, not all backends care about this so disabling for now
 			let task2_proto = Object.assign({}, TEST_TASK2);
 			task2_proto.parent = 'clearly wrong parentId';
-			expect(async() => { await backend.insert(task2_proto, null, listId); }).toThrow();
+			await expectCatch(() => backend.insert(task2_proto, null, listId) ).toBeDefined();
+			*/
 			
 			//Not testing parent/previousId in full here, happens in move()
 			//Not testing the consistency of status/completedDate, it's not super important
@@ -240,7 +297,7 @@ function testBackend(backendCtor, backendInitProc) {
 			expect(Object.keys(results).length).toBe(0);
 			
 			//Wrong IDs
-			expect(async() => { await backend.insertMultiple({}, 'clearly wrong tasklist ID'); }).toThrow();
+			await expectCatch(() => backend.insertMultiple({'myId4':{}}, 'clearly wrong tasklist ID') ).toBeDefined();
 		});
 		
 		
@@ -271,7 +328,7 @@ function testBackend(backendCtor, backendInitProc) {
 			let listId = await newDemoTasklist();
 			
 			//delete(nothing) should succeed and change nothing
-			expect(async() => { await backend.delete([], listId); }).not.toThrow();
+			await expectCatch(() => backend.delete([], listId) ).toBeUndefined();
 			//Null may or may not work, won't test
 			
 			let tasks = await backend.list(listId);
@@ -279,7 +336,7 @@ function testBackend(backendCtor, backendInitProc) {
 			tasks.sort((a, b) => { return a.title.localeCompare(b.title); });
 			
 			//Delete a single task
-			expect(async() => { await backend.delete(tasks[2].id, listId); }).not.toThrow();
+			await expectCatch(() => backend.delete(tasks[1].id, listId) ).toBeUndefined();
 			//Check the list again
 			tasks = await backend.list(listId);
 			expect(tasks.length).toBe(2);
@@ -290,19 +347,19 @@ function testBackend(backendCtor, backendInitProc) {
 			//Deleting a parent without deleting its child is undefined for now, won't test
 			
 			//delete(Task object)
-			expect(async() => { await backend.delete(tasks[2], listId); }).not.toThrow();
+			await expectCatch(() => backend.delete(tasks[1], listId) ).toBeUndefined();
 			tasks = await backend.list(listId);
 			expect(tasks.length).toBe(1);
 			verifyTask1(tasks[0]);
 			
 			//delete(multiple)
-			expect(async() => { await backend.delete([tasks[0]], listId); }).not.toThrow();
+			await expectCatch(() => backend.delete([tasks[0]], listId) ).toBeUndefined();
 			tasks = await backend.list(listId);
 			expect(tasks.length).toBe(0);
 			
 			//Wrong IDs
-			expect(async() => { await backend.delete([], 'clearly wrong tasklist ID'); }).toThrow();
-			expect(async() => { await backend.delete(['clearly wrong task ID'], listId); }).toThrow();
+			await expectCatch(() => backend.delete([], 'clearly wrong tasklist ID') ).toBeDefined();
+			await expectCatch(() => backend.delete(['clearly wrong task ID'], listId) ).toBeDefined();
 			
 			//We've exhausted things we can delete, need another test
 			//Not testing deleteWithChildren(), that'll happen after caching
@@ -328,32 +385,27 @@ function testBackend(backendCtor, backendInitProc) {
 			
 			let listId = await newDemoTasklist();
 			
+			//ATM deleteWithChildren only supports passing one task at a time
+			
 			//deleteWithChildren needs caching
 			let tasks = await backend.selectTaskList(listId);
-			
-			//delete(nothing) should succeed and change nothing
-			expect(async() => { await backend.deleteWithChildren([], listId); }).not.toThrow();
-			//Null may or may not work, won't test
-			
-			//Requery the list, in case empty deletes() broke something
-			tasks = await backend.list(listId);
 			expect(tasks.length).toBe(3);
 			tasks.sort((a, b) => { return a.title.localeCompare(b.title); });
 			
 			//Delete 1->3
-			expect(async() => { await backend.deleteWithChildren(tasks[0].id, listId); }).not.toThrow();
+			await expectCatch(() => backend.deleteWithChildren(tasks[0].id, listId) ).toBeUndefined();
 			tasks = await backend.list(listId);
 			expect(tasks.length).toBe(1);
 			verifyTask2(tasks[0]);
 			
-			//deleteWithChildren(object) + deleteWithChildren(multiple) in the same test
-			expect(async() => { await backend.deleteWithChildren([tasks[0]], listId); }).not.toThrow();
+			//deleteWithChildren(object)
+			await expectCatch(() => backend.deleteWithChildren(tasks[0], listId) ).toBeUndefined();
 			tasks = await backend.list(listId);
 			expect(tasks.length).toBe(0);
 			
 			//Wrong IDs
-			expect(async() => { await backend.deleteWithChildren([], 'clearly wrong tasklist ID'); }).toThrow();
-			expect(async() => { await backend.deleteWithChildren(['clearly wrong task ID'], listId); }).toThrow();
+			await expectCatch(() => backend.deleteWithChildren([], 'clearly wrong tasklist ID') ).toBeDefined();
+			await expectCatch(() => backend.deleteWithChildren('clearly wrong task ID', listId) ).toBeDefined();
 		});
 	});
 }

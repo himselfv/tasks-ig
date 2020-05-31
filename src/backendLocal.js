@@ -227,7 +227,11 @@ function TasklistEntry(id, parentId) {
 	this.parentId = parentId;
 }
 BackendLocal.prototype._getList = function(id) {
-	return this._get("list_"+id).then(result => result || []);
+	return this._get("list_"+id).then(result => {
+		if (typeof result == 'undefined')
+			return Promise.reject('Task list not found: '+id)
+		return result;
+	});
 }
 BackendLocal.prototype._getListIds = function(id) {
 	return this._getList(id).then(items => {
@@ -299,7 +303,8 @@ BackendLocal.prototype.tasklistAdd = function(title) {
 	.then(lists => {
 		item = { 'id': this._newId(), 'title': title, };
 		lists[item.id] = item;
-		return this._setTasklists(lists);
+		return this._setTasklists(lists)
+			.then(() => this._setList(item.id, []));
 	})
 	.then(results => item);
 }
@@ -397,17 +402,19 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 
 BackendLocal.prototype.delete = function (taskIds, tasklistId) {
 	if (!tasklistId) tasklistId = this.selectedTaskList;
+	taskIds = toTaskIds(taskIds);
 	
 	//Delete all
 	return this._getList(tasklistId)
 	.then(list => {
-		taskIds.forEach(id => {
+		for (let i=0; i<taskIds.length; i++) {
+			let id = taskIds[i];
 			let index = list.findIndex(item => item.id == id);
 			if (index < 0)
 				return Promise.reject("delete(): No such task in the given list");
 			list.splice(index, 1);
 			this._removeItem(id);
-		});
+		}
 		return this._setList(tasklistId, list);
 	});
 }
