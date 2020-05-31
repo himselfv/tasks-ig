@@ -10,8 +10,8 @@ https://developers.google.com/tasks/v1/reference/tasklists#resource
 Even if a backend has nothing to do with GTasks it needs to provide the same resources.
 See below for minimal structures.
 */
-exports = exports || {};
-if (require) {
+var exports = exports || {};
+if (typeof require != 'undefined') {
 	let utils = require('./utils.js');
 	utils.importAll(utils);
 }

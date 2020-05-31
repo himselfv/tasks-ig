@@ -373,7 +373,7 @@ BackendGTasks.prototype.taskToResource = function(task) {
 		taskRes.due = taskRes.due.toISOString();
 	return taskRes;
 }
-Backend.prototype.resourceToTask = function(res) {
+BackendGTasks.prototype.resourceToTask = function(res) {
 	let task = Backend.prototype.resourceToTask.call(this, res);
 	//Dates are in ISO so the default  parser works
 	task.completed = maybeStrToDate(task.completed);

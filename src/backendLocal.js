@@ -2,8 +2,8 @@
 Tasks backend based on local storage / browser storage.
 Do not use local storage for anything important! It's highly unpermanent (glorified cookies).
 */
-exports = exports || {};
-if (require) {
+var exports = exports || {};
+if (typeof require != 'undefined') {
 	let utils = require('./utils.js');
 	utils.importAll(utils);
 	utils.importAll('./backend.js')

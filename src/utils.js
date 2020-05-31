@@ -1,4 +1,4 @@
-exports = exports || {};
+var exports = exports || {};
 
 /*
 Application-wide options
