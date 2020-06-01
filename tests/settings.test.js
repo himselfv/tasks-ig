@@ -49,7 +49,7 @@ let allowedDataTypes = [
 function testSettingsEntry(entry) {
 	expect(typeof entry).toBe('object');
 	//Only these subkeys are supported
-	expect(['title', 'hint', 'type', 'default']).toBe(expect.arrayContaining(Object.keys(entry)));
+	expect(['title', 'hint', 'type', 'default']).toEqual(expect.arrayContaining(Object.keys(entry)));
 	
 	if ('title' in entry)
 		expect(typeof entry.title).toBe('string');

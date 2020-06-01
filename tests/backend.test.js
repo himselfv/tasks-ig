@@ -413,6 +413,11 @@ BackendTester.prototype.test_delete = async function() {
 	
 	//Deleting a parent without deleting its child is undefined for now, won't test
 	
+	//Wrong IDs
+	//Pass something valid as IDs because [] may return [] without checking tasklistId
+	await expectCatch(() => this.backend.delete([tasks[0]], 'clearly wrong tasklist ID') ).toBeDefined();
+	await expectCatch(() => this.backend.delete(['clearly wrong task ID'], listId) ).toBeDefined();
+	
 	//delete(Task object)
 	await expectCatch(() => this.backend.delete(tasks[1], listId) ).toBeUndefined();
 	tasks = await this.backend.list(listId);
@@ -423,10 +428,6 @@ BackendTester.prototype.test_delete = async function() {
 	await expectCatch(() => this.backend.delete([tasks[0]], listId) ).toBeUndefined();
 	tasks = await this.backend.list(listId);
 	expect(tasks.length).toBe(0);
-	
-	//Wrong IDs
-	await expectCatch(() => this.backend.delete([], 'clearly wrong tasklist ID') ).toBeDefined();
-	await expectCatch(() => this.backend.delete(['clearly wrong task ID'], listId) ).toBeDefined();
 	
 	//We've exhausted things we can delete, need another test
 	//Not testing deleteWithChildren(), that'll happen after caching

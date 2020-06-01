@@ -2,11 +2,19 @@
 Task backend based on Google Tasks.
 Supported globals: GTASKS_CLIENT_ID, GTASKS_API_KEY, otherwise will ask via UI.
 */
+if (typeof exports == 'undefined')
+	exports = {};
+if (typeof require != 'undefined') {
+	let utils = require('./utils.js');
+	utils.importAll(utils);
+	utils.importAll('./backend.js')
+}
+
 function BackendGTasks() {
 	Backend.call(this);
 }
-BackendGTasks.prototype = Object.create(Backend.prototype);
-BackendGTasks.prototype.constructor = BackendGTasks;
+inherit(Backend, BackendGTasks);
+exports.BackendGTasks = BackendGTasks;
 
 // Array of API discovery doc URLs for APIs used by the quickstart
 var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/tasks/v1/rest"];
@@ -33,7 +41,7 @@ function gapiLoad() {
 	console.log('loading gapi');
 	return new Promise((resolve, reject) => {
 		gapi.load('client:auth2', {
-			'callback': () => resolve(),
+			'callback': () => resolve(gapi),
 			'onerror': () => { console.log("gapi load fail"); reject("GAPI client failed to load"); },
 		});
 	});
@@ -43,6 +51,8 @@ function gapiUnwrapError(error) {
 	return (!!error && !!error.error) ? error.error : error;
 }
 BackendGTasks.prototype.init = function() {
+	//Please use this.gapi everywhere instead of global gapi. This helps with mock testing.
+	this.gapi = gapi;
 	return insertGoogleAPIs()
 		//Load the auth2 library and API client library.
 		.then(result => gapiLoad())
@@ -106,7 +116,7 @@ BackendGTasks.prototype.clientLogin = function(params) {
 		if (!params || !params.clientId || !params.apiKey)
 			return Promise.reject("Google ClientID or API Key not set");
 		
-		return gapi.client.init({
+		return this.gapi.client.init({
 			discoveryDocs: DISCOVERY_DOCS,
 			clientId: params.clientId,
 			apiKey: params.apiKey,
@@ -121,12 +131,12 @@ BackendGTasks.prototype.signin = function(params) {
 		this._initialized = true;
 		if (!isChromeExtension())
 			//Listen for sign-in state changes.
-			gapi.auth2.getAuthInstance().isSignedIn.listen(this.notifySignInStatus);
+			this.gapi.auth2.getAuthInstance().isSignedIn.listen(this.notifySignInStatus);
 		//Handle the initial GAPI sign-in state -- GAPI remembers after we signed in once
 		let isSignedIn = this.isSignedIn();
 		this.notifySignInStatus(isSignedIn);
 		if (!isSignedIn && !isChromeExtension()) //Chrome has no explicit sign-in
-			return gapi.auth2.getAuthInstance().signIn();
+			return this.gapi.auth2.getAuthInstance().signIn();
 	})
 	.catch(error => { throw gapiUnwrapError(error); })
 	//Return the params passed
@@ -137,7 +147,7 @@ BackendGTasks.prototype.signout = function() {
 	if (isChromeExtension())
 		this.chromeSignOut();
 	else
-		return gapi.auth2.getAuthInstance().signOut();
+		return this.gapi.auth2.getAuthInstance().signOut();
 }
 BackendGTasks.prototype.notifySignInStatus = function(status) {
 	//Try to retrieve the chrome user info for account naming. Do it here, before people are notified of signin.
@@ -155,7 +165,7 @@ BackendGTasks.prototype.notifySignInStatus = function(status) {
 BackendGTasks.prototype.isSignedIn = function() {
 	if (isChromeExtension())
 		return this.chromeIsSignedIn();
-	return (this._initialized) ? (gapi.auth2.getAuthInstance().isSignedIn.get()) : false;
+	return (this._initialized) ? (this.gapi.auth2.getAuthInstance().isSignedIn.get()) : false;
 }
 //Retrieves email/userId of the currently signed in user, to use in UI. Called after every sign in.
 BackendGTasks.prototype.getUserEmail = function() {
@@ -165,7 +175,7 @@ BackendGTasks.prototype.getUserEmail = function() {
 		return this.chromeGetUserEmail();
 	//Standalone GTasks:
 	//  https://developers.google.com/identity/sign-in/web/people
-	let auth2 = gapi.auth2.getAuthInstance();
+	let auth2 = this.gapi.auth2.getAuthInstance();
 	let profile = auth2.currentUser.get().getBasicProfile();
 	if (profile)
 		return Promise.resolve(profile.getEmail());
@@ -192,10 +202,10 @@ function chromeGetAuthToken() {
 BackendGTasks.prototype.chromeClientLogin = function() {
 	return chromeGetAuthToken().then(token => {
 		this.chromeAuthToken = token;
-		gapi.client.setToken({access_token: token});
+		this.gapi.client.setToken({access_token: token});
 		//API key is stored in the manifest on chrome
 		let tasks_api_key = chrome.runtime.getManifest().tasks_api_key;
-		return gapi.client.init({
+		return this.gapi.client.init({
 			apiKey: tasks_api_key,
 			discoveryDocs: DISCOVERY_DOCS,
 		}); //but no scope or clientId
@@ -273,7 +283,9 @@ Task lists
 */
 //Returns an array of TaskList objects (promise)
 BackendGTasks.prototype.tasklistList = function() {
-	return this._listPaged(gapi.client.tasks.tasklists.list, {
+	return this._listPaged(
+		this.gapi.client.tasks.tasklists.list.bind(this.gapi.client.tasks.tasklists),
+	{
 		'maxResults': 100
 	});
 }
@@ -282,30 +294,38 @@ BackendGTasks.prototype.tasklistAdd = function(title) {
 		'title': title,
 	};
 	//"request body" is passed as "resource" param
-	return gapi.client.tasks.tasklists.insert({
+	return this.gapi.client.tasks.tasklists.insert({
 		'resource': tasklist,
 	}).then(response => {
+		this.responseCheck(response);
 		return response.result;
 	});
 }
 BackendGTasks.prototype.tasklistGet = function(tasklistId) {
-	return gapi.client.tasks.tasklists.get({
+	return this.gapi.client.tasks.tasklists.get({
 		'tasklist': tasklistId,
 	}).then(response => {
+		this.responseCheck(response);
 		return response.result;
 	});
 }
 BackendGTasks.prototype.tasklistUpdate = function(tasklist) {
 	//"request body" is passed as "resource" param
-	return gapi.client.tasks.tasklists.update({
+	return this.gapi.client.tasks.tasklists.update({
 		'tasklist': tasklist.id,
 		'resource': tasklist
+	}).then(response => {
+		this.responseCheck(response);
+		return response.result;
 	});
 }
 //Warning! Deletes the task list with the given id
 BackendGTasks.prototype.tasklistDelete = function(tasklistId) {
-	return gapi.client.tasks.tasklists.delete({
+	return this.gapi.client.tasks.tasklists.delete({
 		'tasklist': tasklistId,
+	}).then(response => {
+		this.responseCheck(response);
+		return response.result;
 	});
 }
 
@@ -314,7 +334,9 @@ BackendGTasks.prototype.tasklistDelete = function(tasklistId) {
 Tasks
 */
 BackendGTasks.prototype.list = function(tasklistId) {
-	return this._listPaged(gapi.client.tasks.tasks.list, {
+	return this._listPaged(
+		this.gapi.client.tasks.tasks.list.bind(this.gapi.client.tasks.tasks),
+	{
 		'tasklist': tasklistId,
 		'maxResults': 100,
 		'showCompleted': true,
@@ -326,18 +348,21 @@ BackendGTasks.prototype.list = function(tasklistId) {
 //Returns a promise for the given task content
 BackendGTasks.prototype.getOne = function (taskId, tasklistId) {
 	if (!tasklistId) tasklistId = this.selectedTaskList;
-	return gapi.client.tasks.tasks.get({
+	return this.gapi.client.tasks.tasks.get({
 		'tasklist': tasklistId,
 		'task': taskId,
-	}).then(response => response.result);
+	}).then(response => {
+		this.responseCheck(response);
+		return response.result
+	});
 }
 
 //Retrieves multiple tasks in a single request.
 //Returns a promise for a taskId -> task map.
 BackendGTasks.prototype.getMultiple = function(taskIds, tasklistId) {
 	if (!tasklistId) tasklistId = this.selectedTaskList;
-	var batch = gapi.client.newBatch();
-	taskIds.forEach(taskId => batch.add(gapi.client.tasks.tasks.get({
+	var batch = this.gapi.client.newBatch();
+	taskIds.forEach(taskId => batch.add(this.gapi.client.tasks.tasks.get({
 		'tasklist': tasklistId,
 		'task': taskId,
 	})));
@@ -384,12 +409,14 @@ BackendGTasks.prototype.resourceToTask = function(res) {
 
 //Returns a task-update request
 //https://developers.google.com/tasks/v1/reference/tasks/update
-BackendGTasks.prototype.update = function (task) {
-	return gapi.client.tasks.tasks.update({
-		'tasklist': this.selectedTaskList,
+BackendGTasks.prototype.update = function (task, tasklistId) {
+	if (!tasklistId) tasklistId = this.selectedTaskList;
+	return this.gapi.client.tasks.tasks.update({
+		'tasklist': tasklistId,
 		'task': task.id,
 		'resource': this.taskToResource(task)
 	}).then(response => {
+		this.responseCheck(response);
 		this.cache.update(task); //update cached version
 		return response.result;
 	});
@@ -399,12 +426,14 @@ BackendGTasks.prototype.update = function (task) {
 BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
 	//console.log("backend.insert: tasklist="+tasklistId+", parent="+task.parent+", prev="+previousId);
 	//console.log(task);
-	return gapi.client.tasks.tasks.insert({
+	if (!tasklistId) tasklistId = this.selectedTaskList;
+	return this.gapi.client.tasks.tasks.insert({
 		'tasklist': tasklistId,
 		'parent': task.parent,
 		'previous': previousId,
 		'resource': this.taskToResource(task)
 	}).then(response => {
+		this.responseCheck(response);
 		if (tasklistId == this.selectedTaskList)
 			this.cache.add(response.result); //Add task resource to cache
 		return response.result;
@@ -414,10 +443,10 @@ BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
 BackendGTasks.prototype.insertMultiple = function (tasks, tasklistId) {
 	if (tasks.length <= 0) return Promise.resolve({});
 	if (tasks.length == 1) return this.insert(tasks[0], tasks[0].previousId, tasklistId);
-	var batch = gapi.client.newBatch();
+	var batch = this.gapi.client.newBatch();
 	for (let _id in tasks) {
 		batch.add(
-			gapi.client.tasks.tasks.insert({
+			this.gapi.client.tasks.tasks.insert({
 				'tasklist': tasklistId,
 				'parent': tasks[_id].parent,
 				'previous': tasks[_id].previousId,
@@ -442,14 +471,15 @@ BackendGTasks.prototype.insertMultiple = function (tasks, tasklistId) {
 //Deletes multiple tasks at once, without traversing their children.
 BackendGTasks.prototype.delete = function (taskIds, tasklistId) {
 	taskIds = toTaskIds(taskIds);
-	var batch = gapi.client.newBatch();
+	var batch = this.gapi.client.newBatch();
 	taskIds.forEach(id => {
-		batch.add(gapi.client.tasks.tasks.delete({
+		batch.add(this.gapi.client.tasks.tasks.delete({
 			'tasklist': tasklistId,
 			'task': id,
 		}));
 	});
 	return batch.then(response => {
+		this.batchResponseCheck(response);
 		//console.log("backend.delete() success");
 		return response;
 	});
@@ -473,7 +503,7 @@ BackendGTasks.prototype.move = function (taskIds, newParentId, newPrevId) {
 		};
 		if (newParentId) req.parent = newParentId;
 		if (newPrevId) req.previous = newPrevId;
-		jobs.push(gapi.client.tasks.tasks.move(req));
+		jobs.push(this.gapi.client.tasks.tasks.move(req));
 	})
 
 	//If only one job is requested, avoid batching
@@ -485,7 +515,7 @@ BackendGTasks.prototype.move = function (taskIds, newParentId, newPrevId) {
 			return { result: results };
 		});
 	else {
-		batch = gapi.client.newBatch();
+		batch = this.gapi.client.newBatch();
 		for (let i=0; i<jobs.length; i++)
 			batch.add(jobs[i]);
 	}
