@@ -2,3 +2,5 @@ config.js
 src/config.js
 package-lock.json
 node_modules
+build
+extra
