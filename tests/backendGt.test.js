@@ -67,10 +67,13 @@ gapi.client.newBatch
 This implementation is somewhat flawed because gtasks.batch() is a full blown promise and this is not.
 */
 function MockGAPIBatch() {
-	this.batch = [];
+	this.batch = {};
 }
-MockGAPIBatch.prototype.add = function(prom) {
-	this.batch.push(prom);
+MockGAPIBatch.prototype.add = function(prom, params) {
+	if (params && params.id)
+		this.batch[params.id] = prom;
+	else
+		this.batch[Object.keys(this.batch).length] = prom;
 }
 MockGAPIBatch.prototype.then = function(fn) {
 	//Promise.all is suboptimal because it fails at first error
@@ -78,16 +81,16 @@ MockGAPIBatch.prototype.then = function(fn) {
 	//Implement as a simple chain
 	
 	let response = {
-		result: [] //in gapi its id->result, but arrays are dicts too, just by index
+		result: {}
 	};
 	let prom = Promise.resolve()
-	for (let i=0; i<this.batch.length; i++) {
-		prom = prom.then(() => this.batch[i])
+	for (let key in this.batch) {
+		prom = prom.then(() => this.batch[key])
 		.then(result => {
-			response.result.push(result);
+			response.result[key] = result;
 		})
 		.catch(error => {
-			response.result.push(error); //Not sure what to do here
+			response.result[key] = error; //Not sure what to do here
 		})
 	}
 	
@@ -100,6 +103,7 @@ function MockGAPIClient(gapi) {
 MockGAPIClient.prototype.init = async function() {
 	//Use a session storage backend for mock gapi
 	this.gapi.backend = new BackendSessionStorage();
+	this.gapi.backend.STORAGE_PREFIX = 'test_backend_'+utils.newGuid().slice(0,8)+'_';
 	await this.gapi.backend.init();
 	await this.gapi.backend.reset();
 }
@@ -184,11 +188,13 @@ MockGAPITasks.prototype.verifyResource = function(resource) {
 	expect(backendGtJs.BackendGTasks.prototype.TASK_FIELDS).toEqual(expect.arrayContaining(Object.keys(resource)));
 }
 MockGAPITasks.prototype.list = function(params) {
-	expect(['tasklist','maxResults','pageToken','showCompleted','showHidden','fields'])
+	console.log('MockGAPITasks.lists', params);
+	expect(['tasklist','maxResults','pageToken','fields','showCompleted','showDeleted','showHidden',])
 		.toEqual(expect.arrayContaining(Object.keys(params)));
 	expect(params.tasklist).toBeDefined();
 	return gapiWrap(this.gapi.backend.list(params.tasklist), "tasks#tasks")
 	.then(response => {
+		console.log('MockGAPITasks.response', response);
 		if (response.result) {
 			//Add kind/etag to every task entry
 			for (let i in response.result.items)

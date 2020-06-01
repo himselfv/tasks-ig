@@ -260,7 +260,8 @@ BackendGTasks.prototype.batchResponseCheck = function (response) {
 //Concatenates the `results.items` and returns that. Compatible with `tasklists.list` and `tasks.list`.
 BackendGTasks.prototype._listPaged = function(query, params) {
 	var items = [];
-	var nextPage = function(response) {
+	var nextPage = (response) => { //lambda, to bind "this"
+		this.responseCheck(response);
 		//console.log("got"+JSON.stringify(response));
 		if (!response.result.items) //GTasks may omit items on no results
 			return items;
@@ -333,51 +334,6 @@ BackendGTasks.prototype.tasklistDelete = function(tasklistId) {
 /*
 Tasks
 */
-BackendGTasks.prototype.list = function(tasklistId) {
-	return this._listPaged(
-		this.gapi.client.tasks.tasks.list.bind(this.gapi.client.tasks.tasks),
-	{
-		'tasklist': tasklistId,
-		'maxResults': 100,
-		'showCompleted': true,
-		'showHidden': false,
-		'fields': 'items(id,title,parent,position,notes,status,due,completed),nextPageToken',
-	});
-}
-
-//Returns a promise for the given task content
-BackendGTasks.prototype.getOne = function (taskId, tasklistId) {
-	if (!tasklistId) tasklistId = this.selectedTaskList;
-	return this.gapi.client.tasks.tasks.get({
-		'tasklist': tasklistId,
-		'task': taskId,
-	}).then(response => {
-		this.responseCheck(response);
-		return response.result
-	});
-}
-
-//Retrieves multiple tasks in a single request.
-//Returns a promise for a taskId -> task map.
-BackendGTasks.prototype.getMultiple = function(taskIds, tasklistId) {
-	if (!tasklistId) tasklistId = this.selectedTaskList;
-	var batch = this.gapi.client.newBatch();
-	taskIds.forEach(taskId => batch.add(this.gapi.client.tasks.tasks.get({
-		'tasklist': tasklistId,
-		'task': taskId,
-	})));
-	return batch.then(response => {
-		//Unpack the response
-	    let results = {};
-		Object.keys(response.result).forEach(respId => {
-			let thisResponse = response.result[respId];
-			this.responseCheck(thisResponse);
-			results[thisResponse.result.id] = thisResponse.result
-		});
-		return results;
-	});
-}
-
 //Task()s are similar to GTasks Task resources, but may contain additional fields --
 //this has to be cleaned up before sending
 //https://developers.google.com/tasks/v1/reference/tasks#resource
@@ -407,6 +363,51 @@ BackendGTasks.prototype.resourceToTask = function(res) {
 	return task;
 }
 
+BackendGTasks.prototype.list = function(tasklistId) {
+	return this._listPaged(
+		this.gapi.client.tasks.tasks.list.bind(this.gapi.client.tasks.tasks),
+	{
+		'tasklist': tasklistId,
+		'maxResults': 100,
+		'showCompleted': true,
+		'showHidden': false,
+		'fields': 'items(id,title,parent,position,notes,status,due,completed),nextPageToken',
+	});
+}
+
+//Returns a promise for the given task content
+BackendGTasks.prototype.getOne = function (taskId, tasklistId) {
+	if (!tasklistId) tasklistId = this.selectedTaskList;
+	return this.gapi.client.tasks.tasks.get({
+		'tasklist': tasklistId,
+		'task': taskId,
+	}).then(response => {
+		this.responseCheck(response);
+		return this.resourceToTask(response.result);
+	});
+}
+
+//Retrieves multiple tasks in a single request.
+//Returns a promise for a taskId -> task map.
+BackendGTasks.prototype.getMultiple = function(taskIds, tasklistId) {
+	if (!tasklistId) tasklistId = this.selectedTaskList;
+	var batch = this.gapi.client.newBatch();
+	taskIds.forEach(taskId => batch.add(this.gapi.client.tasks.tasks.get({
+		'tasklist': tasklistId,
+		'task': taskId,
+	})));
+	return batch.then(response => {
+		//Unpack the response
+	    let results = {};
+		Object.keys(response.result).forEach(respId => {
+			let thisResponse = response.result[respId];
+			this.responseCheck(thisResponse);
+			results[thisResponse.result.id] = this.resourceToTask(thisResponse.result);
+		});
+		return results;
+	});
+}
+
 //Returns a task-update request
 //https://developers.google.com/tasks/v1/reference/tasks/update
 BackendGTasks.prototype.update = function (task, tasklistId) {
@@ -418,7 +419,7 @@ BackendGTasks.prototype.update = function (task, tasklistId) {
 	}).then(response => {
 		this.responseCheck(response);
 		this.cache.update(task); //update cached version
-		return response.result;
+		return this.resourceToTask(response.result);
 	});
 }
 
@@ -436,7 +437,7 @@ BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
 		this.responseCheck(response);
 		if (tasklistId == this.selectedTaskList)
 			this.cache.add(response.result); //Add task resource to cache
-		return response.result;
+		return this.resourceToTask(response.result);
 	});
 }
 //Inserts multiple tasks at once
@@ -456,10 +457,10 @@ BackendGTasks.prototype.insertMultiple = function (tasks, tasklistId) {
 		);
 	}
 	return batch.then(response => {
-		results = {};
+		let results = {};
 		for(let _id in response.result) {
 			this.responseCheck(response.result[_id]);
-			results[_id] = response.result[_id].result;
+			results[_id] = this.resourceToTask(response.result[_id].result);
 			if (tasklistId == this.selectedTaskList)
 				this.cache.add(response.result[_id].result);
 		}

@@ -475,7 +475,7 @@ BackendTester.prototype.test_getMultiple = async function() {
 	let tasks2 = await this.backend.getMultiple([tasks[1], tasks[0]], listId);
 	expect(typeof tasks2).toBe('object');
 	tasks2 = Object.values(tasks2);
-	expect(tasks2).toBe(2);
+	expect(tasks2.length).toBe(2);
 	expect(tasks2[0]).toStrictEqual(tasks[1]);
 	expect(tasks2[1]).toStrictEqual(tasks[0]);
 	

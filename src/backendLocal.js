@@ -231,19 +231,20 @@ BackendLocal.prototype._getList = function(id) {
 	return this._get("list_"+id).then(result => {
 		if (!result)
 			return Promise.reject('Task list not found: '+id)
+		console.log("_getList: id=", id, " -> ", JSON.stringify(result));
 		return result;
 	});
 }
 BackendLocal.prototype._getListIds = function(id) {
 	return this._getList(id).then(items => {
-		//console.log('_getListIds:', items);
+		//console.log('_getListIds:',id,'->',items);
 		let results = [];
 		items.forEach(item => results.push(item.id));
 		return results;
 	});
 }
 BackendLocal.prototype._setList = function(id, list) {
-	//console.log("_setList: id=", id, "list=", JSON.stringify(list));
+	console.log("_setList: id=", id, "list=", JSON.stringify(list));
 	if (!id || !list) throw "_setList: id="+id+", list="+list;
 	return this._set("list_"+id, list);
 }
@@ -351,7 +352,10 @@ Tasks
 */
 BackendLocal.prototype.list = function(tasklistId) {
 	return this._getListIds(tasklistId)
-	.then(ids => this.get(ids, tasklistId)) //this'll call getListIds() again but whatever
+	.then(ids => {
+		console.log('BackendLocal.list->', ids);
+		return this.get(ids, tasklistId);
+	}) //this'll call getListIds() again but whatever
 	.then(items => {
 		items = Object.values(items);
 		for (let i=0; i<items.length; i++)
@@ -419,7 +423,7 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 }
 
 BackendLocal.prototype.delete = function (taskIds, tasklistId) {
-	//console.log('BackendLocal.delete', taskIds, tasklistId);
+	console.log('BackendLocal.delete', taskIds, tasklistId);
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	taskIds = toTaskIds(taskIds);
 	

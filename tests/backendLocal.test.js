@@ -10,7 +10,9 @@ function BackendLocalStorageTester(params) {
 inherit(BackendTester, BackendLocalStorageTester);
 BackendLocalStorageTester.prototype.init = async function() {
 	BackendTester.prototype.init.call(this);
-	//LocalStorage works cleaner with reset() between tests
+	//Each tests gets its own namespace (they can run in parallel)
+	this.backend.STORAGE_PREFIX = 'tasksIg_backend_'+utils.newGuid().slice(0,8)+'_';
+	//reset() just in case
 	await this.backend.reset();
 }
 
