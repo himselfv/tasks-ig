@@ -189,6 +189,84 @@ exports.setLocalStorageItem = setLocalStorageItem;
 
 
 /*
+Callback class
+*/
+function Callback() {
+	this.observers = [];
+}
+Callback.prototype.subscribe = function(f) {
+	this.observers.push(f);
+}
+Callback.prototype.push = function(f) {
+	this.observers.push(f);
+}
+Callback.prototype.unsubscribe = function(f) {
+	this.observers = this.observers.filter(subscriber => subscriber !== f);
+}
+Callback.prototype.notify = function() {
+	this.observers.forEach(observer => observer.apply(this, arguments));
+}
+exports.Callback = Callback;
+
+
+/*
+Job Queue
+Tracks unrelated promises so that you always know whether you have any outstanding ones.
+Allows to serialize them so that they are executed sequentially.
+*/
+function JobQueue() {
+	this.count = 0;
+	this.jobs = [];
+	this.idlePromises = [];
+	this.onChanged = new Callback();
+	this.onError = new Callback();
+}
+exports.JobQueue = JobQueue;
+//Pass any promises to track their execution + catch errors.
+JobQueue.prototype.push = function(prom) {
+	this.count += 1;
+	this.jobs.push(prom);
+	//console.log("job added, count="+this.count);
+	this.onChanged.notify();
+	prom
+	.then(result => {
+		this.count -= 1;
+		let index = this.jobs.indexOf(prom);
+		if (index >= 0)
+			this.jobs.splice(index, 1);
+		//console.log("job completed, count="+this.count);
+		if (this.count <= 0) {
+			this.onChanged.notify();
+			while ((this.idlePromises.length > 0) && (this.count <= 0))
+				this.idlePromises.splice(0, 1)();
+		}
+	})
+	.catch((error) => this.onError.notify(error));
+	return prom;
+}
+//Returns a promise that fires only when NO jobs are remaining in the queue
+//=> all queued actions have completed AND no new actions are pending.
+JobQueue.prototype.waitIdle = function() {
+	if (this.count <= 0)
+		return Promise.resolve();
+	else
+		return new Promise((resolve, reject) => { this.idlePromises.push(resolve); })
+}
+//Returns a promise that fires when all operations queued AT THE MOMENT OF THE REQUEST have completed.
+//New operations may be queued by the time it fires.
+JobQueue.prototype.waitCurrentJobsCompleted = function() {
+	return Promise.all(this.jobs);
+}
+JobQueue.prototype.addIdleJob = function(job) {
+	if (this.count <= 0) {
+		job(); //synchronously
+		return Promise.resolve(); //if anyone expects us to
+	}
+	this.waitIdle().then(() => job());
+}
+
+
+/*
 Saves/reads params in the URL's #anchor part
 Please use URI compatible key names at least.
 */

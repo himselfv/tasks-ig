@@ -74,7 +74,6 @@ test('diffDict', () => {
 
 //Tasks.sort
 //Tasks.dict
-//Callback
 //TaskCache
 //DummyBackend
 //resourcePatch -- especially the behavior with nulls/undefineds. Support undefineds?
@@ -390,7 +389,7 @@ BackendTester.prototype.test_list = async function()  {
 
 BackendTester.prototype.test_delete = async function() {
 	if (!this.backend.delete) return; //Nothing to test
-	//If we don't have insert() we can only run minimal tests on the precreated list
+	//We might not have insert() so only run tests on the precreated list
 	
 	let listId = await this.newDemoTasklist();
 	
@@ -424,13 +423,26 @@ BackendTester.prototype.test_delete = async function() {
 	expect(tasks.length).toBe(1);
 	this.verifyTask1(tasks[0]);
 	
-	//delete(multiple)
-	await expectCatch(() => this.backend.delete([tasks[0]], listId) ).toBeUndefined();
-	tasks = await this.backend.list(listId);
-	expect(tasks.length).toBe(0);
-	
 	//We've exhausted things we can delete, need another test
 	//Not testing deleteWithChildren(), that'll happen after caching
+}
+
+BackendTester.prototype.test_deleteMultiple = async function() {
+	if (!this.backend.delete) return; //Nothing to test
+	
+	//delete() but with multiple items
+	//Test it not only with [array_of_one] but with actual multiple items to verify atomicity of parallel deletions (if implemented)
+	
+	let listId = await this.newDemoTasklist();
+	let tasks = await this.backend.list(listId);
+	expect(tasks.length).toBe(3);
+	tasks.sort((a, b) => { return a.title.localeCompare(b.title); }); //sort to avoid accidentally delete()ing parents with children
+	
+	//delete(multiple)
+	await expectCatch(() => this.backend.delete([tasks[1], tasks[2]], listId) ).toBeUndefined();
+	let tasks2 = await this.backend.list(listId);
+	expect(tasks2.length).toBe(1); //if atomicity is broken this is going to be 2 or list() itself is going to break
+	expect(tasks2[0].title).toStrictEqual(tasks[0].title); //the only one left; but position etc might have changed
 }
 
 //We will separately test getOne/getMultiple even though get() relies on them,

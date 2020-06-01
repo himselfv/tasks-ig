@@ -24,7 +24,7 @@ function gapiWrapError(error) {
 function gapiAddServiceFields(result, kind) {
 	result.kind = kind;
 	result.etag = "1234baka"; //Entries have etags but we don't care
-	result.selfLink = "dudebro"; // --//--
+	result.selfLink = "linkSelf"; // --//--
 }
 /*
 Accepts a promise.
@@ -59,6 +59,21 @@ function MockGAPI() {
 	this.client.tasks = {};
 	this.client.tasks.tasklists = new MockGAPITasklists(this);
 	this.client.tasks.tasks = new MockGAPITasks(this);
+	this.jobs = new JobQueue();
+}
+//Completes the initialization asynchronously. Normally forward from mockGapi.client.init() which is called by backends
+MockGAPI.prototype.init = async function() {
+	//Use a session storage backend for mock gapi
+	this.backend = new BackendSessionStorage();
+	this.backend.STORAGE_PREFIX = 'test_backend_'+utils.newGuid().slice(0,8)+'_';
+	await this.backend.init();
+	await this.backend.reset();
+}
+//Serializes the job via the job queue to avoid concurrency issues (GTasks operations are atomic)
+//and converts the return results to GTasks standard
+//Make sure to pass a function. If you pass a promise then you have already started the operation in parallel
+MockGAPI.prototype.wrap = function(fn, kind) {
+	return gapiWrap(this.jobs.push(this.jobs.waitCurrentJobsCompleted().then(() => fn())), kind);
 }
 
 /*
@@ -101,11 +116,7 @@ function MockGAPIClient(gapi) {
 	this.gapi = gapi;
 }
 MockGAPIClient.prototype.init = async function() {
-	//Use a session storage backend for mock gapi
-	this.gapi.backend = new BackendSessionStorage();
-	this.gapi.backend.STORAGE_PREFIX = 'test_backend_'+utils.newGuid().slice(0,8)+'_';
-	await this.gapi.backend.init();
-	await this.gapi.backend.reset();
+	return this.gapi.init();
 }
 MockGAPIClient.prototype.newBatch = function() {
 	return new MockGAPIBatch();
@@ -126,28 +137,26 @@ MockGAPITasklists.prototype.TasklistResourceFields =
 	["kind", "id", "etag", "title", "updated", "selfLink"];
 MockGAPITasklists.prototype.list = function(params) {
 	expect(['maxResults','pageToken']).toEqual(expect.arrayContaining(Object.keys(params)));
-	return gapiWrap(this.gapi.backend.tasklistList(), "tasks#taskLists")
-	.then(response => {
-		if (response.result) {
-			//Add kind/etag to every tasklist entry
-			for (let i in response.result.items)
-				gapiAddServiceFields(response.result.items[i], "tasks#taskList");
-		}
-		return response;
-	});
+	return this.gapi.wrap(() =>
+		this.gapi.backend.tasklistList()
+		.then(items => { //Add kind/etag to every tasklist entry
+			for (let i in items)
+				gapiAddServiceFields(items[i], "tasks#taskList");
+			return items;
+		}), "tasks#taskLists");
 }
 MockGAPITasklists.prototype.get = function(params) {
 	expect(['tasklist']).toEqual(expect.arrayContaining(Object.keys(params)));
 	expect(params.tasklist).toBeDefined();
 	expect(Array.isArray(params.tasklist)).toBe(false);
-	return gapiWrap(this.gapi.backend.tasklistGet(params.tasklist), "tasks#taskList");
+	return this.gapi.wrap(() => this.gapi.backend.tasklistGet(params.tasklist), "tasks#taskList");
 }
 MockGAPITasklists.prototype.insert = function(params) {
 	expect(['resource']).toEqual(expect.arrayContaining(Object.keys(params)));
 	expect(this.TasklistResourceFields).toEqual(expect.arrayContaining(Object.keys(params.resource)));
 	expect(params.resource).toBeDefined();
 	expect(params.resource.title).toBeDefined();
-	return gapiWrap(this.gapi.backend.tasklistAdd(params.resource.title), "tasks#taskList");
+	return this.gapi.wrap(() => this.gapi.backend.tasklistAdd(params.resource.title), "tasks#taskList");
 }
 MockGAPITasklists.prototype.update = function(params) {
 	expect(['tasklist', 'resource']).toEqual(expect.arrayContaining(Object.keys(params)));
@@ -155,7 +164,7 @@ MockGAPITasklists.prototype.update = function(params) {
 	expect(params.tasklist).toBeDefined();
 	expect(params.resource).toBeDefined();
 	expect(params.resource.id).toBeDefined();
-	return gapiWrap(this.gapi.backend.tasklistUpdate(params.resource, params.tasklist), "tasks#taskList");
+	return this.gapi.wrap(() => this.gapi.backend.tasklistUpdate(params.resource, params.tasklist), "tasks#taskList");
 }
 MockGAPITasklists.prototype.patch = function(params) {
 	expect(['tasklist', 'resource']).toEqual(expect.arrayContaining(Object.keys(params)));
@@ -163,12 +172,12 @@ MockGAPITasklists.prototype.patch = function(params) {
 	expect(params.tasklist).toBeDefined();
 	expect(params.resource).toBeDefined();
 	expect(params.resource.id).toBeDefined();
-	return gapiWrap(this.gapi.backend.tasklistPatch(params.resource, params.tasklist), "tasks#taskList");
+	return this.gapi.wrap(() => this.gapi.backend.tasklistPatch(params.resource, params.tasklist), "tasks#taskList");
 }
 MockGAPITasklists.prototype.delete = function(params) {
 	expect(['tasklist']).toEqual(expect.arrayContaining(Object.keys(params)));
 	expect(params.tasklist).toBeDefined();
-	return gapiWrap(this.gapi.backend.tasklistDelete(params.tasklist));
+	return this.gapi.wrap(() => this.gapi.backend.tasklistDelete(params.tasklist));
 }
 
 
@@ -192,7 +201,7 @@ MockGAPITasks.prototype.list = function(params) {
 	expect(['tasklist','maxResults','pageToken','fields','showCompleted','showDeleted','showHidden',])
 		.toEqual(expect.arrayContaining(Object.keys(params)));
 	expect(params.tasklist).toBeDefined();
-	return gapiWrap(this.gapi.backend.list(params.tasklist), "tasks#tasks")
+	return this.gapi.wrap(() => this.gapi.backend.list(params.tasklist), "tasks#tasks")
 	.then(response => {
 		console.log('MockGAPITasks.response', response);
 		if (response.result) {
@@ -208,14 +217,14 @@ MockGAPITasks.prototype.get = function(params) {
 	expect(params.tasklist).toBeDefined();
 	expect(params.task).toBeDefined();
 	expect(Array.isArray(params.task)).toBe(false);
-	return gapiWrap(this.gapi.backend.get(params.task, params.tasklist), "tasks#task");
+	return this.gapi.wrap(() => this.gapi.backend.get(params.task, params.tasklist), "tasks#task");
 }
 MockGAPITasks.prototype.insert = function(params) {
 	expect(['tasklist','parent','previous','resource']).toEqual(expect.arrayContaining(Object.keys(params)));
 	expect(params.tasklist).toBeDefined();
 	expect(params.resource).toBeDefined();
 	this.verifyResource(params.resource);
-	return gapiWrap(this.gapi.backend.insert(params.resource, params.previous, params.tasklist), "tasks#task");
+	return this.gapi.wrap(() => this.gapi.backend.insert(params.resource, params.previous, params.tasklist), "tasks#task");
 }
 MockGAPITasks.prototype.update = function(params) {
 	expect(['tasklist','task','resource']).toEqual(expect.arrayContaining(Object.keys(params)));
@@ -223,7 +232,7 @@ MockGAPITasks.prototype.update = function(params) {
 	expect(params.task).toBeDefined();
 	expect(params.resource).toBeDefined();
 	this.verifyResource(params.resource);
-	return gapiWrap(this.gapi.backend.update(params.resource, params.tasklist), "tasks#task");
+	return this.gapi.wrap(() => this.gapi.backend.update(params.resource, params.tasklist), "tasks#task");
 }
 MockGAPITasks.prototype.patch = function(params) {
 	expect(['tasklist','task','resource']).toEqual(expect.arrayContaining(Object.keys(params)));
@@ -231,19 +240,19 @@ MockGAPITasks.prototype.patch = function(params) {
 	expect(params.task).toBeDefined();
 	expect(params.resource).toBeDefined();
 	this.verifyResource(params.resource);
-	return gapiWrap(this.gapi.backend.patch(params.resource, params.tasklist), "tasks#task");
+	return this.gapi.wrap(() => this.gapi.backend.patch(params.resource, params.tasklist), "tasks#task");
 }
 MockGAPITasks.prototype.delete = function(params) {
 	expect(['tasklist','task']).toEqual(expect.arrayContaining(Object.keys(params)));
 	expect(params.tasklist).toBeDefined();
 	expect(params.task).toBeDefined();
-	return gapiWrap(this.gapi.backend.delete(params.task, params.tasklist), "");
+	return this.gapi.wrap(() => this.gapi.backend.delete(params.task, params.tasklist), "");
 }
 MockGAPITasks.prototype.move = function(params) {
 	expect(['tasklist','task','parent','previous']).toEqual(expect.arrayContaining(Object.keys(params)));
 	expect(params.tasklist).toBeDefined();
 	expect(params.task).toBeDefined();
-	return gapiWrap(this.gapi.backend.move(params.task, params.parent, params.previous, params.tasklist), "tasks#task");
+	return this.gapi.wrap(() => this.gapi.backend.move(params.task, params.parent, params.previous, params.tasklist), "tasks#task");
 }
 
 

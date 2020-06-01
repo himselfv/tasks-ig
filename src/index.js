@@ -147,58 +147,24 @@ function handleError(reason) {
 }
 
 //Pass any promises to track their execution + catch errors.
-var jobCount = 0;
-var jobs = [];
-var idlePromises = [];
-function pushJob(prom) {
-	jobCount += 1;
-	jobs.push(prom);
-	//console.log("job added, count="+jobCount);
-	document.getElementById('activityIndicator').classList.add('working');
-	prom.then(result => {
-		jobCount -= 1;
-		let index = jobs.indexOf(prom);
-		if (index >= 0)
-			jobs.splice(index, 1);
-		//console.log("job completed, count="+jobCount);
-		if (jobCount <= 0) {
-			document.getElementById('activityIndicator').classList.remove('working');
-			while ((idlePromises.length > 0) && (jobCount <= 0))
-				idlePromises.splice(0, 1)();
-		}
-	});
-	prom.catch(handleError);
-	return prom;
-}
-//Returns a promise that fires only when NO jobs are remaining in the queue
-//=> all queued actions have completed AND no new actions are pending.
-function waitIdle() {
-	if (jobCount <= 0)
-		return Promise.resolve();
+var jobs = new JobQueue();
+jobs.onChanged.subscribe(() => {
+	if (jobs.count > 0)
+		document.getElementById('activityIndicator').classList.add('working');
 	else
-		return new Promise((resolve, reject) => { idlePromises.push(resolve); })
-}
-//Same but recevies a function pointer
-function waitCurrentJobsCompleted() {
-	return Promise.all(jobs);
-}
+		document.getElementById('activityIndicator').classList.remove('working');
+});
+jobs.onError.subscribe(handleError);
+function pushJob(job) { jobs.push(job); } //Backward compatibility
+function addIdleJob(job) { jobs.addIdleJob(job); }
 
-function addIdleJob(job) {
-	if (jobCount <= 0) {
-		job(); //synchronously
-		return Promise.resolve(); //if anyone expects us to
-	}
-	waitIdle().then(() => job());
-}
-//Returns a promise that fires when all operations queued AT THE MOMENT OF THE REQUEST have completed.
-//New operations may be queued by the time it fires.
 function handleBeforeUnload(event) {
 	//Show the confirmation popup if the changes are still pending
 	//These days most browsers ignore the message contents + only show the popup if you have interacted with the page
 	var message = ""; //empty string! not null!
 	if (hadErrors)
 		message = "Some changes to your tasks might have failed.";
-	else if ((jobCount >= 1) || (idlePromises.length > 0))
+	else if ((this.jobs.count >= 1) || (this.jobs.idlePromises.length > 0))
 		message = "Some changes to your tasks are still pending. If you close the page now they may be lost";
 	if (message) { //two ways of requesting confirmation:
 		event.preventDefault();
@@ -2318,7 +2284,7 @@ Editor.prototype.open = function(taskId) {
 	console.log("Opening editor for task "+taskId);
 
 	//Title edits sometimes are not yet commited even though we've sent the request
-	var job = waitCurrentJobsCompleted()
+	var job = jobs.waitCurrentJobsCompleted()
 	//Load the task data into the editor
 	.then(results => backend.get(taskId))
 	.then(task => {

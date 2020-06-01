@@ -1,11 +1,12 @@
-import * as backendJs from 'utils.js'
-for (let key in backendJs)
-	global[key] = backendJs[key];
+import * as utils from 'utils.js';
+utils.importAll(utils);
 
 
 //loadScript/loadScripts
 //newGuid
 //getLocalStorageItem/setLocalStorageItem
+//Callback
+//JobQueue
 
 test('urlReadWrite', () => {
 	//The URLs can't tell numbers so everything returns as strings

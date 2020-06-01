@@ -222,27 +222,6 @@ exports.maybeStrToDate = maybeStrToDate;
 
 
 /*
-Callback class
-*/
-function Callback() {
-	this.observers = [];
-}
-Callback.prototype.subscribe = function(f) {
-	this.observers.push(f);
-}
-Callback.prototype.push = function(f) {
-	this.observers.push(f);
-}
-Callback.prototype.unsubscribe = function(f) {
-	this.observers = this.observers.filter(subscriber => subscriber !== f);
-}
-Callback.prototype.notify = function(param1, param2, param3) {
-	this.observers.forEach(observer => observer(param1, param2, param3));
-}
-exports.Callback = Callback;
-
-
-/*
 Backend base class.
 Implements some functions in the default way in case you don't have more performant overrides
 Most functions:
