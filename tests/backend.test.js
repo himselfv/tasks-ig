@@ -269,6 +269,7 @@ BackendTester.prototype.test_tasklistDelete = async function() {
 	
 	let list1Id = await this.newEmptyTasklist();
 	let list2Id = await this.newDemoTasklist();
+	console.log('list ids:', list1Id, list2Id);
 	
 	let tasklists1 = await this.backend.tasklistList();
 	expect(tasklists1.find(list => list.id == list1Id)).toBeDefined();
@@ -280,6 +281,8 @@ BackendTester.prototype.test_tasklistDelete = async function() {
 	expect(tasklists2.length).toBe(tasklists1.length - 1);
 	expect(tasklists2.find(list => list.id == list1Id)).toBeUndefined();
 	expect(tasklists2.find(list => list.id == list2Id)).toBeDefined();
+	
+	console.log('list ids:', list1Id, list2Id);
 	
 	//Delete list1 again -- should fail
 	await expectCatch(() => this.backend.tasklistDelete(list1Id)).toBeDefined();

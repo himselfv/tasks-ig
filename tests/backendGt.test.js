@@ -73,7 +73,17 @@ MockGAPI.prototype.init = async function() {
 //and converts the return results to GTasks standard
 //Make sure to pass a function. If you pass a promise then you have already started the operation in parallel
 MockGAPI.prototype.wrap = function(fn, kind) {
-	return gapiWrap(this.jobs.push(this.jobs.waitCurrentJobsCompleted().then(() => fn())), kind);
+	//Jobs are independent so every job should wait for the previous ones to complete
+	let job = this.jobs.waitCurrentJobsCompleted()
+		.then(() => fn());
+	
+	//The wrapped job in the queue must not throw, or unrelated jobs down the line will also fail.
+	//We'll return the non-catching tail so that the owners can handle the erorr,
+	//but silence it in the queue
+	this.jobs.push(job.catch(error => {}));
+	
+	//gapiWrap has no side effects so can do it outside of the queue
+	return gapiWrap(job, kind);
 }
 
 /*
