@@ -72,12 +72,59 @@ test('diffDict', () => {
 	expect(diffDict({'a': 'abcd'}, {'a': 'abcd', 'b': 2})).toStrictEqual({'b': {'oldValue': undefined, 'newValue': 2}});
 });
 
-//Tasks.sort
-//Tasks.dict
-//TaskCache
-//DummyBackend
+test('Tasks.sort', () => {
+	let list = Tasks.sort([
+		{id: 1, position: 1000},
+		{id: 2, position: -254},
+		{id: 3, position: 0},
+		{id: 4, position: 1001},
+		{id: 5, position: -0.01},
+	]);
+	expect(list.length).toBe(5);
+	expect(list[0].id).toBe(2);
+	expect(list[1].id).toBe(5);
+	expect(list[2].id).toBe(3);
+	expect(list[3].id).toBe(1);
+	expect(list[4].id).toBe(4);
+	
+	expect(Tasks.sort([])).toStrictEqual([]);
+	//No position no problem, still sort somewhere
+	expect(Tasks.sort([{id: 'abcd'}])).toStrictEqual([{id: 'abcd'}]);
+});
+
+test('Tasks.dict', () => {
+	let list = Tasks.dict([
+		{id: 'a', position: 1000},
+		{id: 'b', position: -254},
+		{id: 'c', position: 0},
+		{id: 'd', position: 1001},
+		{id: 'e', position: -0.01},
+	]);
+	expect(typeof list).toBe('object');
+	expect(Object.keys(list).length).toBe(5);
+	expect(list['a'].position).toBe(1000);
+	expect(list['b'].position).toBe(-254);
+	expect(list['c'].position).toBe(0);
+	expect(list['d'].position).toBe(1001);
+	expect(list['e'].position).toBe(-0.01);
+	
+	expect(Tasks.dict([])).toStrictEqual({});
+});
+
 //resourcePatch -- especially the behavior with nulls/undefineds. Support undefineds?
 
+test('DummyBackend', async () => {
+	let dummy = new DummyBackend('abcd', 'my error text');
+	//The only things we want from DummyBackend are:
+	//1. to return the assigned name/uiName,
+	expect(dummy.constructor).toBeDefined();
+	expect(dummy.constructor.name).toBe('abcd');
+	expect(dummy.uiName()).toBe('abcd');
+	//2. to reject init() with the error passed to it
+	await expectCatch(() => dummy.init()).toStrictEqual(new CatchResult('my error text'));
+	//3. to successfully signout()
+	await expectCatch(() => dummy.signout()).toBeUndefined();
+});
 
 /*
 Task comparison
@@ -670,6 +717,7 @@ BackendTester.prototype.test_patch = async function() {
 //move/_moveOne
 //moveToList
 //selectTaskList
+//TaskCache
 //cachedGet
 //getChildren
 //getAllChildren
