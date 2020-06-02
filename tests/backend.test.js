@@ -80,6 +80,73 @@ test('diffDict', () => {
 
 
 /*
+Task comparison
+In most requests, task1.toStrictEqual(task2) should be replaced with comparing only the main properties:
+  expect(task1).toMatchTask(task2);
+
+All Task fields can be grouped into:
+0. 'id'.
+1. Data fields that only change by user request. Normally we known what these should be at any point.
+*/
+var TASK_DATA_FIELDS = ['title', 'notes', 'status', 'completed', 'due'];
+/*
+2. Service fields that change somewhat unpredictably in response to non-direct commands (move, other updates).
+  Usually we ignore these for simplicity but sometimes we CAN expect these to match too.
+*/
+var TASK_SERVICE_FIELDS =  ['parent', 'position', 'tasklist', 'updated', 'deleted', 'hidden'];
+/*
+3. Private fields that are different between backends:
+     'kind', 'etag', 'selfLink', 'links'
+   We don't care about these.
+*/
+var TaskExpect = {};
+//Matches Task.id and data fields
+TaskExpect.toMatchTask = function(received, other) {
+	if (typeof other != 'object') throw Error("Expected argument to be a Task");
+	if (typeof received != 'object')
+		return { pass: false, message: () => 'Expected received to be object', };
+	if (received.id != other.id)
+		return { pass: false, message: () => 'IDs don\'t match: '+String(received.id)+' != '+String(other.id) };
+	return TaskExpect.toMatchTaskData.call(this, received, other);
+}
+//Matches Task data fields, without ID
+TaskExpect.toMatchTaskData = function(received, other) {
+	if (typeof other != 'object') throw Error("Expected argument to be a Task");
+	if (typeof received != 'object')
+		return { pass: false, message: () => 'Expected received to be object', };
+	let message = '';
+	for (let field in TASK_DATA_FIELDS)
+		if (received[field] != other[field])
+			message += 'received.'+field+'='+String(received[field])+' != '+String(other[field])+'=other.'+field+"\n";
+	return { pass: !message, message: () => message || 'All Task data fields match' };
+}
+//Matches Task.id, data and service fields
+TaskExpect.toMatchTaskStrictly = function(received, other) {
+	let result = TaskExpect.toMatchTask.call(this, received, other);
+	if (!result.pass)
+		return result;
+	let message = '';
+	for (let field in TASK_SERVICE_FIELDS)
+		if (received[field] != other[field])
+			message += 'received.'+field+'='+String(received[field])+' != '+String(other[field])+'=other.'+field+"\n";
+	return { pass: !message, message: () => message || 'All Task data and service fields match' };
+}
+//ALL fields listed in patch must be the same in the received task
+TaskExpect.toMatchPatch = function(received, other) {
+	if (typeof other != 'object') throw Error("Expected argument to be a Task patch");
+	if (typeof received != 'object')
+		return { pass: false, message: () => 'Expected received to be object', };
+	let message = '';
+	for (let field in other)
+		if (received[field] != other[field])
+			message += 'received.'+field+'='+String(received[field])+' != '+String(other[field])+'=other.'+field+"\n";
+	return { pass: !message, message: () => message || 'All Task fields match the patch' };
+}
+expect.extend(TaskExpect);
+
+
+
+/*
 One instance of BackendTester will be created for every test_* function.
 Override to personalize BackendTester for your Backend's peculiarities.
 */
@@ -122,25 +189,13 @@ BackendTester.prototype.TEST_TASK3 = {
 	status: 'needsAction',
 };
 BackendTester.prototype.verifyTask1 = function(task1) {
-	expect(task1.title).toStrictEqual(this.TEST_TASK1.title);
-	expect(task1.notes).toStrictEqual(this.TEST_TASK1.notes);
-	expect(task1.status).toStrictEqual(this.TEST_TASK1.status);
-	expect(task1.completed).toStrictEqual(this.TEST_TASK1.completed);
-	expect(task1.due).toStrictEqual(this.TEST_TASK1.due);
+	expect(task1).toMatchTaskData(this.TEST_TASK1);
 }
 BackendTester.prototype.verifyTask2 = function(task2) {
-	expect(task2.title).toStrictEqual(this.TEST_TASK2.title);
-	expect(task2.notes).toStrictEqual(this.TEST_TASK2.notes);
-	expect(task2.status).toStrictEqual(this.TEST_TASK2.status);
-	expect(task2.completed).toBeFalsy();
-	expect(task2.due).toBeFalsy();
+	expect(task2).toMatchTaskData(this.TEST_TASK2);
 }
 BackendTester.prototype.verifyTask3 = function(task3) {
-	expect(task3.title).toStrictEqual(this.TEST_TASK3.title);
-	expect(task3.notes).toStrictEqual(this.TEST_TASK3.notes);
-	expect(task3.status).toStrictEqual(this.TEST_TASK3.status);
-	expect(task3.completed).toBeFalsy();
-	expect(task3.due).toBeFalsy();
+	expect(task3).toMatchTaskData(this.TEST_TASK3);
 }
 
 //Returns a disposable tasklist without tasks
@@ -269,7 +324,6 @@ BackendTester.prototype.test_tasklistDelete = async function() {
 	
 	let list1Id = await this.newEmptyTasklist();
 	let list2Id = await this.newDemoTasklist();
-	console.log('list ids:', list1Id, list2Id);
 	
 	let tasklists1 = await this.backend.tasklistList();
 	expect(tasklists1.find(list => list.id == list1Id)).toBeDefined();
@@ -281,8 +335,6 @@ BackendTester.prototype.test_tasklistDelete = async function() {
 	expect(tasklists2.length).toBe(tasklists1.length - 1);
 	expect(tasklists2.find(list => list.id == list1Id)).toBeUndefined();
 	expect(tasklists2.find(list => list.id == list2Id)).toBeDefined();
-	
-	console.log('list ids:', list1Id, list2Id);
 	
 	//Delete list1 again -- should fail
 	await expectCatch(() => this.backend.tasklistDelete(list1Id)).toBeDefined();
@@ -317,14 +369,14 @@ BackendTester.prototype.test_insert = async function() {
 	//Let's see if get() gets us the same thing
 	//get() is not yet tested so stick to basics
 	let task1_copy = await this.backend.get(task1.id, listId);
-	expect(task1_copy).toMatchObject(task1);
+	expect(task1_copy).toMatchTask(task1);
 	
 	//Let's see if list() gets us both tasks -- again, stick to the basics
 	let list2 = await this.backend.list(listId);
 	expect(list2.length).toBe(2);
 	Tasks.sort(list2);
-	expect(list2[0]).toMatchObject(task2); //parent==null => added to the top
-	expect(list2[1]).toMatchObject(task1);
+	expect(list2[0]).toMatchTask(task2); //parent==null => added to the top
+	expect(list2[1]).toMatchTask(task1);
 	
 	//Pass wrong tasklist/previous ids
 	await expectCatch(() => this.backend.insert(this.TEST_TASK2, null, 'clearly wrong tasklist ID') ).toBeDefined();
@@ -614,8 +666,6 @@ BackendTester.prototype.test_patch = async function() {
 }
 
 //TODO: In most requests, crash and burn on tasklist==undefined, when selected tasklist is also undefined
-//TODO: In most requests, task1.toStrictEqual(task2) should be replaced with comparing only the main properties
-//  as there could be additional ones, including internal ones, that may change without reason
 
 //move/_moveOne
 //moveToList

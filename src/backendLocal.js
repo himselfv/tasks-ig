@@ -339,10 +339,9 @@ BackendLocal.prototype.tasklistUpdate = function(tasklist) {
 }
 //Warning! Deletes the task list with the given id
 BackendLocal.prototype.tasklistDelete = function(tasklistId) {
-	console.log('BackendLocal.tasklistDelete:', tasklistId);
+	//console.debug('BackendLocal.tasklistDelete:', tasklistId);
 	return this._getTasklists()
 	.then(lists => {
-		console.log('BackendLocal.tasklistDelete: present lists:', lists);
 		if (!(tasklistId in lists))
 			return Promise.reject("No such task list: "+String(tasklistId));
 		delete lists[tasklistId];
@@ -360,7 +359,7 @@ Tasks
 BackendLocal.prototype.list = function(tasklistId) {
 	return this._getListIds(tasklistId)
 	.then(ids => {
-		console.debug('BackendLocal.list->', ids);
+		//console.debug('BackendLocal.list->', ids);
 		return this.get(ids, tasklistId);
 	}) //this'll call getListIds() again but whatever
 	.then(items => {
@@ -573,9 +572,7 @@ LocalStorage and browser.storage versions both end up here.
   !newValue => deleted
 */
 BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
-	//console.debug("storageChanged: "+key);
-	//console.debug(oldValue);
-	//console.debug(newValue);
+	console.debug("storageChanged: ", key, ": ", oldValue, "->", newValue);
 	
 	//To avoid duplicates, make sure each notification is only tracked in one way
 

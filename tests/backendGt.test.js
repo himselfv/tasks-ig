@@ -43,7 +43,7 @@ function gapiWrap(prom, kind) {
 			//enhance the result itself
 			gapiAddServiceFields(wrappedResult, kind);
 		} //otherwise it's null or undefined or something
-		//console.log('wrap: ', result, wrappedResult);
+		//console.debug('wrap: ', result, wrappedResult);
 		return {
 			"status": 200,
 			"result": wrappedResult,
@@ -200,13 +200,13 @@ MockGAPITasks.prototype.verifyResource = function(resource) {
 	expect(backendGtJs.BackendGTasks.prototype.TASK_FIELDS).toEqual(expect.arrayContaining(Object.keys(resource)));
 }
 MockGAPITasks.prototype.list = function(params) {
-	console.log('MockGAPITasks.lists', params);
+	//console.debug('MockGAPITasks.lists', params);
 	expect(['tasklist','maxResults','pageToken','fields','showCompleted','showDeleted','showHidden',])
 		.toEqual(expect.arrayContaining(Object.keys(params)));
 	expect(params.tasklist).toBeDefined();
 	return this.gapi.wrap(() => this.gapi.backend.list(params.tasklist), "tasks#tasks")
 	.then(response => {
-		console.log('MockGAPITasks.response', response);
+		//console.debug('MockGAPITasks.response', response);
 		if (response.result) {
 			//Add kind/etag to every task entry
 			for (let i in response.result.items)
