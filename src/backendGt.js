@@ -56,7 +56,7 @@ BackendGTasks.prototype.init = function() {
 		//Load the auth2 library and API client library.
 		.then(result => {
 			this.gapi = gapi; //available now
-			return gapiLoad())
+			return gapiLoad();
 		})
 		.catch(error => { throw gapiUnwrapError(error); });
 }
