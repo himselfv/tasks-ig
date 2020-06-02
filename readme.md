@@ -52,6 +52,14 @@ Chrome: Go to Extensions page and enable "Developer mode". Press "Load unpacked 
 Firefox: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`.
 
 
+### Self-hosting
+Tasks IG can be copied and run from anywhere, including your own server or a local file.
+
+Just double-click `index.html` or [access it on Github](https://himselfv.github.io/tasks-ig/).
+
+You can put your self-hosted instance in a Firefox sidebar instead of a browser-hosted copy. Install the extension in the `webpanel` folder and set the URL in the options.
+
+
 ### CalDAV
 
 CalDAV Tasks are now mostly supported!
@@ -59,11 +67,35 @@ CalDAV Tasks are now mostly supported!
 * Work in all environments, including from [here on GitHub](https://himselfv.github.io/tasks-ig/)
 * Subtasks via RELATED-TO, the most supported way
 * Fixed ordering via X-APPLE-SORT-ORDER, the only at least somewhat supported way
+* Surprisingly fast
 * No calendar creation/deletion -- please use a full-blown CalDAV client for initial setup
 * No task recurrence
 
+#### Setting up your own CalDAV
 
-### Self-hosting for Google Tasks
+If your Tasks IG instance is hosted on a different server than your CalDAV, requests to CalDAV are [cross-origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). You need to configure CORS:
+
+* Return 200 on OPTIONS, even if unauthenticated
+* All requests are made with NO `withCredentials`. We'll try to stick to that as allowing `withCredentials` is a security hole.
+* `Access-Control-Allow-Origin: *`
+* `Access-Control-Allow-Methods: OPTIONS, GET, HEAD, POST, PUT, DELETE, CONNECT, TRACE, PATCH, PROPFIND, COPY, MOVE`
+* `Access-Control-Expose-Headers: WWW-Authenticate, etag`
+* `Access-Control-Allow-Headers: *`
+* You also need to respond dynamically to `Access-Control-Request-Headers` and return `Access-Control-Allow-Headers:` with requested headers specifically; the browsers won't be satisfied with '*' for some headers even in non-`withCredentials` mode.
+* `Access-Control-Max-Age: 600` to enable at least some caching of OPTION requests.
+
+#### How to speed up DAV
+
+1. Disable Service Discovery and provide a direct URL in account settings => -1 request.
+2. If you're using HTTPS, switch your server from Digest to Basic auth => -1 request. Digest auth unavoidably starts with a 403. Warning: For non-encrypted HTTP, Basic auth is unsafe.
+3. Place Tasks on the same server as your CalDAV instance - this removes CORS entirely (up to 2x the number of requests). _Protocol_, _host_ and _port_ all need to match. If you're using HTTPS for CalDAV (as you should), use HTTPS for Tasks too.
+
+
+### Google Tasks
+Google only allows third-party apps to access Tasks either from a Chrome extension, or if your self-host and configure Google API keys. For Chrome extensions see "Extensions".
+
+For self-hosting:
+
 **Plan A:**
 
 1. You need a domain.
@@ -78,13 +110,10 @@ CalDAV Tasks are now mostly supported!
 
 Why all these complications? Google Tasks backend requires having an origin hostname.
 
-**Plan B:** Find someone who hosts it and use their instance (if you trust them).
+**Plan B:**
 
-You can put your self-hosted extension in a Firefox sidebar. Use the extension in the `webpanel` folder and set the URL in the options.
+* Find someone who hosts it and use their instance (if you trust them).
 
-
-### Local file
-Just double-click `index.html` or [access it on Github](https://himselfv.github.io/tasks-ig/).
 
 
 ### License and attribution
