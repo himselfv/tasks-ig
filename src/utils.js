@@ -209,8 +209,21 @@ Callback.prototype.notify = function() {
 exports.Callback = Callback;
 
 
+//allSettled polyfill
+if (typeof Promise.allSettled == 'undefined')
+	Promise.allSettled = function(batch) {
+		let batch2 = [];
+		for (let prom of batch)
+			batch2.push(prom
+			.then(result => ({ status: 'fulfilled', value: result, }))
+			.catch(error => ({ status: 'rejected', reason: error, }))
+			);
+		return Promise.all(batch2);
+	}
+
+
 /*
-Job Queue
+Job queue
 Tracks unrelated promises so that you always know whether you have any outstanding ones.
 Allows to serialize them so that they are executed sequentially.
 */
@@ -229,6 +242,9 @@ JobQueue.prototype.push = function(prom) {
 	//console.log("job added, count="+this.count);
 	this.onChanged.notify();
 	prom
+	//Catch any errors
+	.catch((error) => this.onError.notify(error))
+	//In any case, remove it from the list
 	.then(result => {
 		this.count -= 1;
 		let index = this.jobs.indexOf(prom);
@@ -241,7 +257,7 @@ JobQueue.prototype.push = function(prom) {
 				this.idlePromises.splice(0, 1)();
 		}
 	})
-	.catch((error) => this.onError.notify(error));
+	;
 	return prom;
 }
 //Returns a promise that fires only when NO jobs are remaining in the queue
@@ -252,18 +268,28 @@ JobQueue.prototype.waitIdle = function() {
 	else
 		return new Promise((resolve, reject) => { this.idlePromises.push(resolve); })
 }
-//Returns a promise that fires when all operations queued AT THE MOMENT OF THE REQUEST have completed.
+JobQueue.prototype.addIdleJob = function(job) {
+	this.waitIdle().then(() => job());
+}
+//Returns a promise that fires when all operations queued AT THE MOMENT OF THE REQUEST have completed SUCCESSFULLY.
 //New operations may be queued by the time it fires.
+//Note: If any of the currently queued jobs fails, your promise also fails.
 JobQueue.prototype.waitCurrentJobsCompleted = function() {
 	return Promise.all(this.jobs);
 }
-JobQueue.prototype.addIdleJob = function(job) {
-	if (this.count <= 0) {
-		job(); //synchronously
-		return Promise.resolve(); //if anyone expects us to
-	}
-	this.waitIdle().then(() => job());
+//Same, but all promises queued at the moment of the request are SETTLED (resolved or rejected)
+JobQueue.prototype.waitCurrentJobsSettled = function() {
+	return Promise.allSettled(this.jobs);
 }
+//Queues a function to run only after the current jobs have settled (resolved or rejected)
+//Returns a promise for that function's result
+JobQueue.prototype.queueIndependentJob = function(fn) {
+	let job = this.waitCurrentJobsSettled()
+		.then(() => fn());
+	this.push(job);
+	return job;
+}
+
 
 
 /*

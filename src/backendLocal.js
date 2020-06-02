@@ -339,8 +339,10 @@ BackendLocal.prototype.tasklistUpdate = function(tasklist) {
 }
 //Warning! Deletes the task list with the given id
 BackendLocal.prototype.tasklistDelete = function(tasklistId) {
+	console.log('BackendLocal.tasklistDelete:', tasklistId);
 	return this._getTasklists()
 	.then(lists => {
+		console.log('BackendLocal.tasklistDelete: present lists:', lists);
 		if (!(tasklistId in lists))
 			return Promise.reject("No such task list: "+String(tasklistId));
 		delete lists[tasklistId];
