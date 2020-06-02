@@ -10,6 +10,11 @@ if (typeof require != 'undefined') {
 	utils.importAll('./backend.js')
 }
 
+/*
+Note: All BackendLocal* backends are AGRESSIVELY non-atomic.
+      You WILL trip over this if you call insert()/delete()/update() in parallel.
+*/
+
 function BackendLocal() {
 	Backend.call(this);
 	this.STORAGE_PREFIX = 'tasksIg_backend_';

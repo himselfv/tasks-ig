@@ -224,9 +224,24 @@ exports.maybeStrToDate = maybeStrToDate;
 /*
 Backend base class.
 Implements some functions in the default way in case you don't have more performant overrides
+
 Most functions:
  - return a promise, without error checks
  - accept both taskIds and task objects
+
+All operations are NON-ATOMIC by default. Do not make calls in parallel.
+  batch.add(backend.delete(..));  //<-- at this point the first insert() starts to run
+  batch.add(backend.delete(..));
+
+ONLY when a function accepts an array can you run it on multiple items at once:
+  Promise.all([backend.delete(id1), backend.delete(id2)]);  //FAIL
+  backend.delete([id1, id2], ..); //okay
+The backend chooses to execute this sequentially or in parallel.
+
+Default implementations sometimes forward [array] requests to singular functions in parallel.
+In these cases descendants must:
+ - EITHER  Implement those singular functions atomically,
+ - OR      Reimplement array functions to sequential calls.
 */
 function Backend() {
 	this.onSignInStatus = new Callback();
