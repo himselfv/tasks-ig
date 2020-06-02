@@ -63,6 +63,21 @@ BackendDav.prototype.settingsPage = function() {
 	};
 }
 
+BackendDav.prototype.setup = function(settings) {
+	if (settings && (settings.username || settings.password)
+		&& ((typeof settings.auth != 'string') || (settings.auth != 'digest only'))
+		&& (!String(settings.server).toLowerCase().startsWith('https:')))
+	{
+		if (!confirm("You're using non-HTTPS CalDAV server URL with authentication scheme that allows Basic auth.\n"
+			+"Your login/password might be passed in the open.\n\n"
+			+"For better security, change the URL to HTTPS or enable 'Digest-only' authentication.\n\n"
+			+"Do you want to proceed in insecure way?"))
+			return Promise.reject('Cancelled');
+	}
+	
+	return Backend.prototype.setup.call(this, settings);
+}
+
 BackendDav.prototype.signin = function(settings) {
 	console.debug("BackendDav.signin", settings);
 	
