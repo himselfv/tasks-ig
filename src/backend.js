@@ -12,10 +12,12 @@ See below for minimal structures.
 */
 if (typeof exports == 'undefined')
 	exports = {};
+exports.add = function(fn) { exports[fn.name] = fn; }
 if (typeof require != 'undefined') {
 	let utils = require('./utils.js');
 	utils.importAll(utils);
 }
+
 
 //Lists all registered backend types for the application.
 //Backend normally self-register when they're available.
@@ -26,7 +28,7 @@ function registerBackend(ctor, name) {
 		ctor.uiName = name;
 	backends.push(ctor);
 }
-exports.registerBackend = registerBackend;
+exports.add(registerBackend);
 /*
 A backend must be an object, its constructor correct -- it will be used to recreate it.
   Derived.prototype = Object.create(Base.prototype); //or new Base(), if running Base() breaks nothing
@@ -36,7 +38,7 @@ function inheritBackend(fromWhat, what) {
 	what.prototype = Object.create(fromWhat.prototype);
 	what.prototype.constructor = what;
 }
-exports.inheritBackend = inheritBackend;
+exports.add(inheritBackend);
 
 
 /*
@@ -82,7 +84,7 @@ A: The backend API should require explicit tasklistId everywhere where this migh
 */
 
 function Tasks() {}
-exports.Tasks = Tasks;
+exports.add(Tasks);
 //Sorts an array of tasks according to their positions
 Tasks.sort = function(tasks) {
 	return tasks.sort((a, b) => { return a.position - b.position; });
@@ -152,7 +154,7 @@ function toArray(tasks) {
 		tasks = [tasks];
 	return tasks;
 }
-exports.toArray = toArray;
+exports.add(toArray);
 function toTaskIds(taskIds) {
 	if ((typeof taskIds == 'undefined') || (taskIds==null)) return taskIds;
 	if (!Array.isArray(taskIds))
@@ -161,27 +163,27 @@ function toTaskIds(taskIds) {
 		if (taskIds[i].id) taskIds[i] = taskIds[i].id;
 	return taskIds;
 }
-exports.toTaskIds = toTaskIds;
+exports.add(toTaskIds);
 function toTaskId(taskId) {
 	if (taskId && taskId.id)
 		taskId = taskId.id;
 	return taskId;
 }
-exports.toTaskId = toTaskId
+exports.add(toTaskId);
 //True if a dictionary or an array is empty, or undefined
 function isEmpty(list) {
 	//Arrays: we can check .length, but for !arrays it might be undefined (!<=0).
 	//Checking .keys() works for both.
 	return (!list || !Object.keys(list).length);
 }
-exports.isEmpty = isEmpty;
+exports.add(isEmpty);
 //Same but requires the parameter to be an array
 function isArrayEmpty(list) {
 	if (list && !Array.isArray(list))
 		throw "Array expected, found: "+list;
 	return (!list || (list.length <= 0));
 }
-exports.isArrayEmpty = isArrayEmpty;
+exports.add(isArrayEmpty);
 
 
 /*
@@ -206,7 +208,7 @@ function diffDict(oldDict, newDict, comparer) {
 	});
 	return res;
 }
-exports.diffDict = diffDict;
+exports.add(diffDict);
 
 //Many backends store dates in variations of ISO8601.
 //Parses that if it can, or returns the original value:
@@ -218,7 +220,7 @@ function maybeStrToDate(d) {
 	}
 	return d;
 }
-exports.maybeStrToDate = maybeStrToDate;
+exports.add(maybeStrToDate);
 
 
 /*
@@ -264,7 +266,7 @@ function Backend() {
 	
 	this.cache = new TaskCache();
 }
-exports.Backend = Backend;
+exports.add(Backend);
 
 //Initialize the backend instance, load any neccessary libraries
 Backend.prototype.init = function() {
@@ -954,7 +956,7 @@ Backends: Remember to update changed tasks!
 function TaskCache() {
 	this.items = [];
 }
-exports.TaskCache = TaskCache;
+exports.add(TaskCache);
 TaskCache.prototype.clear = function() {
 	this.items = [];
 }
@@ -1067,7 +1069,6 @@ Backend.prototype.getAllChildren = function (parentId, tasklistId) {
 	return Promise.resolve(list);
 }
 
-
 //Dummy backend is used in place of misbehaving backends.
 //It does nothing and only allows you to sign out/delete it.
 function DummyBackend(name, error) {
@@ -1078,7 +1079,7 @@ function DummyBackend(name, error) {
 	this.__proto__.constructor = {}; // not a function, so that we can overwrite .name
 	this.__proto__.constructor.name = name;
 }
-exports.DummyBacked = DummyBackend;
+exports.add(DummyBackend);
 inheritBackend(Backend, DummyBackend);
 DummyBackend.prototype.init = function() { return Promise.reject(this.error); }
 DummyBackend.prototype.isSignedIn = function() { return false; }
