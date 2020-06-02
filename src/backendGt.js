@@ -52,10 +52,12 @@ function gapiUnwrapError(error) {
 }
 BackendGTasks.prototype.init = function() {
 	//Please use this.gapi everywhere instead of global gapi. This helps with mock testing.
-	this.gapi = gapi;
 	return insertGoogleAPIs()
 		//Load the auth2 library and API client library.
-		.then(result => gapiLoad())
+		.then(result => {
+			this.gapi = gapi; //available now
+			return gapiLoad())
+		})
 		.catch(error => { throw gapiUnwrapError(error); });
 }
 
