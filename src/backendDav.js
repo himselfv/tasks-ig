@@ -55,6 +55,11 @@ BackendDav.prototype.settingsPage = function() {
 			default: 'Auto/Both',
 			hint: 'Leave Auto/Both if unsure',
 		},
+		serviceDiscovery: {
+			type: 'bool', default: false,
+			title: 'Service discovery',
+			hint: 'Try to detect the correct DAV root URI instead of the one you provided. Not always needed but always slower startup.',
+		},
 	};
 }
 
@@ -71,6 +76,21 @@ BackendDav.prototype.signin = function(settings) {
 	this.xhr = new DavDigestTransport(credentials);
 	this.server = settings.server;
 	this.username = settings.username;
+	
+	//Disable forced service discovery in davlambda. The first request is always going to be service discovery.
+	//TODO: Move this as a patch to davlambda
+	if (!settings || !settings.serviceDiscovery) {
+		this.xhr.send = function() {
+			if (this.skipCnt <= 0) {
+				//console.log('XHR forwarding:', this, arguments);
+				return DavDigestTransport.prototype.send.apply(this, arguments);
+			}
+			this.skipCnt -= 1;
+			//console.log('XHR skipping as instructed:', this, arguments);
+			return Promise.reject('Service discovery disabled');
+		}
+		this.xhr.skipCnt = 1;
+	}
 	
 	return dav.createAccount({ server: settings.server, xhr: this.xhr })
 		.catch(error =>
