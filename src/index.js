@@ -155,8 +155,8 @@ jobs.onChanged.subscribe(() => {
 		document.getElementById('activityIndicator').classList.remove('working');
 });
 jobs.onError.subscribe(handleError);
-function pushJob(job) { jobs.push(job); } //Backward compatibility
-function addIdleJob(job) { jobs.addIdleJob(job); }
+function pushJob(job) { return jobs.push(job); } //Backward compatibility
+function addIdleJob(job) { return jobs.addIdleJob(job); }
 
 function handleBeforeUnload(event) {
 	//Show the confirmation popup if the changes are still pending

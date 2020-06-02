@@ -130,11 +130,11 @@ All must implement _get, _set, _remove and optionally "reset()".
 */
 BackendLocalStorage.prototype._get = function(key) {
 	var data = this.storage.getItem(this.STORAGE_PREFIX+key);
-	//console.log("_get: ", key, " -> ", data);
+	//console.debug("_get: ", key, " -> ", data);
 	return Promise.resolve((data) ? JSON.parse(data) : null);
 }
 BackendLocalStorage.prototype._set = function(key, value) {
-	//console.log("_set: ", key, " := ", value);
+	//console.debug("_set: ", key, " := ", value);
 	this.storage.setItem(this.STORAGE_PREFIX+key, JSON.stringify(value));
 	return Promise.resolve();
 }
@@ -155,7 +155,7 @@ BackendLocalStorage.prototype.reset = function() {
 BackendLocalStorage.prototype.localStorageChanged = function(event) {
 	if (event.storageArea != this.storage)
 		return;
-	//console.log(event);
+	//console.debug(event);
 	var key = event.key;
 	if (!key.startsWith(this.STORAGE_PREFIX))
 		return;
@@ -164,10 +164,10 @@ BackendLocalStorage.prototype.localStorageChanged = function(event) {
 }
 
 BackendBrowserStorage.prototype._get = function(key) {
-	//console.log("get("+JSON.stringify(key)+")");
+	//console.debug("get("+JSON.stringify(key)+")");
 	return this.storage.get(key)
 	.then(results => {
-		//console.log("get -> "+JSON.stringify(results));
+		//console.debug("get -> "+JSON.stringify(results));
 		let value = results[key];
 		return value ? JSON.parse(value) : null;
 	});
@@ -175,33 +175,33 @@ BackendBrowserStorage.prototype._get = function(key) {
 BackendBrowserStorage.prototype._set = function(key, value) {
 	var data = {};
 	data[key] = JSON.stringify(value); //complex objects need to be stringified
-	//console.log("set("+JSON.stringify(key)+","+data[key]+")");
+	//console.debug("set("+JSON.stringify(key)+","+data[key]+")");
 	return this.storage.set(data)
 	.then(results => {
-		//console.log("set -> "+JSON.stringify(results));
+		//console.debug("set -> "+JSON.stringify(results));
 		return results;
 	});
 }
 BackendBrowserStorage.prototype._remove = function(key) {
-	//console.log("remove("+JSON.stringify(key)+")");
+	//console.debug("remove("+JSON.stringify(key)+")");
 	return this.storage.remove(key)
 	.then(results => {
-		//console.log("remove -> "+JSON.stringify(results));
+		//console.debug("remove -> "+JSON.stringify(results));
 		return results;
 	});
 }
 BackendBrowserStorage.prototype.reset = function() {
-	//console.log("remove()");
+	//console.debug("remove()");
 	return this.storage.clear()
 	.then(results => {
-		//console.log("reset -> "+JSON.stringify(results));
+		//console.debug("reset -> "+JSON.stringify(results));
 		return results;
 	});
 }
 BackendBrowserStorage.prototype.backendStorageChanged = function(changes, areaName) {
 	if (areaName != this.areaName)
 		return;
-	//console.log(changes);
+	//console.debug(changes);
 	Object.keys(changes).forEach(key => {
 		let change = changes[key];
 		this.storageChanged(key, change.oldValue, change.newValue);
@@ -236,20 +236,20 @@ BackendLocal.prototype._getList = function(id) {
 	return this._get("list_"+id).then(result => {
 		if (!result)
 			return Promise.reject('Task list not found: '+id)
-		console.log("_getList: id=", id, " -> ", JSON.stringify(result));
+		//console.debug("_getList: id=", id, " -> ", JSON.stringify(result));
 		return result;
 	});
 }
 BackendLocal.prototype._getListIds = function(id) {
 	return this._getList(id).then(items => {
-		//console.log('_getListIds:',id,'->',items);
+		//console.debug('_getListIds:',id,'->',items);
 		let results = [];
 		items.forEach(item => results.push(item.id));
 		return results;
 	});
 }
 BackendLocal.prototype._setList = function(id, list) {
-	console.log("_setList: id=", id, "list=", JSON.stringify(list));
+	//console.debug("_setList: id=", id, "list=", JSON.stringify(list));
 	if (!id || !list) throw "_setList: id="+id+", list="+list;
 	return this._set("list_"+id, list);
 }
@@ -265,7 +265,7 @@ BackendLocal.prototype._getItem = function(id) {
 	});
 }
 BackendLocal.prototype._setItem = function(id, item) {
-	//console.log("_setItem: id=", id, "item=", JSON.stringify(item));
+	//console.debug("_setItem: id=", id, "item=", JSON.stringify(item));
 	if (!id || !item) throw "_setItem: id="+id+", item="+item;
 	return this._set("item_"+id, item);
 }
@@ -296,7 +296,7 @@ function _tasklistToParentPrev(list) {
 			prevId: prevId
 		};
 	});
-	//console.log(results);
+	//console.debug(results);
 	return results;
 }
 
@@ -358,14 +358,14 @@ Tasks
 BackendLocal.prototype.list = function(tasklistId) {
 	return this._getListIds(tasklistId)
 	.then(ids => {
-		console.log('BackendLocal.list->', ids);
+		console.debug('BackendLocal.list->', ids);
 		return this.get(ids, tasklistId);
 	}) //this'll call getListIds() again but whatever
 	.then(items => {
 		items = Object.values(items);
 		for (let i=0; i<items.length; i++)
 			items[i].position = i; //don't really need this as get() does this too
-		//console.log("list(): returning "+JSON.stringify(items));
+		//console.debug("list(): returning "+JSON.stringify(items));
 		return items;
 	});
 }
@@ -390,7 +390,7 @@ BackendLocal.prototype.update = function (task, tasklistId) {
 	var prom = this._getListIds(tasklistId)
 	.then(list => {
 		if (!list.includes(task.id)) {
-			//console.log("update(): list="+JSON.stringify(list)+", task="+task.id+", not found.");
+			//console.debug("update(): list="+JSON.stringify(list)+", task="+task.id+", not found.");
 			return Promise.reject("update(): No such task in the current list");
 		}
 		let taskRes = this.taskToResource(task);
@@ -413,9 +413,9 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 		task.id = this._newId();
 		let taskRes = this.taskToResource(task);
 		list.splice(index, 0, new TasklistEntry(task.id, task.parent));
-		//console.log("insert(): "+JSON.stringify(task));
+		//console.debug("insert(): "+JSON.stringify(task));
 		if (tasklistId == this.selectedTaskList) {
-			//console.log("insert(): adding to cache");
+			//console.debug("insert(): adding to cache");
 			this.cache.add(taskRes);
 		}
 		return Promise.all([
@@ -428,7 +428,7 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 }
 
 BackendLocal.prototype.delete = function (taskIds, tasklistId) {
-	console.log('BackendLocal.delete', taskIds, tasklistId);
+	//console.debug('BackendLocal.delete', taskIds, tasklistId);
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	taskIds = toTaskIds(taskIds);
 	
@@ -448,6 +448,7 @@ BackendLocal.prototype.delete = function (taskIds, tasklistId) {
 }
 
 BackendLocal.prototype._moveOne = function (taskId, parentId, previousId) {
+	//console.debug('BackendLocal._moveOne:', arguments);
 	if (taskId && taskId.id) taskId = taskId.id;
 	if (parentId && parentId.id) parentId = parentId.id;
 	if (previousId && previousId.id) previousId = previousId.id;
@@ -496,7 +497,7 @@ BackendLocal.prototype._moveOne = function (taskId, parentId, previousId) {
 //Moves a task with children to a new position in a different task list.
 //May change task id.
 BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newBackend) {
-	console.log('BackendLocal.moveToList:',arguments);
+	console.debug('BackendLocal.moveToList:',arguments);
 	if (newBackend && !(newBackend instanceof BackendLocal))
 		return Backend.prototype.moveToList.call(this, taskId, newTasklistId, newBackend);
 	if (!newBackend) newBackend = this;
@@ -506,7 +507,7 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newBackend)
 	if (taskId && taskId.id) taskId = taskId.id;
 	var oldTasklistId = this.selectedTaskList;
 
-	//console.log("backend.moveToList: taskId	="+taskId+", newTasklist="+newTasklistId);
+	//console.debug("backend.moveToList: taskId	="+taskId+", newTasklist="+newTasklistId);
 
 	//Collect all children
 	var ids = [taskId];
@@ -542,7 +543,7 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newBackend)
 			newList.splice(newIndex, 0, tasklistEntry);
 			//Increase insert index
 			newIndex += 1;
-			//console.log("moveToList(): inserted "+taskId+" at position "+(newIndex-1));
+			//console.debug("moveToList(): inserted "+taskId+" at position "+(newIndex-1));
 			
 			//Remove from the cache
 			this.cache.delete({'id': taskId});
@@ -570,9 +571,9 @@ LocalStorage and browser.storage versions both end up here.
   !newValue => deleted
 */
 BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
-	//console.log("storageChanged: "+key);
-	//console.log(oldValue);
-	//console.log(newValue);
+	//console.debug("storageChanged: "+key);
+	//console.debug(oldValue);
+	//console.debug(newValue);
 	
 	//To avoid duplicates, make sure each notification is only tracked in one way
 

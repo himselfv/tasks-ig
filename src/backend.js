@@ -268,7 +268,7 @@ exports.Backend = Backend;
 
 //Initialize the backend instance, load any neccessary libraries
 Backend.prototype.init = function() {
-	//console.log("Backend.init");
+	//console.debug("Backend.init");
 	//Older API compatibility:
 	if (this.connect)
 		return this.connect();
@@ -306,7 +306,7 @@ Backend.prototype.setup = function(settings) {
 //Sign in to the backend with the configured params
 Backend.prototype.signin = function(params) {
 	//By default requires nothing
-	//console.log("Backend.signin");
+	//console.debug("Backend.signin");
 	this._signedIn = true;
 	this.notifySignInStatus(true);
 	//Return the same cookies unchanged
@@ -314,7 +314,7 @@ Backend.prototype.signin = function(params) {
 }
 //Sign out from the backend
 Backend.prototype.signout = function() {
-	//console.log("Backend.signout");
+	//console.debug("Backend.signout");
 	this._signedIn = false;
 	this.notifySignInStatus(false);
 	return Promise.resolve();
@@ -498,7 +498,7 @@ Tasks are inserted in the order given.
 The _id is only used to identify tasks in the results.
 */
 Backend.prototype.insertMultiple = function (tasks, tasklistId) {
-	//console.log('Backend.insertMultiple:',arguments);
+	//console.debug('Backend.insertMultiple:',arguments);
 	//Default: Call insert() multiple times.
 	let results = {};
 	let batch = [];
@@ -576,6 +576,7 @@ If this function is present then all local move functions are expected to work.
   Undefine		if your list does NOT support moving tasks
 */
 Backend.prototype.move = function(taskIds, newParentId, newPrevId, tasklistId) {
+	//console.debug('Backend.move:', arguments);
 	taskIds = toArray(taskIds);
 	if (newParentId && newParentId.id) newParentId = newParentId.id;
 	if (newPrevId && newPrevId.id) newPrevId = newPrevId.id;
@@ -616,7 +617,7 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId, taskl
 		//Note: This is super-clumsy if getChildren() is implemented non-cached: we query children, drop their data, then query again in move()->patch()
 		var childIds = [];
 		children.forEach(child => childIds.push(child.id));
-		//console.log("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
+		//console.debug("backend.moveChildren: from="+taskId+" to="+newParentId+" after="+newPrevId);
 		return this.move(childIds, newParentId, newPrevId, tasklistId);
 	})
 }
@@ -900,7 +901,6 @@ If you're sure, position with newBackend.move() manually.
 */
 Backend.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
 	console.debug('Backend.moveToList:',arguments);
-	console.log(this);
 	if (!newBackend) newBackend = this;
 	if (!newTasklistId || (newTasklistId == this.selectedTaskList))
 		return Promise.resolve();
@@ -1077,7 +1077,6 @@ function DummyBackend(name, error) {
 	this.__proto__ = Object.create(DummyBackend.prototype);
 	this.__proto__.constructor = {}; // not a function, so that we can overwrite .name
 	this.__proto__.constructor.name = name;
-	console.log(this);
 }
 exports.DummyBacked = DummyBackend;
 inheritBackend(Backend, DummyBackend);
