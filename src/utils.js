@@ -717,4 +717,4 @@ Debug
 if (options && !options.debug)
 	console.debug = () => {}; //Let's be evil; no printing
 else if (!console.debug)
-console.debug = function () => { console.log.apply(this, arguments); }
+console.debug = function () { console.log.apply(this, arguments); }
