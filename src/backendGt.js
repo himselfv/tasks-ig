@@ -249,7 +249,7 @@ Common
 */
 //Checks one part of a batch-response and throws if it's an error
 BackendGTasks.prototype.responseCheck = function (response) {
-	if (response.status != 200)
+	if (!response.status || (response.status < 200) || (response.status > 299))
 		throw response;
 }
 
