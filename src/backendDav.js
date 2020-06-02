@@ -51,9 +51,9 @@ BackendDav.prototype.settingsPage = function() {
 		username: { type: 'text', },
 		password: {	type: 'password', },
 		auth: {
-			type: ['Auto/Both', 'Basic', 'Digest'],
-			default: 'Auto/Both',
-			hint: 'Leave Auto/Both if unsure',
+			type: ['Digest first', 'Basic first', 'Digest only'],
+			default: 'Digest first',
+			hint: 'Leave "Digest first" if unsure',
 		},
 		serviceDiscovery: {
 			type: 'bool', default: false,
@@ -76,6 +76,17 @@ BackendDav.prototype.signin = function(settings) {
 	this.xhr = new DavDigestTransport(credentials);
 	this.server = settings.server;
 	this.username = settings.username;
+	
+	if (settings && (typeof settings.auth == 'string')) {
+		let type = settings.auth.toLowerCase();
+		if ((type=='digest only'))
+			this.xhr.auth.authType = 'digest'; //Digest only
+		else if ((type=='basic first')
+			|| (type=='basic')) //older version
+			this.xhr.auth.authType = 'basic'; //start with Basic
+		else
+			this.xhr.auth.authType = null; //Digest then Basic
+	}
 	
 	//Disable forced service discovery in davlambda. The first request is always going to be service discovery.
 	//TODO: Move this as a patch to davlambda
