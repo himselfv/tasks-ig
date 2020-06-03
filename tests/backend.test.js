@@ -126,6 +126,7 @@ test('DummyBackend', async () => {
 	await expectCatch(() => dummy.signout()).toBeUndefined();
 });
 
+
 /*
 Task comparison
 In most requests, task1.toStrictEqual(task2) should be replaced with comparing only the main properties:
@@ -189,7 +190,99 @@ TaskExpect.toMatchPatch = function(received, other) {
 			message += 'received.'+field+'='+String(received[field])+' != '+String(other[field])+'=other.'+field+"\n";
 	return { pass: !message, message: () => message || 'All Task fields match the patch' };
 }
+TaskExpect.toMatchTaskArray = function(received, other) {
+	if (!Array.isArray(other)) throw Error("Expected argument to be an array, got "+String(other));
+	if (!Array.isArray(received))
+		return { pass: false, message: () => 'Expected received to be an array, got '+String(received) };
+	received = received.sort((a,b) => String(a.id).localeCompare(String(b.id)));
+	other = other.sort((a,b) => String(a.id).localeCompare(String(b.id)));
+	let pass = true;
+	if (received.length != other.length)
+		pass = false;
+	else
+		for (let i in received) {
+			let tmp = TaskExpect.toMatchTask(received[i], other[i]);
+			if (!tmp.pass) {
+				pass = false;
+				break
+			}
+		}
+	if (!pass)
+		return { pass: false, message: () => "Arrays don\'t match:\nreceived="+String(received)+"\nexpected="+String(other) };
+	else
+		return { pass: true, message: () => 'Arrays match' };
+}
 expect.extend(TaskExpect);
+
+
+/*
+TaskCache tests
+*/
+test('TaskCache', () => {
+	let cache = new TaskCache();
+	expect(cache.values()).toStrictEqual([]);
+	
+	let task1 = Object.assign({id: 'id1'}, BackendTester.prototype.TEST_TASK1);
+	let task2 = Object.assign({id: 'id2'}, BackendTester.prototype.TEST_TASK2);
+	let task3 = Object.assign({id: 'id3'}, BackendTester.prototype.TEST_TASK3);
+	
+	//Add
+	cache.add(task1);
+	expect(cache.values()).toMatchTaskArray([task1]);
+	cache.add(task2);
+	expect(cache.values()).toMatchTaskArray([task1,task2]);
+	
+	//Update
+	task1.title = 'New task1 title';
+	cache.update(task1);
+	cache.update(task2);
+	expect(cache.values()).toMatchTaskArray([task1,task2]);
+	
+	//Patch
+	let task2_patch = { id: task2.id, title: 'New task2 title' };
+	cache.patch(task2_patch);
+	task2.title = task2_patch.title;
+	expect(cache.values()).toMatchTaskArray([task1,task2]);
+	
+	//Get
+	expect(cache.get(task1.id)).toMatchTask(task1);
+	expect(cache.get(task2.id)).toMatchTask(task2);
+	
+	//Delete
+	cache.delete(task1.id);
+	expect(cache.get(task1.id)).toBeUndefined();
+	expect(cache.values()).toMatchTaskArray([task2]);
+
+	//Clear
+	cache.clear();
+	expect(cache.values()).toStrictEqual([]);
+	
+	//Multi-add, multi-update, multi-delete
+	cache.add([task2,task3,task1]);
+	expect(cache.values()).toMatchTaskArray([task1,task2,task3]);
+	
+	task2.title = 'Better task2 title';
+	task3.title = 'Better task3 title';
+	cache.update([task2, task3]);
+	expect(cache.values()).toMatchTaskArray([task1,task2,task3]);
+	
+	cache.delete([task1.id, task2.id]);
+	expect(cache.values()).toMatchTaskArray([task3]);
+	
+	cache.clear();
+	expect(cache.values()).toStrictEqual([]);
+	
+	//Tasklist bookkeeping
+	cache.addList([task1, task2], 'list1');
+	cache.addList([task3], 'list2');
+	expect(cache.values()).toMatchTaskArray([task1,task2,task3]); //cache may add bookkeeping fields but those aren't checked
+	
+	expect(cache.getList('list2')).toMatchTaskArray([task3]);
+	expect(cache.getList('list1')).toMatchTaskArray([task1,task2]);
+	
+	cache.deleteList('list1');
+	expect(cache.values()).toMatchTaskArray([task3]);
+});
 
 
 
@@ -216,6 +309,7 @@ BackendTester.prototype.init = async function() {
 	expect(this.backend.isSignedIn()).toBe(true);
 }
 
+//TODO: In most requests, crash and burn on tasklist==undefined, when selected tasklist is also undefined
 
 //Demo tasks used in tests
 BackendTester.prototype.TEST_TASK1 = {
@@ -712,15 +806,103 @@ BackendTester.prototype.test_patch = async function() {
 	await expectCatch(() => this.backend.patch()).toBeDefined();
 }
 
-//TODO: In most requests, crash and burn on tasklist==undefined, when selected tasklist is also undefined
+BackendTester.prototype.test_selectTaskList = async function() {
+	let list1Id = await this.newEmptyTasklist();
+	let list2Id = await this.newDemoTasklist();
+	
+	let tasks1 = await this.backend.list(list1Id);
+	let tasks2 = await this.backend.list(list2Id);
+	expect(tasks2.length).toBeGreaterThan(0);
+	
+	//insert/update/delete may be unavailable so remember to check
+	//Not touching getChildren() and deleteWithChildren()/move() and other currentlist-related functions for now
+	
+	//No list selected => should fail
+	//We will only test functions that positively require task list,
+	//because smart backends may implement others by guessing the list (not required but... not punishable?)
+	await expectCatch(() => this.backend.list()).toBeDefined();
+	if (this.backend.insert)
+		await expectCatch(() => this.backend.insert(this.TEST_TASK1, null)).toBeDefined();
+	if (this.backend.insertMultiple)
+		await expectCatch(() => this.backend.insertMultiple({'id1':this.TEST_TASK1}, null)).toBeDefined();
+	
+	//Explicit list given AND WRONG => should fail. This is a requirement.
+	await expectCatch(() => this.backend.get(tasks2[0], list1Id)).toBeDefined();
+	if (this.backend.getOne)
+		await expectCatch(() => this.backend.getOne(tasks2[0], list1Id)).toBeDefined();
+	if (this.backend.getMultiple)
+		await expectCatch(() => this.backend.getMultiple([tasks2[0]], list1Id)).toBeDefined();
+	if (this.backend.update)
+		await expectCatch(() => this.backend.update(tasks2[0], list1Id)).toBeDefined();
+	if (this.backend.patch)
+		await expectCatch(() => this.backend.patch(tasks2[0], list1Id)).toBeDefined();
+	if (this.backend.delete)
+		await expectCatch(() => this.backend.delete(tasks2[0], list1Id)).toBeDefined();
+	
+	//Try to select non-existing list
+	await expectCatch(() => this.backend.selectTaskList('clearly wrong list id')).toBeDefined();
+	
+	//Select no list. Should return []
+	expect(await this.backend.selectTaskList(null)).toStrictEqual([]);
+	expect(await this.backend.selectTaskList(undefined)).toStrictEqual([]);
+	
+	//Select a list
+	await expectCatch(() => this.backend.selectTaskList(list2Id)).toBeUndefined();
+	//Select it again, this time get the results
+	//Also checks that the second "select" still returns the list and not skips everything entirely
+	expect(await this.backend.selectTaskList(list2Id)).toMatchTaskArray(tasks2);
+	
+	//Default list selected and wrong for a task? Again, dubious, but we won't test and
+	//punish for auto-executing the job on the correct one.
+	
+	//Default list selected and overriden explicitly => explicit should be used (and fail in these examples)
+	await expectCatch(() => this.backend.get(tasks2[0], list1Id)).toBeDefined();
+	if (this.backend.getOne)
+		await expectCatch(() => this.backend.getOne(tasks2[0], list1Id)).toBeDefined();
+	if (this.backend.getMultiple)
+		await expectCatch(() => this.backend.getMultiple([tasks2[0]], list1Id)).toBeDefined();
+	if (this.backend.update)
+		await expectCatch(() => this.backend.update(tasks2[0], list1Id)).toBeDefined();
+	if (this.backend.patch)
+		await expectCatch(() => this.backend.patch(tasks2[0], list1Id)).toBeDefined();
+	if (this.backend.delete)
+		await expectCatch(() => this.backend.delete(tasks2[0], list1Id)).toBeDefined();
+	
+	//Now the active changes part
+	//Default list selected => should be used
+	await expect(this.backend.list()).toMatchTaskArray(tasks2);
+	if (this.backend.insert)
+		await expect(this.backend.insert(this.TEST_TASK1, null)).toMatchTaskData(this.TEST_TASK1);
+	if (this.backend.insertMultiple) {
+		let result = await this.backend.insert(this.TEST_TASK1, null);
+		await expect(typeof result).toBe('object');
+		await expect(result['id1']).toMatchTaskData(this.TEST_TASK1);
+	}
+	await expect(this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
+	if (this.backend.getOne)
+		await expect(this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
+	if (this.backend.getMultiple)
+		await expect(this.backend.getMultiple([tasks2[0].id])).toMatchTaskArray([tasks2[0]]);
+	if (this.backend.update) {
+		tasks2[0].title = 'Abcd123';
+		await expect(this.backend.update(tasks2[0])).toMatchTask(tasks2[0]);
+		await expect(this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
+	}
+	if (this.backend.patch) {
+		tasks2[0].title = 'Abcd456';
+		await expect(this.backend.patch(tasks2[0])).toMatchTask(tasks2[0]);
+		await expect(this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
+	}
+	if (this.backend.delete)
+		await expectCatch(() => this.backend.delete(tasks2[0])).toBeUndefined();
+}
 
-//move/_moveOne
-//moveToList
-//selectTaskList
 //TaskCache
 //cachedGet
 //getChildren
 //getAllChildren
+
+
 
 BackendTester.prototype.test_deleteWithChildren = async function() {
 	if (!this.backend.delete) return; //Nothing to test
@@ -749,3 +931,6 @@ BackendTester.prototype.test_deleteWithChildren = async function() {
 	await expectCatch(() => this.backend.deleteWithChildren([], 'clearly wrong tasklist ID') ).toBeDefined();
 	await expectCatch(() => this.backend.deleteWithChildren('clearly wrong task ID', listId) ).toBeDefined();
 }
+
+//move/_moveOne
+//moveToList

@@ -927,13 +927,13 @@ Some operations only work on selected task list -- see caching below.
 */
 Backend.prototype.selectTaskList = function (tasklistId) {
 	if (this.selectedTaskList == tasklistId)
-		return Promise.resolve();
+		return Promise.resolve(this.cache.getList(tasklistId));
 	this.selectedTaskList = tasklistId;
 	this.cache.clear();
 	if (!this.selectedTaskList)
-		return Promise.resolve();
+		return Promise.resolve([]);
 	//Reload the cache
-	return this.cacheLoadList(this.selecedTaskList);
+	return this.cacheLoadList(this.selectedTaskList);
 }
 
 
@@ -954,15 +954,25 @@ We may switch away from cache to preloading the entire lists by default one day.
 Backends: Remember to update changed tasks!
 */
 function TaskCache() {
-	this.items = [];
+	this.items = {};
 }
 exports.add(TaskCache);
 TaskCache.prototype.clear = function() {
-	this.items = [];
+	this.items = {};
 }
 //Adds a new task resources to the cached task list
 TaskCache.prototype.add = function(tasks) {
 	this.update(tasks);
+}
+//Adds all tasks belonging to a certain tasklist
+TaskCache.prototype.addList = function(tasks, tasklistId) {
+	for (let i = 0; i < tasks.length; i++) {
+		//Skip deleted for now because retrieving clients do not properly check
+		if (tasks[i].deleted)
+			continue;
+		tasks[i].tasklist = tasklistId; //in case it's not set
+		this.add(tasks[i]);
+	}
 }
 TaskCache.prototype.delete = function (taskIds) {
 	if (!Array.isArray(taskIds))
@@ -976,9 +986,20 @@ TaskCache.prototype.deleteList = function (tasklistId) {
 		if (this.items[key].tasklist == tasklistId)
 			delete this.items[key];
 }
+TaskCache.prototype.values = function() {
+	return Object.values(this.items);
+}
 TaskCache.prototype.get = function (taskId) {
 	//console.debug('cache.get:', taskId, this.items);
 	return this.items[taskId];
+}
+//Retrieves all cached tasks belonging to a given tasklist
+TaskCache.prototype.getList = function(tasklistId) {
+	let items = [];
+	for (let id in this.items)
+		if (this.items[id].tasklist == tasklistId)
+			items.push(this.items[id]);
+	return items;
 }
 TaskCache.prototype.update = function (tasks) {
 	//console.debug('cache.update:', arguments);
@@ -996,12 +1017,9 @@ TaskCache.prototype.patch = function (patch) {
 }
 //Preloads all tasks from a tasklist into cache
 Backend.prototype.cacheLoadList = function(tasklistId) {
-	var prom = this.list(this.selectedTaskList);
+	var prom = this.list(tasklistId);
 	prom = prom.then(items => {
-		let tasks = items || [];
-		for (let i = 0; i < tasks.length; i++)
-			if (!tasks[i].deleted)
-				this.cache.add(tasks[i]);
+		this.cache.addList(items || [], tasklistId)
 		return items;
 	});
 	return prom;

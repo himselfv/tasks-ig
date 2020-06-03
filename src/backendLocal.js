@@ -383,6 +383,8 @@ BackendLocal.prototype.getOne = function (taskId, tasklistId) {
 	})
 	.then(ids => {
 		task.position = ids.indexOf(taskId);
+		if (task.position < 0)
+			return Promise.reject('Task not found in the given list');
 		return task;
 	});
 }
