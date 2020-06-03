@@ -2271,9 +2271,10 @@ function Editor() {
 	this.taskId = null;
 	this.listPageBackup = {}; //overwritten properties of listPage
 	
-	editorTaskTitleBox.onchange = () => { this.setDirty(true); }
-	editorTaskDateP.onchange = () => { this.setDirty(true); }
-	editorTaskNotes.onchange = () => { this.setDirty(true); }
+	document.getElementById('editorTaskTitleBox').onchange = () => { this.setDirty(true); }
+	document.getElementById('editorTaskDateP').onchange = () => { this.setDirty(true); }
+	document.getElementById('editorTaskNotes').oninput = () => { this.setDirty(true); }
+	document.getElementById('editorTaskNotes').onpaste = () => { this.setDirty(true); }
 	
 	//Preserve proper "this" by lambdas
 	this.taskListBox.box.onchange = () => { this.taskListChanged(); };
@@ -2283,7 +2284,6 @@ function Editor() {
 	this.cancelBtn.onclick = () => { this.cancel(); };
 	this.deleteBtn.onclick = () => { this.deleteBtnClick(); };
 }
-
 //Show the editor
 Editor.prototype.open = function(taskId) {
 	if (!taskId) return;
@@ -2311,6 +2311,8 @@ Editor.prototype.open = function(taskId) {
 		
 		this.taskListChanged(); //update move notices
 		this.setDirty(false);
+		this.beforeUnloadWrapper = this.beforeUnloadWrapper || (event => this.beforeUnload(event));
+		window.addEventListener("beforeunload", this.beforeUnloadWrapper);
 
 		this.listPageBackup.display = listPage.style.display;
 		listPage.style.display = "none";
@@ -2318,9 +2320,28 @@ Editor.prototype.open = function(taskId) {
 	});
 	pushJob(job);
 }
+//Close the editor
+Editor.prototype.cancel = function() {
+	console.log("Closing the editor");
+	this.page.classList.add("hidden");
+	listPage.style.display = this.listPageBackup.display;
+	this.taskId = null;
+	window.removeEventListener("beforeunload", this.beforeUnloadWrapper);
+}
 Editor.prototype.setDirty = function(value) {
 	this._dirty = value;
 	this.contentChanged();
+}
+//Called if the user tries to close the page
+Editor.prototype.beforeUnload = function(event) {
+	let message = "";
+	if (this._dirty)
+		message = "You have unsaved changes in the Task editor. If you close the page they may be lost";
+	if (message) { //two ways of requesting confirmation:
+		event.preventDefault();
+		event.returnValue = message;
+	}
+	return message;
 }
 //Called when the user selects a new list to move task to
 Editor.prototype.taskListChanged = function() {
@@ -2350,12 +2371,16 @@ Editor.prototype.taskListChanged = function() {
 	this.saveCopyBtn.disabled = !haveSaveCopy;
 	this.saveBtn.disabled = !haveSave;
 	
+	//Save&Continue is only available for edits within the same tasklist
+	//Moves would require us to update the "base tasklist" of the task, lazy to do.
+	this.saveContinueBtn.classList.toggle('hidden', String(newTaskList) != String(oldTaskList));
+	
 	this.saveCopyBtn.classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
 	document.getElementById("editorMoveNotice").classList.toggle('hidden', (String(newTaskList) == String(oldTaskList)) || (!haveSave && !haveSaveCopy));
 	document.getElementById("editorMoveBackendNotice").classList.toggle('hidden', (newTaskList.account == oldTaskList.account) || (!haveSave && !haveSaveCopy));
 	//Indicate that the target list is read-only
 	document.getElementById("editorCannotEditNotice").classList.toggle('hidden', targetWriteable);
-	this.contentChanged();
+	this.setDirty(true); //will automatically adjust saveContinueBtn too
 }
 Editor.prototype.contentChanged = function() {
 	//Any changes => Save&Continue mimics Save state
@@ -2397,9 +2422,11 @@ Editor.prototype.saveClose = function() {
 		this.cancel();
 		return;
 	}
-
 	let job = this.newSaveJob()
-		.then(response => this.cancel());
+	.then(response => {
+		this.setDirty(false);
+		this.cancel();
+	});
 	pushJob(job);
 }
 //Save the data currently in the editor as a copy in another list
@@ -2424,18 +2451,12 @@ Editor.prototype.saveCopyClose = function() {
 		items[task.id] = { task: task };
 		return backend.copyToList(items, newList.tasklist, newList.account, true);
 	});
-	job = job.then(response => this.cancel());
+	job = job.then(response => {
+		this.setDirty(false);
+		this.cancel();
+	});
 	pushJob(job);
 }
-
-//Close the editor
-Editor.prototype.cancel = function() {
-	console.log("Closing the editor");
-	this.page.classList.add("hidden");
-	listPage.style.display = this.listPageBackup.display;
-	this.taskId = null;
-}
-
 Editor.prototype.deleteBtnClick = function() {
 	if (!this.taskId)
 		return;

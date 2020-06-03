@@ -153,3 +153,22 @@ BackendLocalStorageRO.prototype.moveToList = null;
 BackendLocalStorageRO.prototype.tasklistAdd = null;
 BackendLocalStorageRO.prototype.tasklistUpdate = null;
 BackendLocalStorageRO.prototype.tasklistDelete = null;
+
+
+//BackendLocalStorage, read-only but pretends to insert()/update()/delete() etc and fails
+function BackendFailEverything() {
+	BackendLocalStorageRO.call(this);
+}
+newTestBackend(BackendLocalStorageRO, BackendFailEverything, "Fail everything");
+BackendFailEverything.prototype._fail = function() {
+	return Promise.reject('Backend tried but failed');
+}
+BackendFailEverything.prototype.reset = BackendFailEverything.prototype._fail;
+BackendFailEverything.prototype.update = BackendFailEverything.prototype._fail;
+BackendFailEverything.prototype.insert = BackendFailEverything.prototype._fail;
+BackendFailEverything.prototype.delete = BackendFailEverything.prototype._fail;
+BackendFailEverything.prototype._moveOne = BackendFailEverything.prototype._fail;
+BackendFailEverything.prototype.moveToList = BackendFailEverything.prototype._fail;
+BackendFailEverything.prototype.tasklistAdd = BackendFailEverything.prototype._fail;
+BackendFailEverything.prototype.tasklistUpdate = BackendFailEverything.prototype._fail;
+BackendFailEverything.prototype.tasklistDelete = BackendFailEverything.prototype._fail;
