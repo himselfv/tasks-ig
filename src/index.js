@@ -2265,15 +2265,21 @@ function Editor() {
 	this.taskListBox.selectFailedAcconts = false;
 	this.saveBtn = document.getElementById("editorSave");
 	this.saveCopyBtn = document.getElementById("editorSaveCopy");
+	this.saveContinueBtn = document.getElementById("editorSaveContinue");
 	this.cancelBtn = document.getElementById("editorCancel");
 	this.deleteBtn = document.getElementById("editorDelete");
 	this.taskId = null;
 	this.listPageBackup = {}; //overwritten properties of listPage
 	
+	editorTaskTitleBox.onchange = () => { this.setDirty(true); }
+	editorTaskDateP.onchange = () => { this.setDirty(true); }
+	editorTaskNotes.onchange = () => { this.setDirty(true); }
+	
 	//Preserve proper "this" by lambdas
 	this.taskListBox.box.onchange = () => { this.taskListChanged(); };
 	this.saveBtn.onclick = () => { this.saveClose(); };
 	this.saveCopyBtn.onclick = () => { this.saveCopyClose(); }
+	this.saveContinueBtn.onclick = () => { this.saveContinue(); }
 	this.cancelBtn.onclick = () => { this.cancel(); };
 	this.deleteBtn.onclick = () => { this.deleteBtnClick(); };
 }
@@ -2304,12 +2310,17 @@ Editor.prototype.open = function(taskId) {
 		this.taskId = taskId;
 		
 		this.taskListChanged(); //update move notices
+		this.setDirty(false);
 
 		this.listPageBackup.display = listPage.style.display;
 		listPage.style.display = "none";
 		this.page.classList.remove("hidden");
 	});
 	pushJob(job);
+}
+Editor.prototype.setDirty = function(value) {
+	this._dirty = value;
+	this.contentChanged();
 }
 //Called when the user selects a new list to move task to
 Editor.prototype.taskListChanged = function() {
@@ -2335,15 +2346,20 @@ Editor.prototype.taskListChanged = function() {
 		haveSave = targetWriteable && haveDelete; //"Save" if the target has insert and the source has delete
 	}
 	
-	document.getElementById("editorDelete").disabled = !haveDelete;
-	document.getElementById("editorSaveCopy").disabled = !haveSaveCopy;
-	document.getElementById("editorSave").disabled = !haveSave;
+	this.deleteBtn.disabled = !haveDelete;
+	this.saveCopyBtn.disabled = !haveSaveCopy;
+	this.saveBtn.disabled = !haveSave;
 	
-	document.getElementById("editorSaveCopy").classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
+	this.saveCopyBtn.classList.toggle('hidden', String(newTaskList) == String(oldTaskList));
 	document.getElementById("editorMoveNotice").classList.toggle('hidden', (String(newTaskList) == String(oldTaskList)) || (!haveSave && !haveSaveCopy));
 	document.getElementById("editorMoveBackendNotice").classList.toggle('hidden', (newTaskList.account == oldTaskList.account) || (!haveSave && !haveSaveCopy));
 	//Indicate that the target list is read-only
 	document.getElementById("editorCannotEditNotice").classList.toggle('hidden', targetWriteable);
+	this.contentChanged();
+}
+Editor.prototype.contentChanged = function() {
+	//Any changes => Save&Continue mimics Save state
+	this.saveContinueBtn.disabled = (!this._dirty) || this.saveBtn.disabled;
 }
 //Retrieves a patch based on the changes in the editor
 Editor.prototype.getPatch = function() {
@@ -2353,6 +2369,28 @@ Editor.prototype.getPatch = function() {
 	patch.notes = document.getElementById("editorTaskNotes").value;
 	return patch;
 }
+Editor.prototype.newSaveJob = function() {
+	let patch = this.getPatch();
+	let job = null;
+
+	let newList = this.taskListBox.selected();
+	if (String(newList) == String(selectedTaskList()))
+		//Simple version, just edit the task
+		job = taskPatch(patch);
+	else
+		//Complicated version, edit and move
+		job = taskPatchMoveToList(patch, newList);
+	return job;
+}
+Editor.prototype.saveContinue = function() {
+	if (!this.taskId)
+		return;
+	let job = this.newSaveJob();
+	pushJob(job);
+	
+	//Disable the button
+	this.setDirty(false);
+}
 //Save the task data currently in the editor
 Editor.prototype.saveClose = function() {
 	if (!this.taskId) {
@@ -2360,18 +2398,8 @@ Editor.prototype.saveClose = function() {
 		return;
 	}
 
-	var patch = this.getPatch();
-	var job = null;
-
-	var newList = this.taskListBox.selected();
-	if (String(newList) == String(selectedTaskList()))
-		//Simple version, just edit the task
-		job = taskPatch(patch);
-	else
-		//Complicated version, edit and move
-		job = taskPatchMoveToList(patch, newList);
-
-	job = job.then(response => this.cancel());
+	let job = this.newSaveJob()
+		.then(response => this.cancel());
 	pushJob(job);
 }
 //Save the data currently in the editor as a copy in another list

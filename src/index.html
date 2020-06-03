@@ -10,14 +10,12 @@
   <div id="listPage" class="page hidden" style="z-index: 0;">
     <div id="listHeader">
       <select id="listSelectBox"></select>
-      <span id="listHeaderSpacer"></span>
       <div id="mainmenu" class="dropdown"></div>
     </div>
     <div id="listMessages"></div>
     <div id="listContent"></div>
     <div id="listFooter">
       <div id="activityIndicator"></div>
-      <span id="listFooterSpacer"></span>
       <div id="taskmenu" class="dropdown"></div>
     </div>
   </div>
@@ -34,8 +32,9 @@
     <p id="editorMoveNotice">The task will appear in the different list when you switch to it.</p>
     <p id="editorMoveBackendNotice">You're moving to a different account. Enhanced properties such as task history or recurrence may be lost.</p>
     <p id="editorControls">
+      <button type="button" id="editorSaveContinue" title="Save changes but continue editing">Save & continue</button>
       <button type="button" id="editorSaveCopy" title="Save this task as a copy in another list">Save a copy</button>
-      <button type="button" id="editorSave">Save</button>
+      <button type="button" id="editorSave" title="Save changes and close">Save</button>
       <button type="button" id="editorCancel">Cancel</button>
     </p>
   </div>
@@ -46,10 +45,10 @@
       <button type="button" id="accountListAdd">Add</button>
       <button type="button" id="accountListEditSettings">Edit</button>
       <button type="button" id="accountListDelete">Delete</button>
-      <p class="accountListControlsSpacer2"></p>
+      <p class="accountListControlsSpacer"></p>
       <button type="button" id="accountListMoveUp">Move Up</button>
       <button type="button" id="accountListMoveDown">Move Down</button>
-      <p class="accountListControlsSpacer2"></p>
+      <p class="accountListControlsSpacer"></p>
       <button type="button" id="accountListReset" class="hidden">Reset</button>
       <p class="accountListControlsSpacer"></p>
       <button type="button" id="accountListClose">Close</button>

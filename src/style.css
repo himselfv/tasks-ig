@@ -92,9 +92,6 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   flex-grow:10;
   margin-right:4px;
 }
-#listHeaderSpacer {
-  /*flex-grow: 5;*/
-}
 #listContent,
 #listMessages { /* both fill 100% height */
   width: 100%;
@@ -114,8 +111,8 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   align-items: baseline;
   padding: 3px 2px;
 }
-#listFooterSpacer {
-  flex-grow: 5;
+#activityIndicator {
+  margin-right: auto; /* stick to the left */
 }
 
 /*
@@ -435,6 +432,9 @@ Editor
   /*position: absolute;
   bottom: 0;*/
 }
+#editorSaveContinue {
+  margin-right: auto; /* <- to the left */
+}
 #editorSave {
   margin: 0px 5px;
   /*width: 6em;*/
@@ -460,8 +460,8 @@ Account list page
   flex-direction: column;
   height: 100%;
 }
-.accountListControlsSpacer {
-  flex-grow: 1;
+#accountListClose {
+  margin-top: auto; /* v to the bottom */
 }
 #accountListReset {
   color: red;
