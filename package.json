@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "jest",
-    "build": "babel ./src --out-dir ./build --source-maps --copy-files"
+    "build": "babel ./src --out-dir ./build --source-maps --copy-files --ignore src/dav/node_modules"
   },
   "repository": {
     "type": "git",
@@ -28,9 +28,16 @@
   },
   "homepage": "https://github.com/himselfv/tasks-ig#readme",
   "jest": {
-    "testMatch": ["**/tests/**/*.[jt]s?(x)"],
-    "modulePaths": ["<rootDir>/src/", "<rootDir>/tests/"],
-    "setupFilesAfterEnv": ["jest-extended"]
+    "testMatch": [
+      "**/tests/**/*.[jt]s?(x)"
+    ],
+    "modulePaths": [
+      "<rootDir>/src/",
+      "<rootDir>/tests/"
+    ],
+    "setupFilesAfterEnv": [
+      "jest-extended"
+    ]
   },
   "devDependencies": {
     "@babel/cli": "^7.10.1",
@@ -39,6 +46,7 @@
     "@babel/preset-env": "^7.10.2",
     "babel-minify": "^0.5.1",
     "babel-preset-minify": "^0.5.1",
+    "babelify": "^10.0.0",
     "browserify": "^16.5.1",
     "jest": "^26.0.1"
   }
