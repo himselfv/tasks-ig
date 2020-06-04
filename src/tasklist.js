@@ -358,6 +358,7 @@ function taskEntryNeedIds(entries) {
 	});
 	return Promise.all(prom);
 }
+unit.export(taskEntryNeedIds);
 
 
 //True if a given element is a task entry's main node

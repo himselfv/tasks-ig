@@ -451,7 +451,7 @@ Editable.setCaret = function(node, start, end) {
 	//console.log("editableSetCaret(start="+start+", end="+end+")");
 	var range = document.createRange();
     
-	var target = editableGetTextNode(node);
+	var target = Editable.getTextNode(node);
 	
 	//Try to perform the closest selection to what had been asked
 	var content = target.textContent; //geared towards text nodes
@@ -472,7 +472,7 @@ Editable.setCaret = function(node, start, end) {
 	sel.addRange(range);
 }
 Editable.getLength = function(node) {
-	return editableGetText(node).length;
+	return Editable.getText(node).length;
 }
 Editable.getSelection = function(editableNode) {
 	var sel = window.getSelection();
@@ -486,12 +486,12 @@ Editable.getSelection = function(editableNode) {
 //Retrieves the caret position in a given editable element, or null.
 //Assumes the node only has one child of type Text (typical for editable elements)
 Editable.getCaret = function(node) {
-	var range = editableGetSelection(node);
+	var range = Editable.getSelection(node);
 	if (!range)
 		return null;
 	if (range.endContainer.nodeType == Node.TEXT_NODE) {
 		//Simple case: we're in the text
-		//console.log("editableGetCaret => "+range.endOffset);
+		//console.log("Editable.getCaret => "+range.endOffset);
 		return range.endOffset;
 	}
 		

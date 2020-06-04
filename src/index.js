@@ -2355,7 +2355,7 @@ Editor.prototype.taskListChanged = function() {
 	let haveSaveCopy = false;
 	let haveSave = false;
 	let haveDelete = oldTaskList.account && oldTaskList.account.delete;
-	let targetReadOnly = false;
+	let targetWriteable = false;
 	if (String(newTaskList) == String(oldTaskList)) {
 		haveSaveCopy = false; //"Save as copy" is unavailable for the same list to prevent confusion
 		targetWriteable = newTaskList.account && newTaskList.account.update;

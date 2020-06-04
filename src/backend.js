@@ -104,6 +104,7 @@ function taskResClone(oldTask) {
 	delete newTask.selfLink;
 	return newTask;
 }
+unit.export(taskResClone);
 
 //Updates task resource to be completed/non-completed
 //Other status are currently preserved but ignored.
@@ -119,6 +120,7 @@ function taskResSetCompleted(task, completed, completed_when) {
 		task.completed = null;
 	}
 }
+unit.export(taskResSetCompleted);
 //Normalizes some fields which should be changed in accord
 function taskResNormalize(task) {
 	if ((task.status == "completed") && !task.completed)
@@ -126,6 +128,7 @@ function taskResNormalize(task) {
 	if ((task.status != "completed") && task.completed)
 		delete task.completed;
 }
+unit.export(taskResNormalize);
 
 //Updates fields in the resource according to the patch
 //Applicable to task resources and tasklist resources
