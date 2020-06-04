@@ -429,7 +429,6 @@ BackendGTasks.prototype.update = function (task, tasklistId) {
 BackendGTasks.prototype.insert = function (task, previousId, tasklistId) {
 	//console.log("backend.insert: tasklist="+tasklistId+", parent="+task.parent+", prev="+previousId);
 	//console.log(task);
-	if (!tasklistId) tasklistId = this.selectedTaskList;
 	return this.gapi.client.tasks.tasks.insert({
 		'tasklist': tasklistId,
 		'parent': task.parent,

@@ -29,7 +29,8 @@
   "homepage": "https://github.com/himselfv/tasks-ig#readme",
   "jest": {
     "testMatch": ["**/tests/**/*.[jt]s?(x)"],
-    "modulePaths": ["<rootDir>/src/", "<rootDir>/tests/"]
+    "modulePaths": ["<rootDir>/src/", "<rootDir>/tests/"],
+    "setupFilesAfterEnv": ["jest-extended"]
   },
   "devDependencies": {
     "@babel/cli": "^7.10.1",

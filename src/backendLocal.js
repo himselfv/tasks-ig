@@ -432,7 +432,6 @@ BackendLocal.prototype.insert = function (task, previousId, tasklistId) {
 
 BackendLocal.prototype.delete = function (taskIds, tasklistId) {
 	//console.debug('BackendLocal.delete', taskIds, tasklistId);
-	if (!tasklistId) tasklistId = this.selectedTaskList;
 	taskIds = toTaskIds(taskIds);
 	
 	//Delete all

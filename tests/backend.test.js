@@ -6,6 +6,10 @@ import * as jestUtils from 'jest-utils.js';
 importAll(jestUtils);
 import * as settingsTest from 'settings.test.js';
 
+/*
+See for ready-made matchers:
+  https://github.com/jest-community/jest-extended#passmessage
+*/
 
 test('toArray', () => {
 	expect(toArray(undefined)).toBe(undefined);
@@ -123,7 +127,7 @@ test('DummyBackend', async () => {
 	//2. to reject init() with the error passed to it
 	await expectCatch(() => dummy.init()).toStrictEqual(new CatchResult('my error text'));
 	//3. to successfully signout()
-	await expectCatch(() => dummy.signout()).toBeUndefined();
+	await expect(() => dummy.signout()).not.toFail();
 });
 
 
@@ -448,7 +452,7 @@ BackendTester.prototype.test_tasklistUpdate = async function() {
 	//tasklistPatch
 	list1.title = '2abcd2';
 	//Do not accept patches without IDs:
-	await expectCatch(() => this.backend.tasklistPatch({ 'title': list1.title }) ).toBeDefined();
+	await expect(() => this.backend.tasklistPatch({ 'title': list1.title }) ).toFail();
 	result = await this.backend.tasklistPatch({ 'id': list1.id, 'title': list1.title });
 	expect(result).toStrictEqual(list1);
 	
@@ -471,19 +475,19 @@ BackendTester.prototype.test_tasklistDelete = async function() {
 	expect(tasklists1.find(list => list.id == list2Id)).toBeDefined();
 	
 	//Delete list1
-	await expectCatch(() => this.backend.tasklistDelete(list1Id)).toBeUndefined();
+	await expect(() => this.backend.tasklistDelete(list1Id)).not.toFail();
 	let tasklists2 = await this.backend.tasklistList();
 	expect(tasklists2.length).toBe(tasklists1.length - 1);
 	expect(tasklists2.find(list => list.id == list1Id)).toBeUndefined();
 	expect(tasklists2.find(list => list.id == list2Id)).toBeDefined();
 	
 	//Delete list1 again -- should fail
-	await expectCatch(() => this.backend.tasklistDelete(list1Id)).toBeDefined();
+	await expect(() => this.backend.tasklistDelete(list1Id)).toFail();
 	//Cannot retrieve list1 anymore
-	await expectCatch(() => this.backend.tasklistGet(list1Id)).toBeDefined();
+	await expect(() => this.backend.tasklistGet(list1Id)).toFail();
 	
 	//Delete list2
-	await expectCatch(() => this.backend.tasklistDelete(list2Id)).toBeUndefined();
+	await expect(() => this.backend.tasklistDelete(list2Id)).not.toFail();
 	tasklists2 = await this.backend.tasklistList();
 	expect(tasklists2.length).toBe(tasklists1.length - 2);
 	expect(tasklists2.find(list => list.id == list2Id)).toBeUndefined();
@@ -520,13 +524,13 @@ BackendTester.prototype.test_insert = async function() {
 	expect(list2[1]).toMatchTask(task1);
 	
 	//Pass wrong tasklist/previous ids
-	await expectCatch(() => this.backend.insert(this.TEST_TASK2, null, 'clearly wrong tasklist ID') ).toBeDefined();
-	await expectCatch(() => this.backend.insert(this.TEST_TASK2, 'clearly wrong previousId', listId) ).toBeDefined();
+	await expect(() => this.backend.insert(this.TEST_TASK2, null, 'clearly wrong tasklist ID') ).toFail();
+	await expect(() => this.backend.insert(this.TEST_TASK2, 'clearly wrong previousId', listId) ).toFail();
 	//Parent id
 	/* OK, not all backends care about this so disabling for now
 	let task2_proto = Object.assign({}, this.TEST_TASK2);
 	task2_proto.parent = 'clearly wrong parentId';
-	await expectCatch(() => this.backend.insert(task2_proto, null, listId) ).toBeDefined();
+	await expect(() => this.backend.insert(task2_proto, null, listId) ).toFail();
 	*/
 	
 	//Not testing parent/previousId in full here, happens in move()
@@ -560,7 +564,7 @@ BackendTester.prototype.test_insertMultiple = async function() {
 	expect(Object.keys(results).length).toBe(0);
 	
 	//Wrong IDs
-	await expectCatch(() => this.backend.insertMultiple({'myId4':{}}, 'clearly wrong tasklist ID') ).toBeDefined();
+	await expect(() => this.backend.insertMultiple({'myId4':{}}, 'clearly wrong tasklist ID') ).toFail();
 }
 
 //list() -- uses insert()
@@ -590,7 +594,7 @@ BackendTester.prototype.test_delete = async function() {
 	let listId = await this.newDemoTasklist();
 	
 	//delete(nothing) should succeed and change nothing
-	await expectCatch(() => this.backend.delete([], listId) ).toBeUndefined();
+	await expect(() => this.backend.delete([], listId) ).not.toFail();
 	//Null may or may not work, won't test
 	
 	let tasks = await this.backend.list(listId);
@@ -598,7 +602,7 @@ BackendTester.prototype.test_delete = async function() {
 	tasks.sort((a, b) => { return a.title.localeCompare(b.title); });
 	
 	//Delete a single task
-	await expectCatch(() => this.backend.delete(tasks[1].id, listId) ).toBeUndefined();
+	await expect(() => this.backend.delete(tasks[1].id, listId) ).not.toFail();
 	//Check the list again
 	tasks = await this.backend.list(listId);
 	expect(tasks.length).toBe(2);
@@ -610,11 +614,11 @@ BackendTester.prototype.test_delete = async function() {
 	
 	//Wrong IDs
 	//Pass something valid as IDs because [] may return [] without checking tasklistId
-	await expectCatch(() => this.backend.delete([tasks[0]], 'clearly wrong tasklist ID') ).toBeDefined();
-	await expectCatch(() => this.backend.delete(['clearly wrong task ID'], listId) ).toBeDefined();
+	await expect(() => this.backend.delete([tasks[0]], 'clearly wrong tasklist ID') ).toFail();
+	await expect(() => this.backend.delete(['clearly wrong task ID'], listId) ).toFail();
 	
 	//delete(Task object)
-	await expectCatch(() => this.backend.delete(tasks[1], listId) ).toBeUndefined();
+	await expect(() => this.backend.delete(tasks[1], listId) ).not.toFail();
 	tasks = await this.backend.list(listId);
 	expect(tasks.length).toBe(1);
 	this.verifyTask1(tasks[0]);
@@ -635,7 +639,7 @@ BackendTester.prototype.test_deleteMultiple = async function() {
 	tasks.sort((a, b) => { return a.title.localeCompare(b.title); }); //sort to avoid accidentally delete()ing parents with children
 	
 	//delete(multiple)
-	await expectCatch(() => this.backend.delete([tasks[1], tasks[2]], listId) ).toBeUndefined();
+	await expect(() => this.backend.delete([tasks[1], tasks[2]], listId) ).not.toFail();
 	let tasks2 = await this.backend.list(listId);
 	expect(tasks2.length).toBe(1); //if atomicity is broken this is going to be 2 or list() itself is going to break
 	expect(tasks2[0].title).toStrictEqual(tasks[0].title); //the only one left; but position etc might have changed
@@ -659,10 +663,10 @@ BackendTester.prototype.test_getOne = async function() {
 	expect(task2).toStrictEqual(tasks[1]);
 	
 	//Crash and burn on bad input
-	await expectCatch(() => this.backend.getOne(tasks[0].id, 'clearly wrong tasklistId')).toBeDefined();
-	await expectCatch(() => this.backend.getOne('clearly wrong taskId', listId)).toBeDefined();
-	await expectCatch(() => this.backend.getOne([], listId)).toBeDefined();
-	await expectCatch(() => this.backend.getOne()).toBeDefined();
+	await expect(() => this.backend.getOne(tasks[0].id, 'clearly wrong tasklistId')).toFail();
+	await expect(() => this.backend.getOne('clearly wrong taskId', listId)).toFail();
+	await expect(() => this.backend.getOne([], listId)).toFail();
+	await expect(() => this.backend.getOne()).toFail();
 }
 BackendTester.prototype.test_getMultiple = async function() {
 	if (!this.backend.getMultiple) return;
@@ -694,9 +698,9 @@ BackendTester.prototype.test_getMultiple = async function() {
 	expect(tasks3.length).toBe(0);
 	
 	//Crash and burn on bad input
-	await expectCatch(() => this.backend.getMultiple([tasks[0].id], 'clearly wrong tasklistId')).toBeDefined();
-	await expectCatch(() => this.backend.getMultiple(['clearly wrong taskId'], listId)).toBeDefined();
-	await expectCatch(() => this.backend.getMultiple()).toBeDefined();
+	await expect(() => this.backend.getMultiple([tasks[0].id], 'clearly wrong tasklistId')).toBeDefined();
+	await expect(() => this.backend.getMultiple(['clearly wrong taskId'], listId)).toBeDefined();
+	await expect(() => this.backend.getMultiple()).toBeDefined();
 }
 
 BackendTester.prototype.test_get = async function() {
@@ -730,9 +734,9 @@ BackendTester.prototype.test_get = async function() {
 	expect(tasks4.length).toBe(0);
 	
 	//Crash and burn on bad input
-	await expectCatch(() => this.backend.get([tasks[0].id], 'clearly wrong tasklistId')).toBeDefined();
-	await expectCatch(() => this.backend.get(['clearly wrong taskId'], listId)).toBeDefined();
-	await expectCatch(() => this.backend.get()).toBeDefined();
+	await expect(() => this.backend.get([tasks[0].id], 'clearly wrong tasklistId')).toFail();
+	await expect(() => this.backend.get(['clearly wrong taskId'], listId)).toFail();
+	await expect(() => this.backend.get()).toFail();
 }
 
 BackendTester.prototype.test_update = async function() {
@@ -765,10 +769,10 @@ BackendTester.prototype.test_update = async function() {
 	this.verifyTask2(task_copy);
 	
 	//Crash and burn on bad input
-	await expectCatch(() => this.backend.update(tasks[idx], 'clearly wrong tasklistId')).toBeDefined();
-	await expectCatch(() => this.backend.update({id: 'clearly wrong id'}, listId)).toBeDefined();
-	await expectCatch(() => this.backend.update({title: 'Task with no id'}, listId)).toBeDefined();
-	await expectCatch(() => this.backend.update()).toBeDefined();
+	await expect(() => this.backend.update(tasks[idx], 'clearly wrong tasklistId')).toFail();
+	await expect(() => this.backend.update({id: 'clearly wrong id'}, listId)).toFail();
+	await expect(() => this.backend.update({title: 'Task with no id'}, listId)).toFail();
+	await expect(() => this.backend.update()).toFail();
 }
 
 BackendTester.prototype.test_patch = async function() {
@@ -800,10 +804,10 @@ BackendTester.prototype.test_patch = async function() {
 	this.verifyTask2(task_copy);
 	
 	//Crash and burn on bad input
-	await expectCatch(() => this.backend.patch(tasks[idx], 'clearly wrong tasklistId')).toBeDefined();
-	await expectCatch(() => this.backend.patch({id: 'clearly wrong id'}, listId)).toBeDefined();
-	await expectCatch(() => this.backend.patch({title: 'Task with no id'}, listId)).toBeDefined();
-	await expectCatch(() => this.backend.patch()).toBeDefined();
+	await expect(() => this.backend.patch(tasks[idx], 'clearly wrong tasklistId')).toFail();
+	await expect(() => this.backend.patch({id: 'clearly wrong id'}, listId)).toFail();
+	await expect(() => this.backend.patch({title: 'Task with no id'}, listId)).toFail();
+	await expect(() => this.backend.patch()).toFail();
 }
 
 BackendTester.prototype.test_selectTaskList = async function() {
@@ -814,94 +818,104 @@ BackendTester.prototype.test_selectTaskList = async function() {
 	let tasks2 = await this.backend.list(list2Id);
 	expect(tasks2.length).toBeGreaterThan(0);
 	
-	//insert/update/delete may be unavailable so remember to check
-	//Not touching getChildren() and deleteWithChildren()/move() and other currentlist-related functions for now
+	//No list selected nor explicitly given => functions should fail
+	//But won't check. Some backends auto-guess lists from task IDs and while not required that's not punishable?
 	
-	//No list selected => should fail
-	//We will only test functions that positively require task list,
-	//because smart backends may implement others by guessing the list (not required but... not punishable?)
-	await expectCatch(() => this.backend.list()).toBeDefined();
-	if (this.backend.insert)
-		await expectCatch(() => this.backend.insert(this.TEST_TASK1, null)).toBeDefined();
-	if (this.backend.insertMultiple)
-		await expectCatch(() => this.backend.insertMultiple({'id1':this.TEST_TASK1}, null)).toBeDefined();
+	//Select non-existing => fail
+	await expect(() => this.backend.selectTaskList('clearly wrong list id')).toFail();
 	
-	//Explicit list given AND WRONG => should fail. This is a requirement.
-	await expectCatch(() => this.backend.get(tasks2[0], list1Id)).toBeDefined();
-	if (this.backend.getOne)
-		await expectCatch(() => this.backend.getOne(tasks2[0], list1Id)).toBeDefined();
-	if (this.backend.getMultiple)
-		await expectCatch(() => this.backend.getMultiple([tasks2[0]], list1Id)).toBeDefined();
-	if (this.backend.update)
-		await expectCatch(() => this.backend.update(tasks2[0], list1Id)).toBeDefined();
-	if (this.backend.patch)
-		await expectCatch(() => this.backend.patch(tasks2[0], list1Id)).toBeDefined();
-	if (this.backend.delete)
-		await expectCatch(() => this.backend.delete(tasks2[0], list1Id)).toBeDefined();
-	
-	//Try to select non-existing list
-	await expectCatch(() => this.backend.selectTaskList('clearly wrong list id')).toBeDefined();
-	
-	//Select no list. Should return []
+	//Select no list => return []
 	expect(await this.backend.selectTaskList(null)).toStrictEqual([]);
 	expect(await this.backend.selectTaskList(undefined)).toStrictEqual([]);
+	expect(this.backend.selectedTaskList).toBeFalsy();
 	
 	//Select a list
-	await expectCatch(() => this.backend.selectTaskList(list2Id)).toBeUndefined();
+	await expect(() => this.backend.selectTaskList(list2Id)).not.toFail();
+	expect(this.backend.selectedTaskList).toBe(list2Id);
+	
 	//Select it again, this time get the results
 	//Also checks that the second "select" still returns the list and not skips everything entirely
 	expect(await this.backend.selectTaskList(list2Id)).toMatchTaskArray(tasks2);
+	expect(this.backend.selectedTaskList).toBe(list2Id);
 	
-	//Default list selected and wrong for a task? Again, dubious, but we won't test and
-	//punish for auto-executing the job on the correct one.
-	
-	//Default list selected and overriden explicitly => explicit should be used (and fail in these examples)
-	await expectCatch(() => this.backend.get(tasks2[0], list1Id)).toBeDefined();
-	if (this.backend.getOne)
-		await expectCatch(() => this.backend.getOne(tasks2[0], list1Id)).toBeDefined();
-	if (this.backend.getMultiple)
-		await expectCatch(() => this.backend.getMultiple([tasks2[0]], list1Id)).toBeDefined();
-	if (this.backend.update)
-		await expectCatch(() => this.backend.update(tasks2[0], list1Id)).toBeDefined();
-	if (this.backend.patch)
-		await expectCatch(() => this.backend.patch(tasks2[0], list1Id)).toBeDefined();
+	//THESE functions do not auto-substitute the tasklist and MUST fail without explicit one even when one is selected
+	//Test this to avoid feature creep where some backends do substitute and clients start to rely on that
+	await expect(() => this.backend.list()).toFail();
+	await expect(() => this.backend.insert(this.TEST_TASK1, null)).toFail();
+	if (this.backend.insertMultiple)
+		await expect(() => this.backend.insertMultiple({'id1':this.TEST_TASK1}, null)).toFail();
 	if (this.backend.delete)
-		await expectCatch(() => this.backend.delete(tasks2[0], list1Id)).toBeDefined();
+		await expect(() => this.backend.delete(tasks2[0])).toFail();
+	//No checks with explicit task lists, this is checked in their personal tests
 	
-	//Now the active changes part
-	//Default list selected => should be used
-	await expect(this.backend.list()).toMatchTaskArray(tasks2);
-	if (this.backend.insert)
-		await expect(this.backend.insert(this.TEST_TASK1, null)).toMatchTaskData(this.TEST_TASK1);
-	if (this.backend.insertMultiple) {
-		let result = await this.backend.insert(this.TEST_TASK1, null);
-		await expect(typeof result).toBe('object');
-		await expect(result['id1']).toMatchTaskData(this.TEST_TASK1);
-	}
-	await expect(this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
+	//Explicit list given AND WRONG => should fail, even if the selected one would be correct.
+	//This is a requirement.
+	await expect(() => this.backend.get(tasks2[0], list1Id)).toFail();
 	if (this.backend.getOne)
-		await expect(this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
+		await expect(() => this.backend.getOne(tasks2[0], list1Id)).toFail();
 	if (this.backend.getMultiple)
-		await expect(this.backend.getMultiple([tasks2[0].id])).toMatchTaskArray([tasks2[0]]);
+		await expect(() => this.backend.getMultiple([tasks2[0]], list1Id)).toFail();
+	if (this.backend.update)
+		await expect(() => this.backend.update(tasks2[0], list1Id)).toFail();
+	if (this.backend.patch)
+		await expect(() => this.backend.patch(tasks2[0], list1Id)).toFail();
+
+	//No explicit list given, and the selected one is wrong for a task? Again, dubious,
+	//but we don't test nor punish backends that guess the correct list instead.
+
+	//Now the successful changes part. Default list selected => should be used
+	expect(await this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
+	if (this.backend.getOne)
+		expect(await this.backend.getOne(tasks2[0].id)).toMatchTask(tasks2[0]);
+	if (this.backend.getMultiple)
+		expect(await this.backend.getMultiple([tasks2[0].id])).toMatchTaskArray([tasks2[0]]);
 	if (this.backend.update) {
-		tasks2[0].title = 'Abcd123';
-		await expect(this.backend.update(tasks2[0])).toMatchTask(tasks2[0]);
-		await expect(this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
+		expect(await this.backend.update(tasks2[0])).toMatchTask(tasks2[0]);
+		expect(await this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
 	}
 	if (this.backend.patch) {
-		tasks2[0].title = 'Abcd456';
-		await expect(this.backend.patch(tasks2[0])).toMatchTask(tasks2[0]);
-		await expect(this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
+		expect(await this.backend.patch(tasks2[0])).toMatchTask(tasks2[0]);
+		expect(await this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
 	}
-	if (this.backend.delete)
-		await expectCatch(() => this.backend.delete(tasks2[0])).toBeUndefined();
+
+	/*
+	moveToList/copyToList/copyChildrenTo have no auto-substitution at all
+	so are just normally tested in their turn
+	
+	deleteWithChildren -- supports auto-tasklistId
+	
+	move, _moveOne, moveChildren are weird: many descendants only support them on a selected list,
+	and sometimes don't even check if the explicit one is given!
+	In any case, the base move/_moveOne implementations support all tasklists so that happens too.
+	moveChildren doesn't, even in the base version.
+
+	So. We need some kind of rule.
+	1. Those HAVE to work for the currently selected list.
+	2. They HAVE to accept it both explicitly and via substitution. (Though it's the same thing)
+	3. They HAVE to fail if given an explicit one that doesn't match the selected one, which they want.
+	4. But they MAY succeed for other explicit lists.
+	*/
 }
 
-//TaskCache
+BackendTester.prototype.test_cacheUpdates = async function() {
+	//Test that operations correctly update cache
+	let list1Id = await this.newEmptyTasklist();
+	let list2Id = await this.newDemoTasklist();
+	
+	let tasks = await this.backend.list(list2Id);
+	expect(tasks.length).toBeGreaterThan(0);
+	
+}
+
+
 //cachedGet
 //getChildren
 //getAllChildren
-
+//move/_moveOne
+//moveChildren
+//moveToList
+//copyToList
+//choosePosition
 
 
 BackendTester.prototype.test_deleteWithChildren = async function() {
@@ -917,19 +931,19 @@ BackendTester.prototype.test_deleteWithChildren = async function() {
 	tasks.sort((a, b) => { return a.title.localeCompare(b.title); });
 	
 	//Delete 1->3
-	await expectCatch(() => this.backend.deleteWithChildren(tasks[0].id, listId) ).toBeUndefined();
+	await expect(() => this.backend.deleteWithChildren(tasks[0].id, listId) ).not.toFail();
 	tasks = await this.backend.list(listId);
 	expect(tasks.length).toBe(1);
 	this.verifyTask2(tasks[0]);
 	
 	//deleteWithChildren(object)
-	await expectCatch(() => this.backend.deleteWithChildren(tasks[0], listId) ).toBeUndefined();
+	await expect(() => this.backend.deleteWithChildren(tasks[0], listId) ).not.toFail();
 	tasks = await this.backend.list(listId);
 	expect(tasks.length).toBe(0);
 	
 	//Wrong IDs
-	await expectCatch(() => this.backend.deleteWithChildren([], 'clearly wrong tasklist ID') ).toBeDefined();
-	await expectCatch(() => this.backend.deleteWithChildren('clearly wrong task ID', listId) ).toBeDefined();
+	await expect(() => this.backend.deleteWithChildren([], 'clearly wrong tasklist ID') ).toFail();
+	await expect(() => this.backend.deleteWithChildren('clearly wrong task ID', listId) ).toFail();
 }
 
 //move/_moveOne

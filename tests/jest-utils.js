@@ -44,7 +44,7 @@ function expectCatch(fn) {
 }
 exports.expectCatch = expectCatch;
 
-test('Jest helpers', async () => {
+test('expectCatch', async () => {
 	await expectCatch(() => {throw "asd"}).toBeDefined();
 	await expectCatch(() => "asd").toBeUndefined();
 	//With promises
@@ -52,6 +52,56 @@ test('Jest helpers', async () => {
 	await expectCatch(() => Promise.reject() ).toBeDefined();
 	await expectCatch(() => Promise.resolve() ).toBeUndefined();
 });
+
+
+
+var ExpectFunc = {};
+//Passes if the function throws *anything*, or returns a Promise that is rejected.
+ExpectFunc.toFail = async function(received) {
+	if (typeof received != 'function')
+		throw Error("Expected received to be a function, got "+String(received));
+	try {
+		let result = await received();
+		return { pass: false, message: () => "Function succeeded" };
+	} catch (error) {
+		return { pass: true, message: () => "Function failed with error: "+String(error) }
+	}
+}
+//Same but also compares the result
+ExpectFunc.toFailWith = async function(received, expected) {
+	if (typeof received != 'function')
+		throw Error("Expected received to be a function, got "+String(received));
+	try {
+		let result = await received();
+		return { pass: false, message: () => "Function succeeded" };
+	} catch (error) {
+		//TODO: Better matching, more in line with .toThrow() or at least .toStrictEqual() (deep structural comparison)
+		return { pass: (error == expected), message: () => "Function failed with error: "+String(error) };
+	}
+}
+ExpectFunc.toSucceed = async function(received) {
+	let tmp = await ExpectFunc.toFail(received);
+	tmp.pass = !tmp.pass;
+	return tmp;
+}
+expect.extend(ExpectFunc);
+
+test('ExpectFunc', async () => {
+	await expect(() => {throw "asd"}).toFail();
+	await expect(() => "asd").not.toFail();
+	await expect(() => "asd").toSucceed();
+	await expect(() => {throw "asd"}).not.toSucceed();
+	//With promises
+	await expect(() => Promise.reject("asd")).toFail();
+	await expect(() => Promise.reject()).toFail();
+	await expect(() => Promise.resolve()).toSucceed();
+	//Error checking
+	await expect(() => {throw "asd"}).toFailWith("asd");
+});
+
+
+
+
 
 
 

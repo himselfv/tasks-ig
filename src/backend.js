@@ -141,6 +141,7 @@ function resourcePatch(res, patch) {
 			res[key] = val;
 	});
 }
+exports.add(resourcePatch)
 
 
 /*
@@ -409,7 +410,7 @@ Tasks
 */
 
 //Backend.prototype.list = function(tasklistId)
-//Required. Returns a promise to an array of all tasks in a taskslist.
+//Required. Returns a promise to an array of all tasks in a taskslist. Tasklist ID has to be explicitly given.
 //Remember to cache retrieved tasks if you're implementing this.
 
 /*
@@ -455,11 +456,11 @@ Backend.prototype.get = function(taskIds, tasklistId) {
 }
 
 //Retrieves one task by its ID. Returns the Task object.
-//Backend.prototype.getOne = function(taskId, tasklistId)
+//Backend.prototype.getOne = function(taskId, [tasklistId])
 
 //Retrieves multiple tasks in a single request. Returns a promise for a taskId -> task map.
 //If tasklistId is not given, selected task list is assumed.
-//Backend.prototype.getMultiple = function(taskIds, tasklistId)
+//Backend.prototype.getMultiple = function(taskIds, [tasklistId])
 
 //Backend.prototype.update = function (task, tasklistId)
 //Updates the contents of the task on the server. Missing or null fields will be deleted.
@@ -484,8 +485,8 @@ Backend.prototype.patch = function (task, tasklistId) {
 
 
 //Backend.prototype.insert = function (task, previousId, tasklistId)
-//Creates a new task on the given tasklist. Inserts it after the given previous task.
-//Inserts it under a given parent (in the task object).
+//Creates a new task on the given tasklist. Inserts it after the given previous task,
+//under a given task.parent. Tasklist ID has to be explicitly given.
 //Returns a task resource.
 //Required, or you cannot add new tasks.
 
@@ -493,6 +494,7 @@ Backend.prototype.patch = function (task, tasklistId) {
 Accepts a _id -> task list.
 Inserts all tasks to the target tasklist and returns a _id->insertedTask map.
 
+tasklistId: The tasklist to insert under. Has to be explicitly given.
 task.parent: The parent to insert under
 task.previousId: Insert after this task.
 
@@ -521,6 +523,7 @@ Backend.prototype.insertMultiple = function (tasks, tasklistId) {
 /*
 Deletes a task or [tasks] from a single task list, non-recursively (without traversing their children).
 Required for task deletion. The tasks must not have children outside this list.
+Tasklist ID has to be explicitly given.
 
 Q: My backend delete()s tasks with children. Is that okay?
 A: Yes: The tasks must not have children, so if they have children you're only helping by deleting them.
@@ -582,6 +585,7 @@ Backend.prototype.move = function(taskIds, newParentId, newPrevId, tasklistId) {
 	taskIds = toArray(taskIds);
 	if (newParentId && newParentId.id) newParentId = newParentId.id;
 	if (newPrevId && newPrevId.id) newPrevId = newPrevId.id;
+	if (!tasklistId) tasklistId = this.selectedTaskList;
 
 	var proms = [];
 	taskIds.reverse().forEach(id => {
@@ -597,6 +601,7 @@ Updates cache.
 */
 Backend.prototype._moveOne = function(taskId, newParentId, newPrevId, tasklistId) {
 	if (taskId && taskId.id) taskId = taskId.id;
+	if (!tasklistId) tasklistId = this.selectedTaskList;
 	
 	//By default just update the task parent and choose a sort-order position
 	return this.choosePosition(newParentId, newPrevId, tasklistId, taskId)
@@ -611,8 +616,9 @@ Backend.prototype.moveChildren = function (taskId, newParentId, newPrevId, taskl
 	if (taskId && taskId.id) taskId = taskId.id;
 	if (newParentId && newParentId.id) newParentId = newParentId.id;
 	if (newPrevId && newPrevId.id) newPrevId = newPrevId.id;
+	if (!tasklistId) tasklistId = this.selectedTaskList;
 
-	this.getChildren(taskId, this.selectedTaskList)
+	this.getChildren(taskId, tasklistId)
 	.then(children => {
 		if (isEmpty(children))
 			return;
