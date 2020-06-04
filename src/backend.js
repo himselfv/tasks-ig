@@ -861,7 +861,7 @@ Backend.prototype.copyChildrenTo = function (pairs, newTasklistId, newBackend) {
 	//Query children for every entry
 	let oldIds = [];
 	let oldBatch = [];
-	for (oldTaskId in pairs) {
+	for (let oldTaskId in pairs) {
 		oldIds.push(oldTaskId);
 		oldBatch.push(this.getChildren(oldTaskId));
 	}
