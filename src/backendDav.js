@@ -5,20 +5,18 @@ Requires
 * davlambda-digest\	 -> github.com\himselfv\davlambda-digest
 */
 'use strict';
-if (typeof exports == 'undefined')
-	exports = {};
-exports.add = function(fn) { exports[fn.name] = fn; }
 if (typeof require != 'undefined') {
-	let utils = require('./utils.js');
-	utils.importAll(utils);
-	utils.importAll(require('./backend.js'));
+	require('./utils.js').importSelf();
+	importAll(require('./backend.js'));
 }
+var unit = new Unit((typeof exports != 'undefined') && exports);
+
 
 function BackendDav() {
 	Backend.call(this);
 }
 inherit(Backend, BackendDav);
-exports.add(BackendDav);
+unit.export(BackendDav);
 
 //Self-register -- DAV is always supported
 registerBackend(BackendDav, "CalDAV");
@@ -156,7 +154,7 @@ Tasklists.
 BackendDav.prototype.tasklistList = function() {
 	if (!this.account)
 		return Promise.reject("Not logged in");
-	entries = [];
+	let entries = [];
 	this.account.calendars.forEach(function(calendar) {
 		console.log('Found calendar named ' + calendar.displayName);
 		entries.push({id: calendar.url, title: calendar.displayName});

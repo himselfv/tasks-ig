@@ -1,16 +1,14 @@
 'use strict';
-if (typeof exports == 'undefined')
-	exports = {};
 if (typeof require != 'undefined') {
-	let utils = require('./utils.js');
-	utils.importAll(utils);
-	utils.importAll(require('./backend.js'));
-	utils.importAll(require('./backendDav.js'));
-	utils.importAll(require('./backendGt.js'));
-	utils.importAll(require('./backendLocal.js'));
-	utils.importAll(require('./backendTests.js'));
-	utils.importAll(require('./tasklist.js'));
+	require('./utils.js').importSelf();
+	importAll(require('./backend.js'));
+	importAll(require('./backendDav.js'));
+	importAll(require('./backendGt.js'));
+	importAll(require('./backendLocal.js'));
+	importAll(require('./backendTests.js'));
+	importAll(require('./tasklist.js'));
 }
+var unit = new Unit((typeof exports != 'undefined') && exports);
 
 /*
 Security considerations in some contexts require:

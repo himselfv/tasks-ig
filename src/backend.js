@@ -11,25 +11,22 @@ Even if a backend has nothing to do with GTasks it needs to provide the same res
 See below for minimal structures.
 */
 'use strict';
-if (typeof exports == 'undefined')
-	exports = {};
-exports.add = function(fn) { exports[fn.name] = fn; }
 if (typeof require != 'undefined') {
-	let utils = require('./utils.js');
-	utils.importAll(utils);
+	require('./utils.js').importSelf();
 }
+var unit = new Unit((typeof exports != 'undefined') && exports);
 
 
 //Lists all registered backend types for the application.
 //Backend normally self-register when they're available.
 var backends = [];
-exports.backends = backends;
+unit.export({ backends });
 function registerBackend(ctor, name) {
 	if (name)
 		ctor.uiName = name;
 	backends.push(ctor);
 }
-exports.add(registerBackend);
+unit.export(registerBackend);
 /*
 A backend must be an object, its constructor correct -- it will be used to recreate it.
   Derived.prototype = Object.create(Base.prototype); //or new Base(), if running Base() breaks nothing
@@ -39,7 +36,7 @@ function inheritBackend(fromWhat, what) {
 	what.prototype = Object.create(fromWhat.prototype);
 	what.prototype.constructor = what;
 }
-exports.add(inheritBackend);
+unit.export(inheritBackend);
 
 
 /*
@@ -85,7 +82,7 @@ A: The backend API should require explicit tasklistId everywhere where this migh
 */
 
 function Tasks() {}
-exports.add(Tasks);
+unit.export(Tasks);
 //Sorts an array of tasks according to their positions
 Tasks.sort = function(tasks) {
 	return tasks.sort((a, b) => { return a.position - b.position; });
@@ -142,7 +139,7 @@ function resourcePatch(res, patch) {
 			res[key] = val;
 	});
 }
-exports.add(resourcePatch)
+unit.export(resourcePatch)
 
 
 /*
@@ -156,7 +153,7 @@ function toArray(tasks) {
 		tasks = [tasks];
 	return tasks;
 }
-exports.add(toArray);
+unit.export(toArray);
 function toTaskIds(taskIds) {
 	if ((typeof taskIds == 'undefined') || (taskIds==null)) return taskIds;
 	if (!Array.isArray(taskIds))
@@ -165,27 +162,27 @@ function toTaskIds(taskIds) {
 		if (taskIds[i].id) taskIds[i] = taskIds[i].id;
 	return taskIds;
 }
-exports.add(toTaskIds);
+unit.export(toTaskIds);
 function toTaskId(taskId) {
 	if (taskId && taskId.id)
 		taskId = taskId.id;
 	return taskId;
 }
-exports.add(toTaskId);
+unit.export(toTaskId);
 //True if a dictionary or an array is empty, or undefined
 function isEmpty(list) {
 	//Arrays: we can check .length, but for !arrays it might be undefined (!<=0).
 	//Checking .keys() works for both.
 	return (!list || !Object.keys(list).length);
 }
-exports.add(isEmpty);
+unit.export(isEmpty);
 //Same but requires the parameter to be an array
 function isArrayEmpty(list) {
 	if (list && !Array.isArray(list))
 		throw "Array expected, found: "+list;
 	return (!list || (list.length <= 0));
 }
-exports.add(isArrayEmpty);
+unit.export(isArrayEmpty);
 
 
 /*
@@ -210,7 +207,7 @@ function diffDict(oldDict, newDict, comparer) {
 	});
 	return res;
 }
-exports.add(diffDict);
+unit.export(diffDict);
 
 //Many backends store dates in variations of ISO8601.
 //Parses that if it can, or returns the original value:
@@ -222,7 +219,7 @@ function maybeStrToDate(d) {
 	}
 	return d;
 }
-exports.add(maybeStrToDate);
+unit.export(maybeStrToDate);
 
 
 /*
@@ -268,7 +265,7 @@ function Backend() {
 	
 	this.cache = new TaskCache();
 }
-exports.add(Backend);
+unit.export(Backend);
 
 //Initialize the backend instance, load any neccessary libraries
 Backend.prototype.init = function() {
@@ -963,7 +960,7 @@ Backends: Remember to update changed tasks!
 function TaskCache() {
 	this.items = {};
 }
-exports.add(TaskCache);
+unit.export(TaskCache);
 TaskCache.prototype.clear = function() {
 	this.items = {};
 }
@@ -1104,7 +1101,7 @@ function DummyBackend(name, error) {
 	this.__proto__.constructor = {}; // not a function, so that we can overwrite .name
 	this.__proto__.constructor.name = name;
 }
-exports.add(DummyBackend);
+unit.export(DummyBackend);
 inheritBackend(Backend, DummyBackend);
 DummyBackend.prototype.init = function() { return Promise.reject(this.error); }
 DummyBackend.prototype.isSignedIn = function() { return false; }

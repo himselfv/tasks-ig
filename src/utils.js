@@ -1,13 +1,63 @@
 'use strict';
-if (typeof exports == 'undefined')
-	exports = {};
-exports.add = function(fn) {
+
+/*
+NodeJS / pureJS export support
+Usage:
+  var myApi = new Unit((typeof exports != 'undefined') && exports);
+  myApi.export({ functionName, varName, varName });
+  myApi.export(functionName); //not for vars
+
+Prefer exporting like this instead of
+  myApi.exports.exportName = exportName
+Because the former one automatically checks that the object exists
+and automatically uses its name (less chance for error).
+*/
+
+//Pass 
+function Unit(module_exports) {
+	this.exports = module_exports || {};
+}
+Unit.prototype.export = function(fn) {
 	if (typeof fn == 'undefined')
 		throw Error('Cannot export undefined');
-	if (typeof fn != 'function')
-		throw Error('export.add can only export functions');
-	exports[fn.name] = fn;
+	if (typeof fn == 'function')
+		this.exports[fn.name] = fn;
+	else
+	if (typeof fn == 'object')
+		for(let key in fn)
+			this.exports[key] = fn[key];
+	else
+		throw Error('Unit.export() cannot export '+String(fn));
 }
+
+var utils = new Unit((typeof exports != 'undefined') && exports);
+utils.export(Unit);
+
+
+/*
+require() module and make its exports global.
+Pass either filename or an already imported exports dict (preferred).
+
+Example:
+if (typeof require != 'undefined') {
+	require('./utils.js').importSelf();
+	importAll(utils);
+	importAll(require('./backend.js'));
+	importAll(require('./backendLocal.js'));
+}
+*/
+function importAll(imp) {
+	if (typeof imp == 'string') //filename
+		imp = require(imp);
+	for (let key in imp)
+		global[key] = imp[key];
+}
+utils.export(importAll);
+function importSelf() {
+	importAll(exports);
+	return this;
+}
+utils.export(importSelf);
 
 
 /*
@@ -16,23 +66,23 @@ Loaded at this point because all scripts may rely on them - more thorough handli
 Note: Before the main code sets default values, all defaults are undefined.
 */
 var options = options || {};
-exports.options = options;
+utils.export({ options });
 function optionsLoad() {
 	options = Object.assign({}, options, getLocalStorageItem("tasksIg_options"));
 }
-exports.add(optionsLoad);
+utils.export(optionsLoad);
 function optionsSave() {
 	setLocalStorageItem("tasksIg_options", options);
 	//Update everything in the UI that depends on options. We are lazy:
 	document.location.reload();
 }
-exports.add(optionsSave);
+utils.export(optionsSave);
 function optionsSetDefaults(optionSet) {
 	for (let key in optionSet)
 		if (!(key in options))
 			options[key] = optionSet[key].default;
 }
-exports.add(optionsSetDefaults);
+utils.export(optionsSetDefaults);
 optionsLoad();
 
 
@@ -131,36 +181,18 @@ function loadScript(scriptId, scriptSrc) {
 		});
 	});
 }
-exports.add(loadScript);
+utils.export(loadScript);
 
 //Accepts a dictionary ID->src
 //Returns a promise that's fulfilled when ALL the given JSs are loaded
 function loadScripts(scripts) {
-	batch = [];
+	let batch = [];
 	Object.keys(scripts).forEach(key => {
 		batch.push(loadScript(key, scripts[key]))
 	});
 	return Promise.all(batch);
 }
-exports.add(loadScripts);
-
-
-/*
-NodeJS-import() module and make its exports global.
-Pass either filename or an already imported exports dict.
-*/
-function importAll(imp) {
-	if (typeof imp == 'string') //filename
-		imp = require(imp);
-	for (let key in imp)
-		global[key] = imp[key];
-}
-exports.add(importAll);
-function importSelf() {
-	importAll(exports);
-	return this;
-}
-exports.add(importSelf);
+utils.export(loadScripts);
 
 
 /*
@@ -175,7 +207,7 @@ function newGuid() {
     }
     return u;
 }
-exports.add(newGuid);
+utils.export(newGuid);
 
 
 /*
@@ -185,7 +217,7 @@ function inherit(fromWhat, what) {
 	what.prototype = Object.create(fromWhat.prototype);
 	what.prototype.constructor = what;
 }
-exports.add(inherit);
+utils.export(inherit);
 
 
 /*
@@ -195,11 +227,11 @@ function getLocalStorageItem(key) {
 	var data = window.localStorage.getItem(key);
 	return (data) ? JSON.parse(data) : null;
 }
-exports.add(getLocalStorageItem);
+utils.export(getLocalStorageItem);
 function setLocalStorageItem(key, value) {
 	window.localStorage.setItem(key, JSON.stringify(value));
 }
-exports.add(setLocalStorageItem);
+utils.export(setLocalStorageItem);
 
 
 /*
@@ -220,7 +252,7 @@ Callback.prototype.unsubscribe = function(f) {
 Callback.prototype.notify = function() {
 	this.observers.forEach(observer => observer.apply(this, arguments));
 }
-exports.add(Callback);
+utils.export(Callback);
 
 
 //allSettled polyfill
@@ -248,7 +280,7 @@ function JobQueue() {
 	this.onChanged = new Callback();
 	this.onError = new Callback();
 }
-exports.add(JobQueue);
+utils.export(JobQueue);
 //Pass any promises to track their execution + catch errors.
 JobQueue.prototype.push = function(prom) {
 	this.count += 1;
@@ -318,7 +350,7 @@ function urlWrite(dict) {
 	if (url=='') url='#';
 	document.location.href = url;
 }
-exports.add(urlWrite);
+utils.export(urlWrite);
 function urlRead() {
 	let data = document.location.href;
 	let hashIdx = data.indexOf('#');
@@ -342,7 +374,7 @@ function urlRead() {
 	console.debug('url data:', data);
 	return data;
 }
-exports.add(urlRead);
+utils.export(urlRead);
 
 
 
@@ -372,7 +404,7 @@ function resetSelection() {
         	sel.empty();
 	    }
 }
-exports.add(resetSelection);
+utils.export(resetSelection);
 
 function getCaretControl() {
 	var sel = window.getSelection();
@@ -381,7 +413,7 @@ function getCaretControl() {
 	var range = sel.getRangeAt(0);
 	return range.commonAncestorContainer;
 }
-exports.add(getCaretControl);
+utils.export(getCaretControl);
 
 /*
 "contentEditable" implementations are weird, e.g. Firefox adds BRs once you delete all text.
@@ -394,7 +426,7 @@ We let the browser do what it wants but:
 We assume our Editable contains at most one TextNode with the text, and ignore the rest.
 */
 function Editable() {}; //easier to export, has name
-exports.add(Editable);
+utils.export(Editable);
 //Returns the text content of the editable
 Editable.getText = function(node) {
 	//We could've narrowed it down to the child TextNode, but this is a safer bet
@@ -495,27 +527,27 @@ Misc UI
 function element(id) {
 	return document.getElementById(id);
 }
-exports.add(element);
+utils.export(element);
 
 function nodeHasParent(node, parent) {
 	while (node && (node != parent))
 		node = node.parentNode;
 	return (node == parent);
 }
-exports.add(nodeHasParent);
+utils.export(nodeHasParent);
 
 //Does what it says on the tin
 function nodeRemoveAllChildren(node) {
 	while (node.firstChild)
     	node.removeChild(node.firstChild);
 }
-exports.add(nodeRemoveAllChildren);
+utils.export(nodeRemoveAllChildren);
 function nodeRemoveChildrenByTagName(node, tagName) {
 	let elements = node.getElementsByTagName(tagName);
 	while (elements.length > 0) //the collection is live
 		node.removeChild(elements[elements.length-1]);
 }
-exports.add(nodeRemoveChildrenByTagName);
+utils.export(nodeRemoveChildrenByTagName);
 
 //Returns getBoundingClientRect(), only relative not to the offsetParent but to a given parent node
 //Pass null to retrieve the absolute bounding rect
@@ -554,7 +586,7 @@ function relativeBoundingRect(element, base) {
 	
 	return rect;
 }
-exports.add(relativeBoundingRect);
+utils.export(relativeBoundingRect);
 
 function downloadToFile(data, type, filename) {
 	//https://stackoverflow.com/a/30832210/360447
@@ -575,11 +607,11 @@ function downloadToFile(data, type, filename) {
 		window.URL.revokeObjectURL(url);
 	}, 0);
 }
-exports.add(downloadToFile);
+utils.export(downloadToFile);
 function downloadAsJson(obj, title) {
 	return downloadToFile(JSON.stringify(obj), 'application/json', title+'.json');
 }
-exports.add(downloadAsJson);
+utils.export(downloadAsJson);
 
 function copyToClipboard(text){
     var dummy = document.createElement("input");
@@ -589,7 +621,7 @@ function copyToClipboard(text){
     document.execCommand("copy");
     document.body.removeChild(dummy);
 }
-exports.add(copyToClipboard);
+utils.export(copyToClipboard);
 
 
 /*
@@ -624,7 +656,7 @@ function dropdownInit(root) {
 	root.addSeparator = dropdownAddSeparator;
 	return root;
 }
-exports.add(dropdownInit);
+utils.export(dropdownInit);
 function dropdownClear() {
 	nodeRemoveAllChildren(this.menu);
 }
@@ -672,7 +704,7 @@ function buttonNew(id, onclick, title) {
 	button.addEventListener("click", onclick);
 	return button;
 }
-exports.add(buttonNew);
+utils.export(buttonNew);
 function linkNew(id, onclick, title) {
 	var link = document.createElement("a");
 	link.href = '#';
@@ -681,7 +713,7 @@ function linkNew(id, onclick, title) {
 	if (onclick) link.addEventListener("click", onclick);
 	return link;
 }
-exports.add(linkNew);
+utils.export(linkNew);
 //Creates a new <li> wrapper around the content
 function li(content) {
 	let li = document.createElement('li');
@@ -691,7 +723,7 @@ function li(content) {
 		li.appendChild(content)
 	return li;
 }
-exports.add(li);
+utils.export(li);
 
 
 
@@ -703,7 +735,7 @@ Clients have to override 'ok' event and page.resolve() if they are satisfied.
 //A special rejection object that's returned when the window is cancelled --
 //check for it to distinguish from other errors
 function FormCancelError() {}
-exports.add(FormCancelError);
+utils.export(FormCancelError);
 
 function CustomPage(pageElement) {
 	//The HTML base element can be created from scratch or reused
@@ -730,7 +762,7 @@ function CustomPage(pageElement) {
 		this.close();
 	});
 }
-exports.add(CustomPage);
+utils.export(CustomPage);
 //Clients can wait for the page to be either OK'd or Cancelled
 CustomPage.prototype.waitResult = function() {
 	return this.promise;
