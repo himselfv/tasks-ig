@@ -99,22 +99,11 @@ BackendDav.prototype.signin = function(settings) {
 			this.xhr.auth.authType = null; //Digest then Basic
 	}
 	
-	//Disable forced service discovery in davlambda. The first request is always going to be service discovery.
-	//TODO: Move this as a patch to davlambda
-	if (!settings || !settings.serviceDiscovery) {
-		this.xhr.send = function() {
-			if (this.skipCnt <= 0) {
-				//console.log('XHR forwarding:', this, arguments);
-				return dav.transport.Basic.prototype.send.apply(this, arguments);
-			}
-			this.skipCnt -= 1;
-			//console.log('XHR skipping as instructed:', this, arguments);
-			return Promise.reject('Service discovery disabled');
-		}
-		this.xhr.skipCnt = 1;
-	}
-	
-	return dav.createAccount({ server: settings.server, xhr: this.xhr })
+	return dav.createAccount({ 
+			server: settings.server,
+			xhr: this.xhr, 
+			serviceDiscovery: (!settings || settings.serviceDiscovery),
+		})
 		.catch(error =>
 			this.signout() //delete created objects
 			.then(result => {throw error;}) //rethrow
