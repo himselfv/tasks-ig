@@ -4,12 +4,20 @@ Requires
 * davlambda\ 		 -> github.com\lambdabaa\dav
 * davlambda-digest\	 -> github.com\himselfv\davlambda-digest
 */
+if (typeof exports == 'undefined')
+	exports = {};
+exports.add = function(fn) { exports[fn.name] = fn; }
+if (typeof require != 'undefined') {
+	let utils = require('./utils.js');
+	utils.importAll(utils);
+	utils.importAll(require('./backend.js'));
+}
 
 function BackendDav() {
 	Backend.call(this);
 }
-BackendDav.prototype = Object.create(Backend.prototype);
-BackendDav.prototype.constructor = BackendDav;
+inherit(Backend, BackendDav);
+exports.add(BackendDav);
 
 //Self-register -- DAV is always supported
 registerBackend(BackendDav, "CalDAV");

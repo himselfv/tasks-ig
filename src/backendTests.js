@@ -1,11 +1,21 @@
 /*
 Various testing backends. Do not include unless you want these.
 */
+if (typeof exports == 'undefined')
+	exports = {};
+exports.add = function(fn) { exports[fn.name] = fn; }
+if (typeof require != 'undefined') {
+	let utils = require('./utils.js');
+	utils.importAll(utils);
+	utils.importAll(require('./backend.js'));
+	utils.importAll(require('./backendLocal.js'));
+}
 
 function BackendTestBase() {
 	Backend.call(this);
 }
 inheritBackend(Backend, BackendTestBase);
+exports.add(BackendTestBase);
 //Minimal implementation
 BackendTestBase.prototype.tasklistList = function() {
 	return Promise.resolve([]);
@@ -15,6 +25,7 @@ function newTestBackend(baseBackend, newBackend, uiName) {
 	if (!options.debug) return; //Without .debug, skip registering these even if the file is included
 	inheritBackend(baseBackend, newBackend);
 	registerBackend(newBackend, uiName);
+	exports.add(newBackend);
 }
 
 

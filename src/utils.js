@@ -147,6 +147,11 @@ function importAll(imp) {
 		global[key] = imp[key];
 }
 exports.importAll = importAll;
+function importSelf() {
+	importAll(exports);
+	return this;
+}
+exports.importSelf = importSelf;
 
 
 /*

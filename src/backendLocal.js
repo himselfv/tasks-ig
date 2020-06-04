@@ -4,10 +4,10 @@ Do not use local storage for anything important! It's highly unpermanent (glorif
 */
 if (typeof exports == 'undefined')
 	exports = {};
+exports.add = function(fn) { exports[fn.name] = fn; }
 if (typeof require != 'undefined') {
-	let utils = require('./utils.js');
-	utils.importAll(utils);
-	utils.importAll('./backend.js')
+	require('./utils.js').importSelf();
+	importAll(require('./backend.js'));
 }
 
 /*
@@ -19,9 +19,8 @@ function BackendLocal() {
 	Backend.call(this);
 	this.STORAGE_PREFIX = 'tasksIg_backend_';
 }
-BackendLocal.prototype = Object.create(Backend.prototype);
-BackendLocal.prototype.constructor = BackendLocal;
-exports.BackendLocal = BackendLocal
+inherit(Backend, BackendLocal);
+exports.add(BackendLocal);
 
 function BackendLocalStorage() {
 	BackendLocal.call(this);
@@ -29,7 +28,7 @@ function BackendLocalStorage() {
 	this.storage = window.localStorage;
 }
 inherit(BackendLocal, BackendLocalStorage);
-exports.BackendLocalStorage = BackendLocalStorage
+exports.add(BackendLocalStorage);
 
 //A variation of LocalStorage. Stores tasks while the page is open. Only for debug.
 function BackendSessionStorage() {
@@ -37,7 +36,7 @@ function BackendSessionStorage() {
 	this.storage = window.sessionStorage;
 }
 inherit(BackendLocalStorage, BackendSessionStorage);
-exports.BackendSessionStorage = BackendSessionStorage
+exports.add(BackendSessionStorage);
 
 
 //Pass browser.storage.sync or browser.storage.local
@@ -51,7 +50,7 @@ function BackendBrowserStorage(areaName) {
 	getBrowserStorage().onChanged.addListener((changes, areaName_) => this.backendStorageChanged(changes, areaName_));
 }
 inherit(BackendLocal, BackendBrowserStorage);
-exports.BackendBrowserStorage = BackendBrowserStorage
+exports.add(BackendBrowserStorage);
 
 function getBrowserStorage() {
 	//Prefer "browser" as it's more standardized and less available (FF provides "chrome" too)
@@ -105,8 +104,8 @@ function BackendBrowserStorageSync() { BackendBrowserStorage.call(this, "sync");
 function BackendBrowserStorageLocal() { BackendBrowserStorage.call(this, "local"); }
 inherit(BackendBrowserStorage, BackendBrowserStorageSync);
 inherit(BackendBrowserStorage, BackendBrowserStorageLocal);
-exports.BackendBrowserStorageSync = BackendBrowserStorageSync;
-exports.BackendBrowserStorageLocal = BackendBrowserStorageLocal;
+exports.add(BackendBrowserStorageSync);
+exports.add(BackendBrowserStorageLocal);
 
 //Self-register
 if (getBrowserStorageSync())

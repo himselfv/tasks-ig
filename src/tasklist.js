@@ -19,6 +19,13 @@ Custom events (all have .entry property == which entry):
   checked 		-- checked state changed for this entry
   keypress 		-- capture for the list, check whether it's for the entry
 */
+if (typeof exports == 'undefined')
+	exports = {};
+exports.add = function(fn) { exports[fn.name] = fn; }
+if (typeof require != 'undefined') {
+	let utils = require('./utils.js');
+	utils.importAll(utils);
+}
 
 //Creates a task tree object in a given base element
 function TaskList(where) {
@@ -30,6 +37,7 @@ function TaskList(where) {
 	document.addEventListener("touchend", (event) => this.onDocumentDragMouseUp(event));
 	document.addEventListener("touchcancel", (event) => this.onDocumentDragTouchCancel(event));
 }
+exports.add(TaskList);
 TaskList.prototype.toString = function() {
 	return "TaskList " + this.root.toString();
 }
@@ -231,6 +239,7 @@ function TaskEntry(task) {
 	this.setDue(task.due);
 	this.setCompleted(task.status=="completed");
 }
+exports.add(TaskEntry);
 TaskEntry.prototype.toString = function() {
 	return this.node.toString();
 }
@@ -362,6 +371,7 @@ function elementGetOwnerTaskEntry(element) {
 		element = element.parentNode;
 	return element ? element.taskEntry : null;
 }
+exports.add(elementGetOwnerTaskEntry);
 
 
 //Each entry has an associated nesting level
@@ -520,6 +530,7 @@ function taskEntryNormalizeTitle(title) {
 	//Trim the spaces. Loading text with the space later behaves weird in some browsers.
 	return title.trim();
 }
+exports.add(taskEntryNormalizeTitle);
 TaskEntry.prototype.setNotes = function(notes) {
 	nodeRemoveAllChildren(this.notesCtl);
 	if (notes)

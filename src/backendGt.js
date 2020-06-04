@@ -4,17 +4,18 @@ Supported globals: GTASKS_CLIENT_ID, GTASKS_API_KEY, otherwise will ask via UI.
 */
 if (typeof exports == 'undefined')
 	exports = {};
+exports.add = function(fn) { exports[fn.name] = fn; }
 if (typeof require != 'undefined') {
 	let utils = require('./utils.js');
 	utils.importAll(utils);
-	utils.importAll('./backend.js')
+	utils.importAll(require('./backend.js'));
 }
 
 function BackendGTasks() {
 	Backend.call(this);
 }
 inherit(Backend, BackendGTasks);
-exports.BackendGTasks = BackendGTasks;
+exports.add(BackendGTasks);
 
 // Array of API discovery doc URLs for APIs used by the quickstart
 var DISCOVERY_DOCS = ["https://www.googleapis.com/discovery/v1/apis/tasks/v1/rest"];
