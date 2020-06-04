@@ -868,8 +868,10 @@ BackendTester.prototype.test_selectTaskList = async function() {
 	expect(await this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
 	if (this.backend.getOne)
 		expect(await this.backend.getOne(tasks2[0].id)).toMatchTask(tasks2[0]);
-	if (this.backend.getMultiple)
-		expect(await this.backend.getMultiple([tasks2[0].id])).toMatchTaskArray([tasks2[0]]);
+	if (this.backend.getMultiple) {
+		let results = await this.backend.getMultiple([tasks2[0].id]);
+		expect(Object.values(results)).toMatchTaskArray([tasks2[0]]);
+	}
 	if (this.backend.update) {
 		expect(await this.backend.update(tasks2[0])).toMatchTask(tasks2[0]);
 		expect(await this.backend.get(tasks2[0].id)).toMatchTask(tasks2[0]);
@@ -923,7 +925,7 @@ BackendTester.prototype.test_cacheUpdates = async function() {
 		let tasks2 = await this.backend.insertMultiple({'id2': this.TEST_TASK2}, list1Id);
 		expect(tasks2).toBeObject;
 		let task2 = tasks2['id2'];
-		expect(task2).toMatchTask(this.TEST_TASK2);
+		expect(task2).toMatchTaskData(this.TEST_TASK2);
 		expect(this.backend.cache.get(task2.id)).toMatchTask(task2);
 	}
 	
