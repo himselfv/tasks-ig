@@ -23,12 +23,8 @@ function insertDavAPIs() {
 	//To be more change-proof we could locate our <script> tag and extract our relative path.
 	return loadScripts({
 		'davjs': 'dav/dav.js',
-		'cryptojs': 'dav/httpauth/crypto.js',
-		'httpauth': 'dav/httpauth/httpauth.js',
-	}).then(result => loadScripts({
-		'davauth': 'dav/transport-digest.js',
 		'ical.js': 'dav/ical.js',
-	}));
+	});
 }
 BackendDav.prototype.connect = function() {
 	//console.debug("BackendDav.init");
@@ -88,7 +84,7 @@ BackendDav.prototype.signin = function(settings) {
 		username: settings.username,
 		password: settings.password,
 	});
-	this.xhr = new DavDigestTransport(credentials);
+	this.xhr = new dav.transport.Basic(credentials);
 	this.server = settings.server;
 	this.username = settings.username;
 	
@@ -109,7 +105,7 @@ BackendDav.prototype.signin = function(settings) {
 		this.xhr.send = function() {
 			if (this.skipCnt <= 0) {
 				//console.log('XHR forwarding:', this, arguments);
-				return DavDigestTransport.prototype.send.apply(this, arguments);
+				return dav.transport.Basic.prototype.send.apply(this, arguments);
 			}
 			this.skipCnt -= 1;
 			//console.log('XHR skipping as instructed:', this, arguments);
