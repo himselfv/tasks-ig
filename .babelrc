@@ -1,8 +1,4 @@
 {
-"ignore": [
-  "**/__tests__",
-  "**/*.test.js"
-],
 "env": {
   "test": {
     comments: true,
