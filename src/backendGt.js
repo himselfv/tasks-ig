@@ -482,6 +482,7 @@ BackendGTasks.prototype.delete = function (taskIds, tasklistId) {
 	});
 	return batch.then(response => {
 		this.batchResponseCheck(response);
+		this.cache.delete(taskIds);
 		//console.log("backend.delete() success");
 		return response;
 	});

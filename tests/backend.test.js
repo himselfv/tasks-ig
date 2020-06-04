@@ -841,7 +841,8 @@ BackendTester.prototype.test_selectTaskList = async function() {
 	//THESE functions do not auto-substitute the tasklist and MUST fail without explicit one even when one is selected
 	//Test this to avoid feature creep where some backends do substitute and clients start to rely on that
 	await expect(() => this.backend.list()).toFail();
-	await expect(() => this.backend.insert(this.TEST_TASK1, null)).toFail();
+	if (this.backend.insert)
+		await expect(() => this.backend.insert(this.TEST_TASK1, null)).toFail();
 	if (this.backend.insertMultiple)
 		await expect(() => this.backend.insertMultiple({'id1':this.TEST_TASK1}, null)).toFail();
 	if (this.backend.delete)
@@ -882,9 +883,10 @@ BackendTester.prototype.test_selectTaskList = async function() {
 	moveToList/copyToList/copyChildrenTo have no auto-substitution at all
 	so are just normally tested in their turn
 	
-	deleteWithChildren -- supports auto-tasklistId
+	TODO:	deleteWithChildren -- supports auto-tasklistId
 	
-	move, _moveOne, moveChildren are weird: many descendants only support them on a selected list,
+	TODO: 	move, _moveOne, moveChildren
+	These are weird: many descendants only support them on a selected list,
 	and sometimes don't even check if the explicit one is given!
 	In any case, the base move/_moveOne implementations support all tasklists so that happens too.
 	moveChildren doesn't, even in the base version.
@@ -898,13 +900,61 @@ BackendTester.prototype.test_selectTaskList = async function() {
 }
 
 BackendTester.prototype.test_cacheUpdates = async function() {
-	//Test that operations correctly update cache
+	//Test that all operations correctly update cache
+	//Currently only the selected list is cached (or at least that's the only one that's required and checked)
 	let list1Id = await this.newEmptyTasklist();
 	let list2Id = await this.newDemoTasklist();
 	
-	let tasks = await this.backend.list(list2Id);
-	expect(tasks.length).toBeGreaterThan(0);
+	expect(await this.backend.list(list1Id)).toStrictEqual([]);
 	
+	
+	//In all tests specify the list explicitly EVEN THOUGH the same list should be selected
+	//Because the auto-substitution is tested elsewhere and this is an interesting corner case,
+	//what if the backend fails to update the cache on explicitly passed lists.
+	
+	//First the insertion, so select the empty list
+	expect(await this.backend.selectTaskList(list1Id)).toStrictEqual([]);
+	if (this.backend.insert) {
+		let task1 = await this.backend.insert(this.TEST_TASK1, null, list1Id);
+		expect(task1).toMatchTaskData(this.TEST_TASK1);
+		expect(this.backend.cache.get(task1.id)).toMatchTask(task1);
+	}
+	if (this.backend.insertMultiple) {
+		let tasks2 = await this.backend.insertMultiple({'id2': this.TEST_TASK2}, list1Id);
+		expect(tasks2).toBeObject;
+		let task2 = tasks2['id2'];
+		expect(task2).toMatchTask(this.TEST_TASK2);
+		expect(this.backend.cache.get(task2.id)).toMatchTask(task2);
+	}
+	
+	//Now the changes, select the populated one
+	let tasks2 = await this.backend.selectTaskList(list2Id);
+	expect(tasks2).toBeArray();
+	expect(tasks2.length).toBeGreaterThan(0);
+	let task2 = tasks2[0];
+	expect(this.backend.cache.get(task2.id)).toMatchTask(task2);
+	if (this.backend.update) {
+		//copy to avoid accidentally writing to cached object by ourselves
+		let task2a = Object.assign({}, task2, { title: 'New task2 title' });
+		let task2b = await this.backend.update(task2a, list2Id);
+		expect(task2b).toMatchTask(task2a);
+		expect(this.backend.cache.get(task2.id)).toMatchTask(task2a);
+	}
+	if (this.backend.patch) {
+		let task2patch = { id: task2.id, title: 'Better task2 title' };
+		let task2b = await this.backend.patch(task2patch, list2Id);
+		expect(task2b).toMatchPatch(task2patch);
+		expect(this.backend.cache.get(task2.id)).toMatchPatch(task2patch);
+	}
+	if (this.backend.delete) {
+		await expect(() => this.backend.delete(task2.id, list2Id)).not.toFail();
+		expect(this.backend.cache.get(task2.id)).toBeUndefined();
+	}
+	/*
+	TODO: move, _moveOne, moveChildren
+	TODO: deleteWithChildren
+	TODO: moveToList (deletes from this list anyway)
+	*/
 }
 
 

@@ -795,6 +795,7 @@ BackendDav.prototype.delete = function (taskIds, tasklistId) {
 		}
 		return Promise.all(batch);
 	}).then(results => {
+		this.cache.delete(taskIds);
 		//console.log('delete completed');
 	});
 }

@@ -446,6 +446,9 @@ BackendLocal.prototype.delete = function (taskIds, tasklistId) {
 			this._removeItem(id);
 		}
 		return this._setList(tasklistId, list);
+	})
+	.then(() => {
+		this.cache.delete(taskIds);
 	});
 }
 
