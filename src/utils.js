@@ -1,5 +1,14 @@
+'use strict';
 if (typeof exports == 'undefined')
 	exports = {};
+exports.add = function(fn) {
+	if (typeof fn == 'undefined')
+		throw Error('Cannot export undefined');
+	if (typeof fn != 'function')
+		throw Error('export.add can only export functions');
+	exports[fn.name] = fn;
+}
+
 
 /*
 Application-wide options
@@ -11,19 +20,19 @@ exports.options = options;
 function optionsLoad() {
 	options = Object.assign({}, options, getLocalStorageItem("tasksIg_options"));
 }
-exports.optionsLoad = optionsLoad;
+exports.add(optionsLoad);
 function optionsSave() {
 	setLocalStorageItem("tasksIg_options", options);
 	//Update everything in the UI that depends on options. We are lazy:
 	document.location.reload();
 }
-exports.optionsSave = optionsSave;
+exports.add(optionsSave);
 function optionsSetDefaults(optionSet) {
 	for (let key in optionSet)
 		if (!(key in options))
 			options[key] = optionSet[key].default;
 }
-exports.optionsSetDefaults = optionsSetDefaults;
+exports.add(optionsSetDefaults);
 optionsLoad();
 
 
@@ -122,7 +131,7 @@ function loadScript(scriptId, scriptSrc) {
 		});
 	});
 }
-exports.loadScript = loadScript;
+exports.add(loadScript);
 
 //Accepts a dictionary ID->src
 //Returns a promise that's fulfilled when ALL the given JSs are loaded
@@ -133,7 +142,7 @@ function loadScripts(scripts) {
 	});
 	return Promise.all(batch);
 }
-exports.loadScripts = loadScripts;
+exports.add(loadScripts);
 
 
 /*
@@ -146,12 +155,12 @@ function importAll(imp) {
 	for (let key in imp)
 		global[key] = imp[key];
 }
-exports.importAll = importAll;
+exports.add(importAll);
 function importSelf() {
 	importAll(exports);
 	return this;
 }
-exports.importSelf = importSelf;
+exports.add(importSelf);
 
 
 /*
@@ -166,7 +175,7 @@ function newGuid() {
     }
     return u;
 }
-exports.newGuid = newGuid;
+exports.add(newGuid);
 
 
 /*
@@ -176,7 +185,7 @@ function inherit(fromWhat, what) {
 	what.prototype = Object.create(fromWhat.prototype);
 	what.prototype.constructor = what;
 }
-exports.inherit = inherit;
+exports.add(inherit);
 
 
 /*
@@ -186,11 +195,11 @@ function getLocalStorageItem(key) {
 	var data = window.localStorage.getItem(key);
 	return (data) ? JSON.parse(data) : null;
 }
-exports.getLocalStorageItem = getLocalStorageItem;
+exports.add(getLocalStorageItem);
 function setLocalStorageItem(key, value) {
 	window.localStorage.setItem(key, JSON.stringify(value));
 }
-exports.setLocalStorageItem = setLocalStorageItem;
+exports.add(setLocalStorageItem);
 
 
 /*
@@ -211,7 +220,7 @@ Callback.prototype.unsubscribe = function(f) {
 Callback.prototype.notify = function() {
 	this.observers.forEach(observer => observer.apply(this, arguments));
 }
-exports.Callback = Callback;
+exports.add(Callback);
 
 
 //allSettled polyfill
@@ -239,7 +248,7 @@ function JobQueue() {
 	this.onChanged = new Callback();
 	this.onError = new Callback();
 }
-exports.JobQueue = JobQueue;
+exports.add(JobQueue);
 //Pass any promises to track their execution + catch errors.
 JobQueue.prototype.push = function(prom) {
 	this.count += 1;
@@ -309,7 +318,7 @@ function urlWrite(dict) {
 	if (url=='') url='#';
 	document.location.href = url;
 }
-exports.urlWrite = urlWrite;
+exports.add(urlWrite);
 function urlRead() {
 	let data = document.location.href;
 	let hashIdx = data.indexOf('#');
@@ -333,7 +342,7 @@ function urlRead() {
 	console.debug('url data:', data);
 	return data;
 }
-exports.urlRead = urlRead;
+exports.add(urlRead);
 
 
 
@@ -363,6 +372,7 @@ function resetSelection() {
         	sel.empty();
 	    }
 }
+exports.add(resetSelection);
 
 function getCaretControl() {
 	var sel = window.getSelection();
@@ -371,6 +381,7 @@ function getCaretControl() {
 	var range = sel.getRangeAt(0);
 	return range.commonAncestorContainer;
 }
+exports.add(getCaretControl);
 
 /*
 "contentEditable" implementations are weird, e.g. Firefox adds BRs once you delete all text.
@@ -382,27 +393,29 @@ We let the browser do what it wants but:
 
 We assume our Editable contains at most one TextNode with the text, and ignore the rest.
 */
+function Editable() {}; //easier to export, has name
+exports.add(Editable);
 //Returns the text content of the editable
-function editableGetText(node) {
+Editable.getText = function(node) {
 	//We could've narrowed it down to the child TextNode, but this is a safer bet
 	//in the off-case that there are multiple of them.
 	//And textContent is nice enough to remove tags and line breaks anyway.
 	return node.textContent;
 }
 //Sets the editable text content from the scratch (without preserving any fluff)
-function editableSetText(node, text) {
+Editable.setText = function(node, text) {
     //Same as removing all children and adding one text node:
     node.textContent = text;
 }
 //Locates the first and hopefully the only TextNode in the editable
-function editableGetTextNode(node) {
+Editable.getTextNode = function(node) {
 	for (let i=0; i<node.childNodes.length; i++)
 		if (node.childNodes[i].nodeType == Node.TEXT_NODE)
 			return node.childNodes[i];
 	//We expect node to have exactly one TextNode child but try to handle the case where it's forgotten too
 	return node; //fallback
 }
-function editableSetCaret(node, start, end) {
+Editable.setCaret = function(node, start, end) {
 	//console.log("editableSetCaret(start="+start+", end="+end+")");
 	var range = document.createRange();
     
@@ -426,16 +439,10 @@ function editableSetCaret(node, start, end) {
 	sel.removeAllRanges();
 	sel.addRange(range);
 }
-
-
-/*
-Misc UI
-*/
-
-function editableGetLength(node) {
+Editable.getLength = function(node) {
 	return editableGetText(node).length;
 }
-function editableGetSelection(editableNode) {
+Editable.getSelection = function(editableNode) {
 	var sel = window.getSelection();
 	if (!sel.rangeCount)
 		return null;
@@ -446,7 +453,7 @@ function editableGetSelection(editableNode) {
 }
 //Retrieves the caret position in a given editable element, or null.
 //Assumes the node only has one child of type Text (typical for editable elements)
-function editableGetCaret(node) {
+Editable.getCaret = function(node) {
 	var range = editableGetSelection(node);
 	if (!range)
 		return null;
@@ -457,7 +464,7 @@ function editableGetCaret(node) {
 	}
 		
 	//If we're outside the TEXT_NODE but inside the editable, try to return something anyway
-	console.log("editableGetCaret => in non-text: type="+range.endContainer.nodeType+", offset="+range.endOffset);
+	console.log("Editable.getCaret => in non-text: type="+range.endContainer.nodeType+", offset="+range.endOffset);
 	//Go to the top level
 	let container = range.endContainer;
 	let offset = range.endOffset;
@@ -470,36 +477,45 @@ function editableGetCaret(node) {
 	let i = range.endOffset;
 	while (i >= 1) {
 		if (editable.childNodes[i-1].nodeType==Node.TEXT_NODE) {
-			console.log("editableGetCaret: caret is to the right");
+			console.log("Editable.getCaret: caret is to the right");
 			return editable.childNodes[i-1].textContent.length; //caret is after the end of the text
 		}
 	}
-	console.log("editableGetCaret: caret is to the left/empty text");
+	console.log("Editable.getCaret: caret is to the left/empty text");
 	return 0; //caret is before the start of the text or there's no text
 }
+
+
+/*
+Misc UI
+*/
 
 //Sets focus AND caret position/selection to a given editable element with a text content.
 //Assumes the node only has one child of type Text (typical for editable elements)
 function element(id) {
 	return document.getElementById(id);
 }
+exports.add(element);
 
 function nodeHasParent(node, parent) {
 	while (node && (node != parent))
 		node = node.parentNode;
 	return (node == parent);
 }
+exports.add(nodeHasParent);
 
 //Does what it says on the tin
 function nodeRemoveAllChildren(node) {
 	while (node.firstChild)
     	node.removeChild(node.firstChild);
 }
+exports.add(nodeRemoveAllChildren);
 function nodeRemoveChildrenByTagName(node, tagName) {
 	let elements = node.getElementsByTagName(tagName);
 	while (elements.length > 0) //the collection is live
 		node.removeChild(elements[elements.length-1]);
 }
+exports.add(nodeRemoveChildrenByTagName);
 
 //Returns getBoundingClientRect(), only relative not to the offsetParent but to a given parent node
 //Pass null to retrieve the absolute bounding rect
@@ -538,6 +554,7 @@ function relativeBoundingRect(element, base) {
 	
 	return rect;
 }
+exports.add(relativeBoundingRect);
 
 function downloadToFile(data, type, filename) {
 	//https://stackoverflow.com/a/30832210/360447
@@ -558,9 +575,11 @@ function downloadToFile(data, type, filename) {
 		window.URL.revokeObjectURL(url);
 	}, 0);
 }
+exports.add(downloadToFile);
 function downloadAsJson(obj, title) {
 	return downloadToFile(JSON.stringify(obj), 'application/json', title+'.json');
 }
+exports.add(downloadAsJson);
 
 function copyToClipboard(text){
     var dummy = document.createElement("input");
@@ -570,6 +589,7 @@ function copyToClipboard(text){
     document.execCommand("copy");
     document.body.removeChild(dummy);
 }
+exports.add(copyToClipboard);
 
 
 /*
@@ -604,6 +624,7 @@ function dropdownInit(root) {
 	root.addSeparator = dropdownAddSeparator;
 	return root;
 }
+exports.add(dropdownInit);
 function dropdownClear() {
 	nodeRemoveAllChildren(this.menu);
 }
@@ -651,6 +672,7 @@ function buttonNew(id, onclick, title) {
 	button.addEventListener("click", onclick);
 	return button;
 }
+exports.add(buttonNew);
 function linkNew(id, onclick, title) {
 	var link = document.createElement("a");
 	link.href = '#';
@@ -659,6 +681,7 @@ function linkNew(id, onclick, title) {
 	if (onclick) link.addEventListener("click", onclick);
 	return link;
 }
+exports.add(linkNew);
 //Creates a new <li> wrapper around the content
 function li(content) {
 	let li = document.createElement('li');
@@ -668,6 +691,7 @@ function li(content) {
 		li.appendChild(content)
 	return li;
 }
+exports.add(li);
 
 
 
@@ -679,6 +703,7 @@ Clients have to override 'ok' event and page.resolve() if they are satisfied.
 //A special rejection object that's returned when the window is cancelled --
 //check for it to distinguish from other errors
 function FormCancelError() {}
+exports.add(FormCancelError);
 
 function CustomPage(pageElement) {
 	//The HTML base element can be created from scratch or reused
@@ -705,6 +730,7 @@ function CustomPage(pageElement) {
 		this.close();
 	});
 }
+exports.add(CustomPage);
 //Clients can wait for the page to be either OK'd or Cancelled
 CustomPage.prototype.waitResult = function() {
 	return this.promise;

@@ -2,6 +2,7 @@
 Tasks backend based on local storage / browser storage.
 Do not use local storage for anything important! It's highly unpermanent (glorified cookies).
 */
+'use strict';
 if (typeof exports == 'undefined')
 	exports = {};
 exports.add = function(fn) { exports[fn.name] = fn; }

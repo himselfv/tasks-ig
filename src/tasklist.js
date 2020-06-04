@@ -19,6 +19,7 @@ Custom events (all have .entry property == which entry):
   checked 		-- checked state changed for this entry
   keypress 		-- capture for the list, check whether it's for the entry
 */
+'use strict';
 if (typeof exports == 'undefined')
 	exports = {};
 exports.add = function(fn) { exports[fn.name] = fn; }
@@ -520,10 +521,10 @@ TaskEntry.prototype.getControl = function(className) {
 
 //Returns the title text of the task, compatible with caret functions
 TaskEntry.prototype.getTitle = function() {
-	return editableGetText(this.titleCtl);
+	return Editable.getText(this.titleCtl);
 }
 TaskEntry.prototype.setTitle = function(title) {
-	editableSetText(this.titleCtl, title);
+	Editable.setText(this.titleCtl, title);
 }
 //Cleans the title text for saving
 function taskEntryNormalizeTitle(title) {
@@ -560,21 +561,21 @@ Focus and caret position.
 Last focused task node remains "focused"; task operations apply to it.
 */
 TaskEntry.prototype.getLength = function() {
-	var ret = editableGetLength(this.titleCtl);
+	var ret = Editable.getLength(this.titleCtl);
 	//console.log("entry.getLength => "+ret);
 	return ret;
 }
 TaskEntry.prototype.getSelection = function() {
-	return editableGetSelection(this.titleCtl);
+	return Editable.getSelection(this.titleCtl);
 }
 TaskEntry.prototype.getCaret = function() {
-	var ret = editableGetCaret(this.titleCtl);
+	var ret = Editable.getCaret(this.titleCtl);
 	//console.log("entry.getCaret => "+ret);
 	return ret;
 }
 TaskEntry.prototype.setCaret = function(start, end) {
 	//console.log("entry.setCaret("+start+", "+end+")");
-	editableSetCaret(this.titleCtl, start, end);
+	Editable.setCaret(this.titleCtl, start, end);
 }
 TaskList.prototype.onEntryFocus = function(event) {
 	console.log("entryfocus");
@@ -598,7 +599,6 @@ TaskList.prototype.clearFocus = function(entry) {
 }
 TaskList.prototype.focusChanged = function() {
 	var event = new CustomEvent("focuschanged");
-	event.type = "focuschanged";
 	this.dispatchEvent(event);
 }
 //Returns the currently focused taskEntry or null
@@ -620,14 +620,12 @@ WARNING! All on* functions are called with [this]==event target despite being un
 */
 TaskEntry.prototype.onEditClicked = function() {
 	var event = new CustomEvent("editclicked", {bubbles: true});
-	event.type = "editclicked";
 	event.entry = this;
 	this.dispatchEvent(event);
 }
 TaskEntry.prototype.onChecked = function() {
     this.setCompleted(this.checkCtl.checked); //re-style the entry
 	var event = new CustomEvent("checked", {bubbles: true});
-	event.type = "checked";
 	event.entry = this;
 	this.dispatchEvent(event);
 }
@@ -641,7 +639,6 @@ TaskEntry.prototype.onNodeClicked = function(event) {
 //Called to notify the subscribers of the changes in title caused by user
 TaskEntry.prototype.titleChanged = function() {
 	var event = new CustomEvent("titlechanged", {bubbles: true});
-	event.type = "titlechanged";
 	event.entry = this;
 	this.dispatchEvent(event);
 }
@@ -675,7 +672,6 @@ Task list events
 //Called when the user moves out of the task title. The clients usually want to commit the changes
 TaskList.prototype.onEntryTitleFocusOut = function(oldEvent) {
 	var event = new CustomEvent("titlefocusout");
-	event.type="titlefocusout";
 	event.entry = oldEvent.currentTarget.taskEntry;
 	this.dispatchEvent(event);
 };
@@ -785,7 +781,6 @@ TaskList.prototype.dragStart = function() {
 	//Notify the subscribers
 	//We leave most of the drag handling outside for now
 	var event = new CustomEvent("dragstart");
-	event.type = "dragstart";
 	event.entry = this.dragEntry;
 	this.dispatchEvent(event);
 

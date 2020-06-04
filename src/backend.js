@@ -10,6 +10,7 @@ https://developers.google.com/tasks/v1/reference/tasklists#resource
 Even if a backend has nothing to do with GTasks it needs to provide the same resources.
 See below for minimal structures.
 */
+'use strict';
 if (typeof exports == 'undefined')
 	exports = {};
 exports.add = function(fn) { exports[fn.name] = fn; }

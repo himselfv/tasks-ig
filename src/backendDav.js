@@ -4,6 +4,7 @@ Requires
 * davlambda\ 		 -> github.com\lambdabaa\dav
 * davlambda-digest\	 -> github.com\himselfv\davlambda-digest
 */
+'use strict';
 if (typeof exports == 'undefined')
 	exports = {};
 exports.add = function(fn) { exports[fn.name] = fn; }

@@ -1,3 +1,4 @@
+'use strict';
 if (typeof exports == 'undefined')
 	exports = {};
 if (typeof require != 'undefined') {
@@ -164,7 +165,7 @@ function handleBeforeUnload(event) {
 	var message = ""; //empty string! not null!
 	if (hadErrors)
 		message = "Some changes to your tasks might have failed.";
-	else if ((this.jobs.count >= 1) || (this.jobs.idlePromises.length > 0))
+	else if ((jobs.count >= 1) || (jobs.idlePromises.length > 0))
 		message = "Some changes to your tasks are still pending. If you close the page now they may be lost";
 	if (message) { //two ways of requesting confirmation:
 		event.preventDefault();
@@ -661,7 +662,7 @@ BackendSelectPage.prototype.close = function() {
 	this.page.classList.add("hidden");
 }
 BackendSelectPage.prototype.backendClicked = function(btn) {
-	backendClass = btn.associatedBackend;
+	let backendClass = btn.associatedBackend;
 	console.log("Setting up backend", backendClass);
 	this.disable();
 	let backend = backendCreate(backendClass);
@@ -1200,7 +1201,7 @@ function setSelectedTaskList(tasklist, noNotify) { return tasklistBox.setSelecte
 //Called when the selected task list had been chagned
 function selectedTaskListChanged() {
 	console.debug('selectedTaskListChanged');
-	tasklist = selectedTaskList();
+	let tasklist = selectedTaskList();
 	if (!!tasklist && !!tasklist.account)
 		backend = tasklist.account;
 	else

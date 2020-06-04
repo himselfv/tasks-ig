@@ -1,6 +1,7 @@
 /*
 Various testing backends. Do not include unless you want these.
 */
+'use strict';
 if (typeof exports == 'undefined')
 	exports = {};
 exports.add = function(fn) { exports[fn.name] = fn; }

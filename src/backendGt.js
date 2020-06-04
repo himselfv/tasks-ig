@@ -2,6 +2,7 @@
 Task backend based on Google Tasks.
 Supported globals: GTASKS_CLIENT_ID, GTASKS_API_KEY, otherwise will ask via UI.
 */
+'use strict';
 if (typeof exports == 'undefined')
 	exports = {};
 exports.add = function(fn) { exports[fn.name] = fn; }
