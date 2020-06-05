@@ -1,6 +1,6 @@
 {
   "name": "tasks-ig",
-  "version": "1.0.0",
+  "version": "1.1.2",
   "description": "Serverless JS client for CalDAV Tasks and Google Tasks",
   "main": "src/index.js",
   "directories": {
