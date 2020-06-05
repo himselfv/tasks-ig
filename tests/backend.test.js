@@ -348,10 +348,18 @@ BackendTester.prototype.verifyTask3 = function(task3) {
 //and this function overriden to return it.
 BackendTester.prototype.newEmptyTasklist = async function() {
 	if (!this.backend.tasklistAdd) {
-		//Must have precreated empty task list
-		let tasklists = await this.backend.tasklistList();
-		expect(tasklists.length).toBeGreaterThan(0);
-		return tasklists[0].id;
+		//console.log('allocating task list');
+		//Must have precreated empty lists. At least 2 are normally needed
+		if (!this._tasklistStock) {
+			//console.log('querying lists');
+			this._tasklistStock = await this.backend.tasklistList();
+		}
+		//console.log('this is my stock: ', this._tasklistStock);
+		expect(this._tasklistStock).toBeArray();
+		expect(this._tasklistStock.length).toBeGreaterThan(0);
+		let list = this._tasklistStock.shift();
+		//console.log('allocated this: ', list);
+		return list.id;
 	}
 	let tasklist = await this.backend.tasklistAdd('Test list 1');
 	expect(tasklist.id).toBeTruthy();
@@ -364,21 +372,26 @@ BackendTester.prototype.newEmptyTasklist = async function() {
 //  TEST_TASK2
 //If the backend does not support insert(), this must be precreated.
 BackendTester.prototype.newDemoTasklist = async function() {
-	if (!this.backend.tasklistAdd || !this.backend.insert) {
-		//Must have precreated task list and tasks
+	//If we don't even have task.insert then there must be a precreated list with tasks
+	if (!this.backend.insert) {
 		let tasklists = await this.backend.tasklistList();
 		expect(tasklists.length).toBeGreaterThan(1);
 		return tasklists[1].id;
-	};
-	let list = await this.backend.tasklistAdd('Test list 2');
-	expect(list.id).toBeTruthy();
-	let task1 = await this.backend.insert(this.TEST_TASK1, null, list.id);
+	}
+	
+	//Otherwise populate an empty task list
+	let listId = await this.newEmptyTasklist();
+	expect(listId).toBeTruthy();
+	//Some backends support inserts only to the selected list:
+	await this.backend.selectTaskList(listId);
+	let task1 = await this.backend.insert(this.TEST_TASK1, null, listId);
 	expect(task1.id).toBeTruthy();
-	let task2 = await this.backend.insert(this.TEST_TASK2, task1.id, list.id);
+	let task2 = await this.backend.insert(this.TEST_TASK2, task1.id, listId);
 	expect(task2.id).toBeTruthy();
-	let task1a = await this.backend.insert(Object.assign({}, this.TEST_TASK3, {'parent': task1.id}), null, list.id);
+	let task1a = await this.backend.insert(Object.assign({}, this.TEST_TASK3, {'parent': task1.id}), null, listId);
 	expect(task1a.id).toBeTruthy();
-	return list.id;
+	await this.backend.selectTaskList(null); //deselect
+	return listId;
 }
 
 //Anything beginning with test_* will become a test, in the order declared
