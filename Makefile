@@ -1,14 +1,29 @@
 
-all: min.js ext
+all: build min ext
 
-min.js: js
-	.\node_modules\.bin\minify ./build/min/index.js --out-file ./build/min/index.min.js
+build: always
+	-rm -rf ./build/base/
+	npm run build
+	rem Remove unrelated
+	-rm -rf ./build/base/dav/ical-readme.txt
+	-rm -rf ./build/base/dav/README.md
+	rem Avoid building with personalized config.jses
+	-rm -rf ./build/base/dav/config.js
 
-js: build
-	-rm -rf ./build/min/
+min: build
+	-rm -rf ./build/min/ ./build/min-tmp/
 	.\node_modules\.bin\browserify --standalone index .\build\base\index.js \
                 -t [ babelify --presets [ @babel/preset-env ] ] \
-                --outfile .\build\min\index.js
+                --outfile .\build\min-tmp\index.js
+	.\node_modules\.bin\minify ./build/min-tmp/index.js --out-file ./build/min-tmp/index.min.js
+	rem Copy the resources
+	mkdir ./build/min/
+	cp -R ./build/min-tmp/index.min.js ./build/min/index.js
+	cp -R ./build/base/res ./build/min/res
+	mkdir ./build/min/dav/
+	cp ./build/base/dav/*.js ./build/min/dav/
+	cp ./build/base/index.html ./build/min/index.html
+	cp ./build/base/style.css ./build/min/style.css
 
 ext: ext-chrome ext-firefox
 
@@ -30,15 +45,7 @@ ext-firefox: build
 	node ./manifestgen.js ./src/manifest.json firefox > ./build/ext-firefox/manifest.json
 	cd .\build\ext-firefox && zip -r .\..\ext-firefox.zip *
 
-
-build:
-	-rm -rf ./build/base/
-	npm run build
-
 clean:
 	-rm -rf ./build/*
-	# Remove unrelated
-	-rm -rf ./build/base/dav/ical-readme.txt
-	-rm -rf ./build/base/dav/README.md
-	# Avoid building with personalized config.jses
-	-rm -rf ./build/base/dav/config.js
+
+always:
