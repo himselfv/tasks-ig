@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "jest",
-    "build": "babel ./src --out-dir ./build/base --source-maps --copy-files --ignore src/dav/node_modules"
+    "build": "babel ./src --out-dir ./build/base --source-maps --copy-files --ignore src/dav/node_modules",
+    "lint": "eslint src/*.js"
   },
   "repository": {
     "type": "git",
@@ -48,6 +49,7 @@
     "babel-preset-minify": "^0.5.1",
     "babelify": "^10.0.0",
     "browserify": "^16.5.1",
+    "eslint": "^7.1.0",
     "jest": "^26.0.1",
     "jest-extended": "^0.11.5"
   }

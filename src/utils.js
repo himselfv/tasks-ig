@@ -508,9 +508,9 @@ Editable.getCaret = function(node) {
 	//Now figure whether the text is to the left or to the right
 	let i = range.endOffset;
 	while (i >= 1) {
-		if (editable.childNodes[i-1].nodeType==Node.TEXT_NODE) {
+		if (container.childNodes[i-1].nodeType==Node.TEXT_NODE) {
 			console.log("Editable.getCaret: caret is to the right");
-			return editable.childNodes[i-1].textContent.length; //caret is after the end of the text
+			return container.childNodes[i-1].textContent.length; //caret is after the end of the text
 		}
 	}
 	console.log("Editable.getCaret: caret is to the left/empty text");
