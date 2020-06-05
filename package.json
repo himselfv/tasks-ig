@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "jest",
-    "build": "babel ./src --out-dir ./build --source-maps --copy-files --ignore src/dav/node_modules"
+    "build": "babel ./src --out-dir ./build/base --source-maps --copy-files --ignore src/dav/node_modules"
   },
   "repository": {
     "type": "git",
