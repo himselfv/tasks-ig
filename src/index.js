@@ -334,7 +334,7 @@ function accountAdd(account, params) {
 	console.log('accountAdd', arguments);
 	if (!account || !account.constructor || !account.constructor.name) {
 		console.error('accountAdd: invalid account object: ', account);
-		retrun;
+		return;
 	}
 	//console.debug('accountAdd: constructor=', account.constructor);
 	
@@ -672,7 +672,7 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 		let settings = backend.settingsPage();
 		if (!settings)
 			return backend.setup({});
-		settingsPage = new BackendSettingsPage(backend.uiName(), settings);
+		let settingsPage = new BackendSettingsPage(backend.uiName(), settings);
 		settingsPage.addEventListener('ok', function(event) {
 			//Disable the OK button for the time being
 			settingsPage.disable();
@@ -959,7 +959,7 @@ TaskListHandle.fromString = function(value) {
 		return null;
 	value = JSON.parse(value);
 	//Convert account ID to account object
-	if (!!value.account)
+	if (value.account)
 		value.account = accountFind(value.account);
 	return new TaskListHandle(value.account, value.tasklist);
 }
@@ -1038,7 +1038,7 @@ TaskListBox.prototype.reload = function() {
 //Returns the { account: account, tasklist: tasklist } structure or null.
 TaskListBox.prototype.selected = function() {
 	let value = this.box.value;
-	if (!!value)
+	if (value)
 		value = TaskListHandle.fromString(value);
 	return value;
 }
@@ -1175,7 +1175,7 @@ function urlSaveState(selected) {
 	let state = {};
 	if (!!selected && !!selected.account) {
 		state['a'] = selected.account.id;
-		if (!!selected.tasklist)
+		if (selected.tasklist)
 			state['l'] = selected.tasklist;
 	}
 	urlWrite(state);
@@ -1341,7 +1341,7 @@ function accountPageReload(selected) {
 		}
 		
 		//"Add task list"
-		if (!!account.tasklistAdd)
+		if (account.tasklistAdd)
 			listP.appendChild(li(linkNew(null, tasklistAdd, 'Add a task list')));
 		else
 			listP.appendChild(li("Task lists cannot be added to this account."));
@@ -1439,7 +1439,7 @@ function tasksActionsUpdate() {
     //We can't query the data properly; clipboard access won't work in some browsers unless we call it immediately
     //We can't even do taskEntryNeedIds()
     var taskId = focusedEntry.getId();
-    if (taskId.hasOwnProperty("taskId"))
+    if (Object.prototype.hasOwnProperty.call(taskId, "taskId"))
       return; //can't query cache with promised IDs
     let task = backend.cache.get(taskId);
     copyToClipboard(JSON.stringify(task));
@@ -1539,18 +1539,18 @@ function tasksActionsUpdate() {
       }
     } else if (event.key=="Enter") {
       event.preventDefault(); //we don't accept returns in titles any way
-      var caretPos = entry.getCaret();
+      let caretPos = entry.getCaret();
       taskNewSplit(entry, caretPos);
     } else if (event.key=="Delete") {
       //If we're at the end, delete the next entry and merge its title and notes into this one.
-      var caretPos = entry.getCaret();
+      let caretPos = entry.getCaret();
       if (!options.noMergeByDelete && (caretPos == entry.getLength()) && window.getSelection().isCollapsed) {
         event.preventDefault();
         taskMergeForward(entry);
       }
     } else if (event.key=="Backspace") {
       //If we're at the beginning, delete this entry and merge its title and notes into the previous one.
-      var caretPos = entry.getCaret();
+      let caretPos = entry.getCaret();
       if (!options.noMergeByBackspace && (caretPos == 0) && window.getSelection().isCollapsed) {
         event.preventDefault();
         taskMergeBackward(entry);
@@ -1951,8 +1951,8 @@ function tasksActionsUpdate() {
     })
     .then(results => {
       //console.log("have entry data");
-      task_to = results[entryToId];
-      task_what = results[entryWhatId];
+      let task_to = results[entryToId];
+      let task_what = results[entryWhatId];
       
       //Now that we have everything, first update the UI
       //Move children
@@ -2065,7 +2065,7 @@ function tasksActionsUpdate() {
    		if (prevPatch.title != prevTitle) { //trim the previous one
      		backend.cache.patch(prevPatch);
      		return backend.patch(prevPatch);
-    	}; //else no update needed
+    	} //else no update needed
     });
     //Move all children of the original task to the new task
     job = job.then(response => {
@@ -2163,11 +2163,11 @@ function tasksActionsUpdate() {
   function taskMoveToList(entry, newTasklist) {
   	console.log('taskMoveToList', entry, newTasklist);
     //If we're given a (account, list) object, split it
-    if (!!newTasklist.account) {
+    let newBackend = null;
+    if (newTasklist.account) {
         newBackend = newTasklist.account;
         newTasklist = newTasklist.tasklist;
-    } else
-    	newBackend = null;
+    }
     
     var whenTaskId = entry.whenHaveId(); //before we .delete() it
     

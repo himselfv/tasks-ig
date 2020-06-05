@@ -92,7 +92,7 @@ ChromeStorageWrapper.prototype.remove = function(keys) {
 		resolve();
 	}));
 }
-ChromeStorageWrapper.prototype.clear = function(keys) {
+ChromeStorageWrapper.prototype.clear = function() {
 	return new Promise((resolve, reject) => this.storage.clear(() => {
 		if (chrome.runtime.lastError)
 			reject(chrome.runtime.lastError);
@@ -330,7 +330,7 @@ BackendLocal.prototype.tasklistUpdate = function(tasklist) {
 	return this._getTasklists()
 	.then(lists => {
 		if (!(tasklist.id in lists))
-			return Promise.reject("No such task list: "+String(tasklistId));
+			return Promise.reject("No such task list: "+String(tasklist.id));
 		lists[tasklist.id] = tasklist;
 		return this._setTasklists(lists);
 	})
@@ -541,7 +541,7 @@ BackendLocal.prototype.moveToList = function (taskId, newTasklistId, newBackend)
 				return Promise.reject("moveToList(): Task not found in a source list");
 
 			//Remove from old list and add to new
-			tasklistEntry = oldList.splice(oldIndex, 1).shift();
+			let tasklistEntry = oldList.splice(oldIndex, 1).shift();
 			if (tasklistEntry.id == taskId)
 				tasklistEntry.parentId = null; //topmost task is reparented to null
 			newList.splice(newIndex, 0, tasklistEntry);
@@ -633,7 +633,7 @@ BackendLocal.prototype.taskFindTasklist = function(taskId) {
 	return this._getTasklists()
 	.then(tasklists => {
 		keys = Object.keys(tasklists);
-		prom = [];
+		let prom = [];
 		keys.forEach(key =>
 			prom.push(this._getList(key)));
 		return Promise.all(prom);

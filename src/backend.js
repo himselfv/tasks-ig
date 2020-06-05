@@ -45,8 +45,8 @@ You may use simple dicts but keep these in mind.
 */
 class Tasklist {
 	constructor(args) {
-		this.id = id;			//Unique for this backend
-		this.title = title;
+		this.id = undefined;			//Unique for this backend
+		this.title = undefined;
 		for (var key in args)
 			this[key] = args[key];
 	}
@@ -758,7 +758,6 @@ Backend.prototype.choosePosition = function(parentId, previousId, tasklistId, ta
 		//console.debug('prevPosition', prevPosition, 'nextPosition', nextPosition, 'newPosition', newPosition);
 		
 		//If we've exhaused the inbetween value space, shift
-		let ret = null;
 		if (newPosition >= nextPosition)
 			return this._positionShiftDown(children, prevIdx+1, taskId)
 				.then(() => newPosition);
@@ -919,7 +918,7 @@ Backend.prototype.moveToList = function (oldTask, newTasklistId, newBackend) {
 		.then(task => {
 			console.debug('Backend.moveToList: queried task=',task);
 			oldTask = task;
-			pairs = {}
+			let pairs = {}
 			pairs[oldTask.id] = { task: oldTask, parent: null, previous: null };
 			return this.copyToList(pairs, newTasklistId, newBackend, true);
 		})

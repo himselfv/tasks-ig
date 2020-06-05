@@ -16,6 +16,7 @@
 	"rules": {
 		"no-mixed-spaces-and-tabs": "off",
 		"no-unused-vars": "warn",
-		"no-extra-semi": "warn"
+		"no-extra-semi": "warn",
+		"no-inner-declarations": "warn"
 	}
 }

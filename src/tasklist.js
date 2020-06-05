@@ -363,7 +363,7 @@ unit.export(taskEntryNeedIds);
 
 //True if a given element is a task entry's main node
 function elementIsTaskEntryNode(element) {
-	return element && element.hasOwnProperty("taskId");
+	return element && Object.prototype.hasOwnProperty.call(element, "taskId");
 }
 //Returns the task node that contains a given control, or null
 function elementGetOwnerTaskEntry(element) {
@@ -391,7 +391,7 @@ TaskEntry.prototype.setLevel = function(level) {
 }
 //Increases or decreases the entry's nesting level (recursive == with children)
 TaskEntry.prototype.adjustLevel = function(shift, recursive) {
-	var allChildren = this.getAllChildren();
+	var allChildren = (recursive) ? (this.getAllChildren()) : [];
 	this.setLevel(this.getLevel()+shift);
 	allChildren.forEach(child => child.setLevel(child.getLevel()+shift));
 }

@@ -124,7 +124,7 @@ BackendGTasks.prototype.clientLogin = function(params) {
 			apiKey: params.apiKey,
 			scope: SCOPES
 		});
-	};
+	}
 }
 BackendGTasks.prototype.signin = function(params) {
 	//Initialize the API client library

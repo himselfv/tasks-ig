@@ -138,7 +138,7 @@ BackendDav.prototype.uiName = function() {
 	let uiName = Backend.prototype.uiName.call(this);
 	//For DAV it makes more sense to display the resource, not username
 	//All usernames accessing the same resource will normally see the same list
-	if (!!this.server)
+	if (this.server)
 		uiName = uiName + ' ('+this.server+')'
 	return uiName;
 }
