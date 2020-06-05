@@ -18,7 +18,8 @@ ext-chrome: build
 	rm -rf ./build/ext-chrome/*.map
 	rm -rf ./build/ext-chrome/config*.js
 	node ./manifestgen.js ./src/manifest.json chrome > ./build/ext-chrome/manifest.json
-	cp ./_private/ext/key.pem ./build/ext-chrome/
+	rem Chrome Developer Dashboard does not require keys for 2nd+ upload for now, don't auto-add
+	rem cp ./_private/ext/key.pem ./build/ext-chrome/
 	cd .\build\ext-chrome && zip -r .\..\ext-chrome.zip *
 
 ext-firefox: build
