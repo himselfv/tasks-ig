@@ -112,6 +112,8 @@ TaskList.prototype.appendTaskChildren = function(parentId, level, taskRecords) {
 			continue;
 		if ((parentId) && (task.parent != parentId))
 			continue;
+		if (!options.showDeleted && task.deleted)
+			continue;
 		children.push(task);
 	}
 	//Sort by position
@@ -131,6 +133,8 @@ TaskList.prototype.appendOrphans = function(taskRecords) {
 	for (let i=0; i<taskRecords.length; i++) {
 		let task = taskRecords[i];
 		if (!task.parent || (task.parent in tasks))
+			continue;
+		if (!options.showDeleted && task.deleted)
 			continue;
 		orphans.push(task);
 	}
@@ -237,6 +241,7 @@ function TaskEntry(task) {
 	this.setNotes(task.notes);
 	this.setDue(task.due);
 	this.setCompleted(task.status=="completed");
+	this.setDeleted(!!task.deleted)
 }
 unit.export(TaskEntry);
 TaskEntry.prototype.toString = function() {
@@ -261,6 +266,7 @@ TaskEntry.prototype.patch = function(patch) {
 	if ('notes' in patch)	this.setNotes(patch.notes);
 	if ('due' in patch)		this.setDue(patch.due);
 	if ('status' in patch)	this.setCompleted(patch.status=="completed");
+	if ('deleted' in patch)	this.setDeleted(!!patch.deleted);
 }
 //Same but you can just pass the patch set without the entry object
 TaskList.prototype.patchEntry = function(patch, entry) {
@@ -549,10 +555,10 @@ TaskEntry.prototype.getCompleted = function() {
 }
 TaskEntry.prototype.setCompleted = function(completed) {
 	this.checkCtl.checked = completed;
-	if (completed)
-		this.node.classList.add("completed")
-	else
-		this.node.classList.remove("completed");
+	this.node.classList.toggle("completed", completed);
+}
+TaskEntry.prototype.setDeleted = function(deleted) {
+	this.node.classList.toggle("deleted", deleted);
 }
 
 /*

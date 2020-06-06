@@ -357,6 +357,17 @@ Everything inside is packed unless overriden
   text-decoration: line-through;
   color: gray; /* all text, even the title */
 }
+/* Deleted task decorations */
+.task.deleted {
+  color: gray;
+  text-decoration: line-through;
+  text-decoration-style: double;
+}
+/* Remove task checks from deleted tasks to avoid confusing them with normal ones */
+.task.deleted .taskCheck {
+  visibility: hidden;
+}
+
 
 /* Edit link */
 .task .taskEditLink {

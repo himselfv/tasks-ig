@@ -97,6 +97,11 @@ var optionSet = {
 		type: 'bool',
 		title: 'Single-click add',
 		hint: 'Add new task with a single click on the empty space - as it had been in GTasks. Double click always works', },
+	showDeleted: {
+		type: 'bool', default: false,
+		title: 'Show deleted tasks',
+		hint: 'Some backends keep track of deleted tasks for a while. Enable this temporarily and restore deleted taks by simply editing and saving them.',
+	},
 	urlTrack: {
 		type: 'bool', default: true,
 		title: 'URL selection permanence',
@@ -2391,6 +2396,8 @@ Editor.prototype.getPatch = function() {
 	taskResSetCompleted(patch, document.getElementById("editorTaskTitleBox").checked);
 	patch.due = document.getElementById("editorTaskDate").valueAsDate; //null is fine!
 	patch.notes = document.getElementById("editorTaskNotes").value;
+	//Any sort of editing undeletes task (removes "deleted" flag)
+	patch.deleted = false;
 	return patch;
 }
 Editor.prototype.newSaveJob = function() {

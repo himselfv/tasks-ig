@@ -372,7 +372,8 @@ BackendGTasks.prototype.list = function(tasklistId) {
 		'tasklist': tasklistId,
 		'maxResults': 100,
 		'showCompleted': true,
-		'showHidden': false,
+		'showHidden': true,
+		'showDeleted': true,
 		'fields': 'items(id,title,parent,position,notes,status,due,completed),nextPageToken',
 	});
 }

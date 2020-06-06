@@ -148,7 +148,6 @@ BackendSettingsTest.prototype.signin = function(params) {
 }
 
 
-
 //BackendLocalStorage, but read-only
 function BackendLocalStorageRO() {
 	BackendLocalStorage.call(this);
@@ -182,3 +181,20 @@ BackendFailEverything.prototype.moveToList = BackendFailEverything.prototype._fa
 BackendFailEverything.prototype.tasklistAdd = BackendFailEverything.prototype._fail;
 BackendFailEverything.prototype.tasklistUpdate = BackendFailEverything.prototype._fail;
 BackendFailEverything.prototype.tasklistDelete = BackendFailEverything.prototype._fail;
+
+
+//This is a weird backend that works over Local Storage but delete() just sets the "deleted" flag (like GTasks does)
+//These tasks should still be invisible, but they will remain in LocalStorage until you enable showing deleted tasks
+//and manually delete them
+function BackendTestDeletedFlag() {
+	BackendLocalStorage.call(this);
+}
+newTestBackend(BackendLocalStorage, BackendTestDeletedFlag, "Test deleted flag");
+BackendTestDeletedFlag.prototype.delete = function(taskIds, tasklistId) {
+	taskIds = toTaskIds(taskIds);
+	
+	let batch = [];
+	for (let taskId of taskIds)
+		batch.push(this.patch({ id: taskId, deleted: true, }));
+	return Promise.all(batch);
+}
