@@ -264,6 +264,8 @@ function backendCreate(backendCtor) {
 	if (!backend)
 		throw "Cannot create backend "+backendCtor.name;
 	
+	backend.showDeleted = options.showDeleted;
+	
 	//We store a few additional runtime properties with each account,
 	//under account.ui.
 	backend.ui = {};

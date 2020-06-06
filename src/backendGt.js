@@ -366,6 +366,10 @@ BackendGTasks.prototype.resourceToTask = function(res) {
 }
 
 BackendGTasks.prototype.list = function(tasklistId) {
+	//Deleted tasks make requests slower as there's a lot of them so only request when asked:
+	let fields = 'id,title,parent,position,notes,status,due,completed';
+	if (this.showDeleted)
+		fields += ',deleted';
 	return this._listPaged(
 		this.gapi.client.tasks.tasks.list.bind(this.gapi.client.tasks.tasks),
 	{
@@ -373,8 +377,8 @@ BackendGTasks.prototype.list = function(tasklistId) {
 		'maxResults': 100,
 		'showCompleted': true,
 		'showHidden': true,
-		'showDeleted': true,
-		'fields': 'items(id,title,parent,position,notes,status,due,completed),nextPageToken',
+		'showDeleted': this.showDeleted,
+		'fields': 'items('+fields+'),nextPageToken',
 	});
 }
 

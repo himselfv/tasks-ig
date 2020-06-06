@@ -267,6 +267,10 @@ function Backend() {
 	this.onTaskDeleted = new Callback(); // task id
 	
 	this.cache = new TaskCache();
+	
+	//Some backends can retrieve recently deleted tasks (marked .deleted=true).
+	//Set this to ask them to do this (more data to transfer):
+	this.showDeleted = false;
 }
 unit.export(Backend);
 
