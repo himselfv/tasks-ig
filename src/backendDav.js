@@ -572,16 +572,15 @@ BackendDav.prototype.getOne = function(taskId, tasklistId) {
 	if (!tasklistId) tasklistId = this.selectedTaskList;
 	//console.debug('dav.getOne:', taskId, tasklistId);
 	let filters = this.taskIdsFilter([taskId]);
-	console.log(JSON.stringify(filters, null, '  '));
 	
 	return this.queryTasklist(tasklistId, filters)
 	.then(tasks => {
 		//Unpack the response
 		let results = {};
-		console.log('dav.getOne -> ', tasks);
-		if (!(taskId in tasks))
+		//console.debug('dav.getOne -> ', tasks);
+		if (!Array.isArray(tasks) || (tasks.length <= 0)  || (tasks[0].id != taskId))
 			throw new Error("Task not found: "+taskId)
-		return tasks[taskId];
+		return tasks[0];
 	});
 }
 
