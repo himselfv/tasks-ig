@@ -35,6 +35,7 @@ ext-chrome: build
 	node ./manifestgen.js ./src/manifest.json chrome > ./build/ext-chrome/manifest.json
 	rem Chrome Developer Dashboard does not require keys for 2nd+ upload for now, don't auto-add
 	rem cp ./_private/ext/key.pem ./build/ext-chrome/
+	rem Chrome extensions need to be just ZIPs on store upload
 	cd .\build\ext-chrome && zip -r .\..\ext-chrome.zip *
 
 ext-firefox: build
@@ -43,7 +44,7 @@ ext-firefox: build
 	rm -rf ./build/ext-firefox/*.map
 	rm -rf ./build/ext-firefox/config*.js
 	node ./manifestgen.js ./src/manifest.json firefox > ./build/ext-firefox/manifest.json
-	cd .\build\ext-firefox && zip -r .\..\ext-firefox.zip *
+	cd .\build\ext-firefox && zip -r .\..\ext-firefox.xpi *
 
 clean:
 	-rm -rf ./build/*

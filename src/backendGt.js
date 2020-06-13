@@ -27,8 +27,12 @@ function isChromeExtension() {
 	return ((typeof chrome != 'undefined') && chrome.runtime && chrome.runtime.id && (typeof browser == 'undefined'));
 }
 
-//Self-register
-registerBackend(BackendGTasks, "Google Tasks");
+if (document.URL.startsWith('moz-extension://')) {
+	//Unfortunately even GAPI loading doesn't work from moz-extension: namespace correctly.
+	//Can there be a workaround? I'm not sure.
+} else
+	//Self-register
+	registerBackend(BackendGTasks, "Google Tasks");
 
 
 /*
@@ -42,7 +46,7 @@ function gapiLoad() {
 	return new Promise((resolve, reject) => {
 		gapi.load('client:auth2', {
 			'callback': () => resolve(gapi),
-			'onerror': () => { console.log("gapi load fail"); reject("GAPI client failed to load"); },
+			'onerror': (error) => { console.log("gapi load fail:", error); reject("GAPI client failed to load"); },
 		});
 	});
 }
