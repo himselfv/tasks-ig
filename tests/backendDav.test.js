@@ -13,7 +13,7 @@ WARNING. All content of the task lists of this user will be deleted.
 */
 let haveDavServer = (!!process.env.DAV_SERVER || !!process.env.DAV_USERNAME);
 if (!haveDavServer) {
-	console.warning(
+	console.warn(
 		"For BackendDav tests to run you must provide a disposable DAV account.\n"
 		+"Set environment variables:\n"
 		+"  DAV_SERVER\n"
