@@ -12,9 +12,11 @@ This project reimplements everything in that frontend from scratch. It uses Goog
 ### Features
 * Runs in the browser, locally or self-hosted (for Google Tasks)
 * Works with Google Tasks and CalDAV
-* Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands. If something is missing, file an issue.
+* Multi-account support, moving and copying tasks between accounts
+* Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands, undelete. If something is missing, file an issue.
 * Async requests, fast UI with neat activity indicator
 * Export tasks
+
 
 ### Runs as a:
 
@@ -59,10 +61,15 @@ Just double-click `index.html` or [access it on Github](https://himselfv.github.
 
 You can put your self-hosted instance in a Firefox sidebar instead of a browser-hosted copy. Install the extension in the `webpanel` folder and set the URL in the options.
 
+#### Speed up self-hosted version
+
+* Enable etags and long caching of all js/css/resources to avoid repeated requests
+* Compile Tasks IG with `make min` and host minified version: all JS merged into a single file (harder to debug).
+
 
 ### CalDAV
 
-CalDAV Tasks are now mostly supported!
+CalDAV Tasks are now supported!
 
 * Work in all environments, including from [here on GitHub](https://himselfv.github.io/tasks-ig/)
 * Subtasks via RELATED-TO, the most supported way
@@ -84,7 +91,7 @@ If your Tasks IG instance is hosted on a different server than your CalDAV, requ
 * You also need to respond dynamically to `Access-Control-Request-Headers` and return `Access-Control-Allow-Headers:` with requested headers specifically; the browsers won't be satisfied with '*' for some headers even in non-`withCredentials` mode.
 * `Access-Control-Max-Age: 600` to enable at least some caching of OPTION requests.
 
-#### How to speed up DAV
+#### Speed up DAV
 
 1. Disable Service Discovery and provide a direct URL in account settings => -1 request.
 2. If you're using HTTPS, switch your server from Digest to Basic auth => -1 request. Digest auth unavoidably starts with a 403. Warning: For non-encrypted HTTP, Basic auth is unsafe.
@@ -92,13 +99,11 @@ If your Tasks IG instance is hosted on a different server than your CalDAV, requ
 
 
 ### Google Tasks
-Google only allows third-party apps to access Tasks either from a Chrome extension, or if your self-host and configure Google API keys. For Chrome extensions see "Extensions".
+Google only allows third-party apps to access Tasks either from a Chrome extension, or if your self-host and configure Google API keys. For Chrome, just install the extension. See "Extensions".
 
 For self-hosting:
 
-**Plan A:**
-
-1. You need a domain.
+1. You need a domain. Google Tasks requires having an origin hostname.
 
 2. Upload the contents (excluding docs and extension) under some URL on your server.
 
@@ -108,12 +113,20 @@ For self-hosting:
 
 5. Access the URL and press "Authorize with Google". (The local storage version should work from step 2).
 
-Why all these complications? Google Tasks backend requires having an origin hostname.
-
 **Plan B:**
 
 * Find someone who hosts it and use their instance (if you trust them).
 
+
+### FAQ
+
+**Q:** Can/should I use this on mobile?
+
+**A:** You can, but there are better clients both for Google Tasks and for DAV (for example, [Tasks.org](https://f-droid.org/ru/packages/org.tasks/)). Tasks IG is mostly meant for a browser/sidebar.
+
+**Q:** I accidentally a task, can I undelete it?
+
+**A:** Only in Google Tasks. Check "Show deleted tasks" in Options. To restore a deleted task, simply edit it and save. Remember to disable "Show deleted tasks" later; this is a last ditch effort, not a workable mode.
 
 
 ### License and attribution
