@@ -587,7 +587,16 @@ BackendDav.prototype.getOne = function(taskId, tasklistId) {
 /*
 OR queries are not supported on most CalDAV servers at the moment,
 so this is disabled.
-	
+
+NOTE: There's a calendarMultiget request, but it takes a list of URLs
+and we only have task IDs (which are different even though there's a 1-to-1 match).
+
+* We could cache ID->URL map, but RELATED-TO: may refer to tasks we have never seen by URL.
+
+* A smart getMultiple could issue one calenadarMultiget() for all known URLs and
+  getOne()s for the rest.
+  But too much complexity for a rare case, leaving it alone until it really matters.
+
 BackendDav.prototype.getMultiple = function(taskIds, tasklistId) {
 	taskIds = toTaskIds(taskIds);
 	if (!tasklistId) tasklistId = this.selectedTaskList;
