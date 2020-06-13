@@ -409,20 +409,13 @@ BackendDav.prototype.queryTasklist = function(tasklistId, filters) {
 	});
 }
 
-//Returns a set of prop-filters which uniquely identify a task with a given taskId
-//Returns null if taskId is invalid
-BackendDav.prototype.taskIdSubfilter = function(taskId) {
-	return [{
-			type: 'prop-filter',
-			attrs: { name: 'UID' },
-			children: [{
-				type: 'text-match',
-				attrs: { collation: 'i;octet' },
-				value: taskId,
-			}],
-		}];
-}
-//Same but for multiple task IDs and returns a complete filter
+/*
+Returns a comp/prop-filter which selects one or more given tasks by their IDs.
+Uses OR queries to query multiple events at the same time:
+  https://tools.ietf.org/id/draft-daboo-caldav-extensions-01.txt
+Since ORs are not supported on most CalDAV servers at the moment,
+please only call this for single IDs for now.
+*/
 BackendDav.prototype.taskIdsFilter = function(taskIds) {
 	let uids = [];
 	for (let i=0; i<taskIds.length; i++) {
@@ -452,6 +445,7 @@ BackendDav.prototype.taskIdsFilter = function(taskIds) {
 		}],
 	}];
 }
+
 
 //Populates/updates VTODO object fields based on the given task contents
 //If "patch" is set, only updates fields that are present (otherwise considers missing fields deleted).
@@ -573,23 +567,40 @@ BackendDav.prototype.list = function(tasklistId) {
 	return this.queryTasklist(tasklistId, filters);
 }
 
-BackendDav.prototype.getMultiple = function(taskIds, tasklistId) {
-	/*
-	Uses OR queries:
-	  https://tools.ietf.org/id/draft-daboo-caldav-extensions-01.txt
-	To query multiple events at the same time.
-	
-	If ORs are not supported, one alternative is to just request everything
-	if the # of todos needed is high enough, otherwise default to one-by-one.
-	*/
+BackendDav.prototype.getOne = function(taskId, tasklistId) {
+	taskId = toTaskId(taskId);
 	if (!tasklistId) tasklistId = this.selectedTaskList;
-	//console.debug('dav.getMultiple:', taskIds, tasklistId);
-	let filters = this.taskIdsFilter(taskIds);
+	//console.debug('dav.getOne:', taskId, tasklistId);
+	let filters = this.taskIdsFilter([taskId]);
+	console.log(JSON.stringify(filters, null, '  '));
 	
 	return this.queryTasklist(tasklistId, filters)
 	.then(tasks => {
 		//Unpack the response
 		let results = {};
+		console.log('dav.getOne -> ', tasks);
+		if (!(taskId in tasks))
+			throw new Error("Task not found: "+taskId)
+		return tasks[taskId];
+	});
+}
+
+/*
+OR queries are not supported on most CalDAV servers at the moment,
+so this is disabled.
+	
+BackendDav.prototype.getMultiple = function(taskIds, tasklistId) {
+	taskIds = toTaskIds(taskIds);
+	if (!tasklistId) tasklistId = this.selectedTaskList;
+	//console.debug('dav.getMultiple:', taskIds, tasklistId);
+	let filters = this.taskIdsFilter(taskIds);
+	//console.debug('dav.getMutiple: filters=', filters);
+
+	return this.queryTasklist(tasklistId, filters)
+	.then(tasks => {
+		//Unpack the response
+		let results = {};
+		//console.log('dav.getMultiple -> ', tasks);
 		
 		//The query may return less results than needed so check the requested set one by one
 		for (let i=0; i<taskIds.length; i++) {
@@ -605,6 +616,7 @@ BackendDav.prototype.getMultiple = function(taskIds, tasklistId) {
 		return results;
 	});
 }
+*/
 
 
 BackendDav.prototype.update = function (task, tasklistId) {
