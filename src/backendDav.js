@@ -52,7 +52,10 @@ BackendDav.prototype.settingsPage = function() {
 			hint: 'This is your DAV server root',
 		},
 		username: { type: 'text', },
-		password: {	type: 'password', },
+		password: {
+			type: 'password',
+			hint: 'Will be saved locally in your browser',
+		},
 		auth: {
 			type: ['Digest first', 'Basic first', 'Digest only'],
 			default: 'Digest first',
