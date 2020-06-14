@@ -1,4 +1,4 @@
-Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a separate lightweight JS frontend perfect for a browser sidebar, which had been shut down:
+<img align="right" width="320px" src="docs/screen-features.png" />Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a separate lightweight JS frontend perfect for a browser sidebar, which had been shut down:
 
 > **https://mail.google.com/tasks/ig**
 
@@ -16,7 +16,7 @@ This project reimplements that frontend from scratch. It supports multiple accou
 * Async requests, fast UI with activity indicator
 
 
-### Runs as a:
+### <span style="clear:both;"></span>Runs as a:
 * [Chrome/Firefox/Opera browser extension](#extensions)
 * [Hosted on your own domain](#self-hosting) (can also be [put in a sidebar](#sidebar-standalone))
 * From a local HTML file, or [here on GitHub](https://himselfv.github.io/tasks-ig/)
@@ -43,8 +43,10 @@ In short: CalDAV is always available, Google Tasks only on Chrome or own domain,
 <a name="webpanel"></a>**Firefox/Opera Sidebar for Standalone version**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig-webpanel/)
 
 > To load from sources:
-> * Chrome: Go to Extensions page and enable "Developer mode". Press "Load unpacked extension" and point it to the folder with Tasks IG.
-> * Firefox: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`.
+
+> Chrome: Go to Extensions page and enable "Developer mode". Press "Load unpacked extension" and point it to the folder with Tasks IG.
+
+> Firefox: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`.
 
 
 ### <a name="self-hosting"></a> Self-hosting
