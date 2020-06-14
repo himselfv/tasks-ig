@@ -56,7 +56,7 @@ BackendDav.prototype.settingsPage = function() {
 		auth: {
 			type: ['Digest first', 'Basic first', 'Digest only'],
 			default: 'Digest first',
-			hint: 'Leave "Digest first" if unsure',
+			hint: 'Basic is faster but should only be used with HTTPS URLs. Leave "Digest first" if unsure',
 		},
 		serviceDiscovery: {
 			type: 'bool', default: false,

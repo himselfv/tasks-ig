@@ -1,121 +1,86 @@
-Google Tasks is a service by Google partially integrated in Calendar. It had a separate lightweight JS frontend perfect for a using in a browser sidebar, which had been shut down:
+Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a separate lightweight JS frontend perfect for a browser sidebar, which had been shut down:
 
 > **https://mail.google.com/tasks/ig**
 
-This project reimplements everything in that frontend from scratch. It uses Google Tasks API to access Tasks but can support different backends (including CalDAV tasks!)
+This project reimplements that frontend from scratch. It supports multiple accounts with [different backends](#backends) (including Google Tasks and CalDAV tasks!)
 
 ![Screenshot](docs/screen-features.png)
 
-**[Try it here on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
+**[Try it now on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
 
 
 ### Features
-* Runs in the browser, locally or self-hosted (for Google Tasks)
-* Works with Google Tasks and CalDAV
-* Multi-account support, moving and copying tasks between accounts
-* Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands, undelete. If something is missing, file an issue.
-* Async requests, fast UI with neat activity indicator
-* Export tasks
+* Runs in the browser, locally or self-hosted
+* Works with [Google Tasks](#backend-gtasks), [CalDAV](#backend-caldav) and [browser-synced tasks](#backend-browser)
+* Multi-account support, moving and copying tasks between accounts, exporting tasks
+* Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands, undelete.
+* Async requests, fast UI with activity indicator
 
 
 ### Runs as a:
+* [Chrome/Firefox/Opera browser extension](#extensions)
+* [Hosted on your own domain](#self-hosting) (can also be [put in a sidebar](#sidebar-standalone))
+* From a local HTML file, or [here on GitHub](https://himselfv.github.io/tasks-ig/)
 
-* Chrome extension (on a separate page)
-* Firefox/Opera extension (in a sidebar)
-* Self-hosted &mdash; on your own domain
-* Firefox/Opera extension for a self-hosted version (in a sidebar)
-* Standalone &mdash; as a local HTML file, or [here on GitHub](https://himselfv.github.io/tasks-ig/)
+<a name="backends"></a>Different backends are available in each case:
 
-Different backends are available in each case:
-
-|				| CalDAV| Google Tasks	| Browser (sync)	| Browser (local)	|
+|				| [CalDAV](#backend-caldav)| [Google Tasks](#backend-gtasks)	| [Browser (sync)](#backend-browser)	| [Browser (local)](#backend-browser)	|
 |------				|:----:	|:----:		|:----:			|:----:			|
 | Chrome extension (page)	| +	| +		| +			| +			|
-| Firefox extension (sidebar)	| +	| 		| +			| +			|
-| Self-hosted			| +	| +		| 			| + (less safe)		|
-| Self-hosted in sidebar	| +	| +		| 			| + (less safe)		|
-| Local file or github		| +	| 		| 			| + (less safe)		|
+| Firefox/Opera (sidebar)	| +	| 		| +			| +			|
+| Self-hosted			| +	| +		| 			| + ([less safe](#backend-local-storage))		|
+| Self-hosted in sidebar	| +	| +		| 			| + ([less safe](#backend-local-storage))		|
+| Local file or github		| +	| 		| 			| + ([less safe](#backend-local-storage))		|
 
-Browser backends are completely offline. The sync version is synchronized by the browser between your different PCs. The "less safe" versions use Local Storage instead of Extension's Storage and it's easy to reset by cleaning cookies, so I wouldn't store anything important.
+In short: CalDAV is always available, Google Tasks only on Chrome or own domain, Browser in all browser extensions.
 
 
-### The browser extensions
+### <a name="extensions"></a> The browser extensions
 
 **Chrome**: [Extension page](https://chrome.google.com/webstore/detail/tasks-ig/nemjdegnmkepopaeifiolicbkgldjokn)
 
-**Firefox**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig/)
+**Firefox**/**Opera**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig/)
 
-**Firefox Sidebar for Standalone version**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig-webpanel/)
+<a name="sidebar-standalone"></a>**Firefox/Opera Sidebar for Standalone version**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig-webpanel/)
 
-To load from sources here:
+To load from sources:
 
 Chrome: Go to Extensions page and enable "Developer mode". Press "Load unpacked extension" and point it to the folder with Tasks IG.
 
 Firefox: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`.
 
 
-### Self-hosting
-Tasks IG can be copied and run from anywhere, including your own server or a local file.
+### <a name="self-hosting"></a> Self-hosting
+Tasks IG can be copied and run from anywhere, including [from your own server](docs/hosting.md) or a local file.
 
 Just double-click `index.html` or [access it on Github](https://himselfv.github.io/tasks-ig/).
 
-You can put your self-hosted instance in a Firefox sidebar instead of a browser-hosted copy. Install the extension in the `webpanel` folder and set the URL in the options.
-
-#### Speed up self-hosted version
-
-* Enable etags and long caching of all js/css/resources to avoid repeated requests
-* Compile Tasks IG with `make min` and host minified version: all JS merged into a single file (harder to debug).
+You can put your self-hosted instance in a [Firefox/Opera sidebar](#sidebar-standalone) instead of a separate page. Install the extension and set the URL in options.
 
 
-### CalDAV
-
+### <a name="backend-caldav"></a>CalDAV
 CalDAV Tasks are now supported!
 
-* Work in all environments, including from [here on GitHub](https://himselfv.github.io/tasks-ig/)
+* Work in all environments including [from here on GitHub](https://himselfv.github.io/tasks-ig/)
 * Subtasks via RELATED-TO, the most supported way
 * Fixed ordering via X-APPLE-SORT-ORDER, the only at least somewhat supported way
-* Surprisingly fast
+* Surprisingly okay speed
 * No calendar creation/deletion -- please use a full-blown CalDAV client for initial setup
 * No task recurrence
 
-#### Setting up your own CalDAV
-
-If your Tasks IG instance is hosted on a different server than your CalDAV, requests to CalDAV are [cross-origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). You need to configure CORS:
-
-* Return 200 on OPTIONS, even if unauthenticated
-* All requests are made with NO `withCredentials`. We'll try to stick to that as allowing `withCredentials` is a security hole.
-* `Access-Control-Allow-Origin: *`
-* `Access-Control-Allow-Methods: OPTIONS, GET, HEAD, POST, PUT, DELETE, CONNECT, TRACE, PATCH, PROPFIND, COPY, MOVE`
-* `Access-Control-Expose-Headers: WWW-Authenticate, etag`
-* `Access-Control-Allow-Headers: *`
-* You also need to respond dynamically to `Access-Control-Request-Headers` and return `Access-Control-Allow-Headers:` with requested headers specifically; the browsers won't be satisfied with '*' for some headers even in non-`withCredentials` mode.
-* `Access-Control-Max-Age: 600` to enable at least some caching of OPTION requests.
-
-#### Speed up DAV
-
-1. Disable Service Discovery and provide a direct URL in account settings => -1 request.
-2. If you're using HTTPS, switch your server from Digest to Basic auth => -1 request. Digest auth unavoidably starts with a 403. Warning: For non-encrypted HTTP, Basic auth is unsafe.
-3. Place Tasks on the same server as your CalDAV instance - this removes CORS entirely (up to 2x the number of requests). _Protocol_, _host_ and _port_ all need to match. If you're using HTTPS for CalDAV (as you should), use HTTPS for Tasks too.
+See [How to configure your own CalDAV server](docs/hosting.md#caldav).
 
 
-### Google Tasks
-Google only allows third-party apps to access Tasks either from a Chrome extension, or if your self-host and configure Google API keys. For Chrome, just install the extension. See "Extensions".
+### <a name="backend-gtasks"></a>Google Tasks
+Google Tasks can only be accessed either [from a Chrome extension](#extensions) or from your own domain [if you configure Google API keys](docs/hosting.md#gtasks).
 
-For self-hosting:
+If you don't have a domain you can find someone else who hosts Tasks who you trust (if you run Tasks IG from them and they alter it, they can access your tasks).
 
-1. You need a domain. Google Tasks requires having an origin hostname.
 
-2. Upload the contents (excluding docs and extension) under some URL on your server.
+### <a name="backend-browser"></a>Browser backends
+Store data locally in the browser. They work even while offline. The sync version is synchronized by the browser between your different PCs in the background. In this way you can have a fully serverless but distributed tasks (but you will only be able to access them from the browser).
 
-3. Register new ``application`` in Google API Developer Console and create ``API Key`` and ``OpenID Client`` for it. Add your domain as a trusted domain for the ``application``, and your full URL as an allowed origin for that ``OpenID Client``. You may restrict ``API Key`` too but it's not required and first try without it.
-
-4. Rename ``config-example.js`` to ``config.js`` and insert your API key and Client ID there.
-
-5. Access the URL and press "Authorize with Google". (The local storage version should work from step 2).
-
-**Plan B:**
-
-* Find someone who hosts it and use their instance (if you trust them).
+<a name="backend-local-storage"></a>"Less safe" versions use Local Storage instead of Extension Storage and it's easy to reset by clearing cookies, so I wouldn't store anything important.
 
 
 ### FAQ
