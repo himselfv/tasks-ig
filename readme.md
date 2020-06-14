@@ -2,12 +2,11 @@ Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a s
 
 > **https://mail.google.com/tasks/ig**
 
-This project reimplements that frontend from scratch. It supports multiple accounts with [different backends](#backends) (including Google Tasks and CalDAV tasks!)
-
-![Screenshot](docs/screen-features.png)
+This project reimplements that frontend from scratch. It supports multiple accounts with [different backends](#backends) (including [Google Tasks](#backend-gtasks) and [CalDAV tasks](#backend-caldav)!)
 
 **[Try it now on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
 
+<img align="right" width="256px" src="docs/screen-features.png" />
 
 ### Features
 * Runs in the browser, locally or self-hosted
@@ -24,13 +23,13 @@ This project reimplements that frontend from scratch. It supports multiple accou
 
 <a name="backends"></a>Different backends are available in each case:
 
-|				| [CalDAV](#backend-caldav)| [Google Tasks](#backend-gtasks)	| [Browser (sync)](#backend-browser)	| [Browser (local)](#backend-browser)	|
-|------				|:----:	|:----:		|:----:			|:----:			|
-| Chrome extension (page)	| +	| +		| +			| +			|
-| Firefox/Opera (sidebar)	| +	| 		| +			| +			|
-| Self-hosted			| +	| +		| 			| + ([less safe](#backend-local-storage))		|
-| Self-hosted in sidebar	| +	| +		| 			| + ([less safe](#backend-local-storage))		|
-| Local file or github		| +	| 		| 			| + ([less safe](#backend-local-storage))		|
+|						| [CalDAV](#backend-caldav)| [Google Tasks](#backend-gtasks)	| [Browser (sync)](#backend-browser)	| [Browser (local)](#backend-browser)			|
+|------						|:----:	|:----:		|:----:			|:----:			|
+| [Chrome extension (page)](#extensions)	| +	| +		| +			| +			|
+| [Firefox/Opera (sidebar)](#extensions)	| +	| 		| +			| +			|
+| [Self-hosted](#self-hosting)			| +	| +		| 			| + ([less safe](#backend-local-storage))		|
+| [Self-hosted in sidebar](#webpanel)		| +	| +		| 			| + ([less safe](#backend-local-storage))		|
+| [Local file or github](#self-hosting)		| +	| 		| 			| + ([less safe](#backend-local-storage))		|
 
 In short: CalDAV is always available, Google Tasks only on Chrome or own domain, Browser in all browser extensions.
 
@@ -41,21 +40,17 @@ In short: CalDAV is always available, Google Tasks only on Chrome or own domain,
 
 **Firefox**/**Opera**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig/)
 
-<a name="sidebar-standalone"></a>**Firefox/Opera Sidebar for Standalone version**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig-webpanel/)
+<a name="webpanel"></a>**Firefox/Opera Sidebar for Standalone version**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig-webpanel/)
 
-To load from sources:
-
-Chrome: Go to Extensions page and enable "Developer mode". Press "Load unpacked extension" and point it to the folder with Tasks IG.
-
-Firefox: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`.
+> To load from sources:
+> * Chrome: Go to Extensions page and enable "Developer mode". Press "Load unpacked extension" and point it to the folder with Tasks IG.
+> * Firefox: Go to `about:debugging`, check "Enable extension debugging" and press "Load temporary extension". Point it to the `manifest.json`.
 
 
 ### <a name="self-hosting"></a> Self-hosting
-Tasks IG can be copied and run from anywhere, including [from your own server](docs/hosting.md) or a local file.
+Tasks IG can be copied and run from anywhere, including [from your own server](docs/hosting.md) or a local file. Just double-click `index.html` or [access it on Github](https://himselfv.github.io/tasks-ig/).
 
-Just double-click `index.html` or [access it on Github](https://himselfv.github.io/tasks-ig/).
-
-You can put your self-hosted instance in a [Firefox/Opera sidebar](#sidebar-standalone) instead of a separate page. Install the extension and set the URL in options.
+You can put your self-hosted instance in a [Firefox/Opera sidebar](#webpanel) instead of a separate page. Install the extension and set the URL in options.
 
 
 ### <a name="backend-caldav"></a>CalDAV
@@ -74,13 +69,13 @@ See [How to configure your own CalDAV server](docs/hosting.md#caldav).
 ### <a name="backend-gtasks"></a>Google Tasks
 Google Tasks can only be accessed either [from a Chrome extension](#extensions) or from your own domain [if you configure Google API keys](docs/hosting.md#gtasks).
 
-If you don't have a domain you can find someone else who hosts Tasks who you trust (if you run Tasks IG from them and they alter it, they can access your tasks).
+If you don't have a domain you can find someone else who does who you trust (if you run Tasks from them, they can alter it and access your tasks).
 
 
 ### <a name="backend-browser"></a>Browser backends
-Store data locally in the browser. They work even while offline. The sync version is synchronized by the browser between your different PCs in the background. In this way you can have a fully serverless but distributed tasks (but you will only be able to access them from the browser).
+Store data [locally in the browser](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/storage). They work even while offline. The sync version is synchronized between your different PCs in the background. In this way you can have a fully serverless but distributed tasks (but you will only be able to access them from the browser).
 
-<a name="backend-local-storage"></a>"Less safe" versions use Local Storage instead of Extension Storage and it's easy to reset by clearing cookies, so I wouldn't store anything important.
+<a name="backend-local-storage"></a>"Less safe" versions use [Local Storage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) instead of [extension Storage](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/storage) and it's easy to reset by clearing cookies, so I wouldn't store anything important.
 
 
 ### FAQ
@@ -89,7 +84,7 @@ Store data locally in the browser. They work even while offline. The sync versio
 
 **A:** You can, but there are better clients both for Google Tasks and for DAV (for example, [Tasks.org](https://f-droid.org/ru/packages/org.tasks/)). Tasks IG is mostly meant for a browser/sidebar.
 
-**Q:** I accidentally a task, can I undelete it?
+**Q:** Can I undelete a task?
 
 **A:** Only in Google Tasks. Check "Show deleted tasks" in Options. To restore a deleted task, simply edit it and save. Remember to disable "Show deleted tasks" later; this is a last ditch effort, not a workable mode.
 
