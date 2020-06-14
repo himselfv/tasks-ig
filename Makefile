@@ -31,6 +31,7 @@ ext-chrome: build
 	rm -rf ./build/ext-chrome
 	cp -R ./build/base ./build/ext-chrome
 	rm -rf ./build/ext-chrome/*.map
+	rm -rf ./build/ext-chrome/dav/*.map
 	rm -rf ./build/ext-chrome/config*.js
 	node ./manifestgen.js ./src/manifest.json chrome > ./build/ext-chrome/manifest.json
 	rem Chrome Developer Dashboard does not require keys for 2nd+ upload for now, don't auto-add
@@ -42,6 +43,7 @@ ext-firefox: build
 	rm -rf ./build/ext-firefox
 	cp -R ./build/base ./build/ext-firefox
 	rm -rf ./build/ext-firefox/*.map
+	rm -rf ./build/ext-firefox/dav/*.map
 	rm -rf ./build/ext-firefox/config*.js
 	node ./manifestgen.js ./src/manifest.json firefox > ./build/ext-firefox/manifest.json
 	cd .\build\ext-firefox && zip -r .\..\ext-firefox.xpi *
