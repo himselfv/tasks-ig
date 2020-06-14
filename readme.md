@@ -1,8 +1,10 @@
-<img align="right" width="320px" src="docs/screen-features.png" />Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a separate lightweight JS frontend perfect for a browser sidebar, which had been shut down:
+Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a separate lightweight JS frontend perfect for a browser sidebar, which had been shut down:
 
 > **https://mail.google.com/tasks/ig**
 
 This project reimplements that frontend from scratch. It supports multiple accounts with [different backends](#backends) (including [Google Tasks](#backend-gtasks) and [CalDAV tasks](#backend-caldav)!)
+
+<img width="320px" src="docs/screen-features.png" />
 
 **[Try it now on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
 
@@ -14,7 +16,7 @@ This project reimplements that frontend from scratch. It supports multiple accou
 * Async requests, fast UI with activity indicator
 
 
-### <span style="clear:both;"></span>Runs as a:
+### Runs as a:
 * [Chrome/Firefox/Opera browser extension](#extensions)
 * [Hosted on your own domain](#self-hosting) (can also be [put in a sidebar](#sidebar-standalone))
 * From a local HTML file, or [here on GitHub](https://himselfv.github.io/tasks-ig/)
