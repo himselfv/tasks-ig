@@ -6,8 +6,6 @@ This project reimplements that frontend from scratch. It supports multiple accou
 
 **[Try it now on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
 
-<img align="right" width="256px" src="docs/screen-features.png" />
-
 ### Features
 * Runs in the browser, locally or self-hosted
 * Works with [Google Tasks](#backend-gtasks), [CalDAV](#backend-caldav) and [browser-synced tasks](#backend-browser)
