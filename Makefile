@@ -19,11 +19,17 @@ min: build
 	rem Copy the resources
 	mkdir ./build/min/
 	cp -R ./build/min-tmp/index.min.js ./build/min/index.js
-	cp -R ./build/base/res ./build/min/res
+	cp ./src/index.html ./build/min/index.html
+	rem Add +1 space before index.js to distinguish it from the rest
+	sed -i -e 's/src=\"index\.js/\x20\0/' ./build/min/index.html
+	sed -i -e 's/src=\"config\.js/\x20\0/' ./build/min/index.html
+	rem Remove the rest of JSes
+	sed -i -e '/\^<script\x20src=.*/d' ./build/min/index.html
 	mkdir ./build/min/dav/
-	cp ./build/base/dav/*.js ./build/min/dav/
-	cp ./build/base/index.html ./build/min/index.html
-	cp ./build/base/style.css ./build/min/style.css
+	cp ./src/dav/*.js ./build/min/dav/
+	cp -R ./src/res ./build/min/res
+	cp ./src/style.css ./build/min/style.css
+
 
 ext: ext-chrome ext-firefox
 
