@@ -51,8 +51,13 @@ ext-firefox: build
 clean:
 	-rm -rf ./build/*
 
-init:
+init: update
+
+update:
 	git submodule update --init --recursive
-	npm install
+	npm update
+	rem Import compiled versions runtime dependencies into this repo
+	cp -f ./node_modules/ical.js/build/ical.min.js ./src/dav/ical.js
+	cp -f ./node_modules/dav/dav.min.js ./src/dav/dav.js
 
 always:
