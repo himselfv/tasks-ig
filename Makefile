@@ -51,4 +51,8 @@ ext-firefox: build
 clean:
 	-rm -rf ./build/*
 
+init:
+	git submodule update --init --recursive
+	npm install
+
 always:
