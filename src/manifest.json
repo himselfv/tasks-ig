@@ -16,7 +16,10 @@
 		"scripts": ["background.js"]
 	},
 	"icons": {
-		"16": "res/check2.png"
+		"16": "res/check2.png",
+		"32": "res/check2_32.png",
+		"64": "res/check2_64.png",
+		"128": "res/check2_128_96.png"
 	},
 	"sidebar_action": {
 		"default_icon": "res/check2.png",
