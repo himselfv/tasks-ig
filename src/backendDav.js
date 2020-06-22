@@ -494,7 +494,7 @@ BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
 			//Leave DURATION because it may be useful by itself
 		} else {
 			//Set all ways of expressing "due" together
-			let due = ICAL.Time.fromJSDate(task.due);
+			let due = ICAL.Time.fromJSDate(Task.parseDate(task.due));
 			entry.updatePropertyWithValue('due', due);
 			let duration = entry.getFirstPropertyValue('duration');
 			if (duration) {
@@ -504,7 +504,7 @@ BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
 			entry.updatePropertyWithValue('dtstart', due);
 		}
 	}
-	this.updateProperty(entry, 'completed', task.completed, patch);
+	this.updateProperty(entry, 'completed', Task.parseDate(task.completed), patch);
 	
 	//Update LAST-MODIFIED
 	var currentDt = ICAL.Time.now();

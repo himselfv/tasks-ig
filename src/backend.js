@@ -68,6 +68,16 @@ class Task {
 			this[key] = args[key];
 	}
 }
+//Dates and times must be returned as JS Dates, but strings from the clients should be tolerated
+Task.parseDate = function(dt) {
+	if ((typeof dt == 'undefined') || (dt instanceof Date)) return dt;
+	let dto = new Date(dt);
+	//Try to preserve the original data if we can't convert it to Date
+	if (dto instanceof Date && !isNaN(dto.getTime()))
+		return dto;
+	console.warn('Cannot convert', dt, 'to JS date');
+	return dt;
+}
 /*
 Q: What if my backend's task.ids are unique only to tasklist?
 A: Prepend them with tasklistId and your moveToList() will be changing task.ids (allowed).
@@ -127,6 +137,13 @@ function taskResNormalize(task) {
 		task.completed = new Date(); //now
 	if ((task.status != "completed") && task.completed)
 		delete task.completed;
+	//Convert all date fields to Dates
+	if (typeof task.due != 'undefined')
+		task.due = Task.parseDate(task.due);
+	if (typeof task.completed != 'undefined')
+		task.completed = Task.parseDate(task.completed);
+	if (typeof task.updated != 'undefined')
+		task.updated = Task.parseDate(task.updated);
 }
 unit.export(taskResNormalize);
 
