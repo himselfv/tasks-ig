@@ -81,6 +81,7 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   flex-direction: column;
   flex-grow: 1;
   overflow: auto; /* do not grow outside parent */
+  width: 100%; /* do not shrink if less than 100% width required */
 }
 #listHeader {
   display: flex;
