@@ -148,11 +148,46 @@ Activity indicator
 
 
 /*
-Left panel
+Task list panel
 */
 #listPanel {
   display: flex;
   flex-direction: column;
+  border-right: 3px solid #E3E9FF;
+  padding: 0px 0.1em;
+  resize: horizontal;
+}
+#listPanel > li {
+  font-size: 1.05em;
+  font-weight: bold;
+  list-style-type: none;
+}
+#listPanel > li p,
+#listPanel > li li {
+  margin: 0px;
+  padding: 0.3em 0.5em;
+  border: 1px solid white;
+  cursor: pointer;
+}
+#listPanel > li p:hover,
+#listPanel > li li:hover {
+  background-color: #E3E9FF;
+  border: 1px solid DodgerBlue;
+}
+#listPanel > li ul {
+  margin: 0px;
+  list-style-type: none;
+  color: DodgerBlue;
+  padding: 0;
+}
+#listPanel > li li {
+  padding-left: 1.0em;
+  font-weight: normal;
+}
+@media(max-width: 600px) {
+#listPanel {
+  display: none;
+}
 }
 
 

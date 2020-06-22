@@ -433,7 +433,7 @@ function accountListChanged() {
 	//Whoever is adding/changing individual accounts must trigger their reloadAccountTaskList() if needed.
 	//Reload the combo though -- the order of the lists could've changed
 	tasklistBox.reload();
-	leftPanelReload();
+	leftPanel.reload();
 }
 // Called when the signed in status changes, whether after a button click or automatically
 function accountSigninStateChanged(account, isSignedIn) {
@@ -459,7 +459,7 @@ function accountStateChanged(account) {
 	// 1. Account's own combobox entry
 	// 2. Account's tasklist comobobox entries
 	tasklistBox.reload();
-	leftPanelReload();
+	leftPanel.reload();
 	let newSelected = selectedTaskList();
 	
 	// 3. Account's accountPage, if it's open
@@ -920,7 +920,7 @@ function reloadAllAccountsTaskLists() {
 	if (accounts.length <= 0) {
 		console.debug('reloadAllAccontsTaskLists: No accounts, tasklistBox.reload() to empty');
 		tasklistBox.reload(); //no accounts => no one will trigger visuals
-		leftPanelReload();
+		leftPanel.reload();
 	}
 }
 //Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
@@ -1201,11 +1201,20 @@ function urlReadState() {
 
 
 /*
-Left panel
+Task list panel
 */
-function leftPanelReload() {
-	let panel = document.getElementById('listPanel');
-	nodeRemoveAllChildren(panel);
+function TaskListPanel(boxElement) {
+	if (!boxElement)
+		boxElement = document.createElement('div');
+	boxElement.classList.add('tasklistPanel');
+	this.box = boxElement;
+	this.showAccounts = options.showAccountsInCombo;
+	this.selectAccounts = options.accountsClickable;
+	this.selectFailedAccounts = false;
+}
+TaskListPanel.prototype.reload = function() {
+	console.debug('tasklistPanelReload');
+	nodeRemoveAllChildren(this.box);
 	
 	for (let i in accounts) {
 		let account = accounts[i];
@@ -1214,9 +1223,9 @@ function leftPanelReload() {
 		
 		//Add a "grayed line" representing the account
 		let option = document.createElement("li");
-		option.textContent = account.uiName();
+		option.innerHTML = '<p>'+account.uiName()+'</p>';
 		option.value = String(new TaskListHandle(account.id, undefined));
-		//if (!this.selectAccounts)
+		if (!this.selectAccounts)
 			option.disabled = true; //Normally can't select this
 		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists || isArrayEmpty(account.ui.tasklists)) {
@@ -1229,10 +1238,12 @@ function leftPanelReload() {
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
 				option.textContent = option.textContent+' (no lists)';
 			option.classList.add("grayed");
-			panel.appendChild(option);
+			this.box.appendChild(option);
 			continue;
 		} else
-			panel.appendChild(option);
+		//Otherwise add account entry if the options tell us so
+		if (this.showAccounts)
+			this.box.appendChild(option);
 		
 		let ul = document.createElement('ul');
 		option.appendChild(ul);
@@ -1246,7 +1257,20 @@ function leftPanelReload() {
 			ul.appendChild(option);
 		}
 	}
+	
+	if (accounts.length <= 0) {
+		let option = document.createElement("option");
+		option.hidden = true;
+		option.text = "No accounts";
+		option.value = "";
+		this.box.appendChild(option);
+		this.box.classList.add("grayed");
+	} else {
+		this.box.classList.remove("grayed");
+	}
 }
+
+var leftPanel = new TaskListPanel(document.getElementById('listPanel'));
 
 
 //Backend for the currently selected list. Only set if the backend is initialized.
