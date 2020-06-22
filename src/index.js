@@ -1224,7 +1224,7 @@ TaskListPanel.prototype.reload = function() {
 		//Add a "grayed line" representing the account
 		let option = document.createElement("li");
 		option.innerHTML = '<p>'+account.uiName()+'</p>';
-		option.value = String(new TaskListHandle(account.id, undefined));
+		option.extraValue = new TaskListHandle(account.id, undefined);
 		if (!this.selectAccounts)
 			option.disabled = true; //Normally can't select this
 		
@@ -1238,6 +1238,7 @@ TaskListPanel.prototype.reload = function() {
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
 				option.textContent = option.textContent+' (no lists)';
 			option.classList.add("grayed");
+			option.addEventListener('click', () => { this.optionClicked(option); })
 			this.box.appendChild(option);
 			continue;
 		} else
@@ -1251,9 +1252,10 @@ TaskListPanel.prototype.reload = function() {
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
 			let option = document.createElement("li");
-			option.value = String(new TaskListHandle(account.id,  tasklist.id));
+			option.extraValue = new TaskListHandle(account.id,  tasklist.id);
 			option.textContent = tasklist.title;
 			option.classList.add('offset');
+			option.addEventListener('click', () => { this.optionClicked(option); })
 			ul.appendChild(option);
 		}
 	}
@@ -1262,12 +1264,19 @@ TaskListPanel.prototype.reload = function() {
 		let option = document.createElement("option");
 		option.hidden = true;
 		option.text = "No accounts";
-		option.value = "";
+		option.extraValue = null;
+		option.addEventListener('click', () => { this.optionClicked(option); })
 		this.box.appendChild(option);
 		this.box.classList.add("grayed");
 	} else {
 		this.box.classList.remove("grayed");
 	}
+}
+TaskListPanel.prototype.optionClicked = function(option) {
+	let value = option.extraValue;
+	if (!value)
+		return;
+	setSelectedTaskList(value);
 }
 
 var leftPanel = new TaskListPanel(document.getElementById('listPanel'));
