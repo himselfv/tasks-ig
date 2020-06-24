@@ -504,7 +504,8 @@ BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
 			entry.updatePropertyWithValue('dtstart', due);
 		}
 	}
-	this.updateProperty(entry, 'completed', Task.parseDate(task.completed), patch);
+	//Parse task.completed as a date if it's not null
+	this.updateProperty(entry, 'completed', (task.completed) && Task.parseDate(task.completed), patch);
 	
 	//Update LAST-MODIFIED
 	var currentDt = ICAL.Time.now();

@@ -2392,8 +2392,8 @@ Editor.prototype.open = function(taskId) {
 		}
 		this.taskListBox.reload();
 		document.getElementById("editorTaskTitle").innerText = task.title;
-		document.getElementById("editorTaskTitleBox").checked = (task.completed != null);
-		document.getElementById("editorTaskTitleP").classList.toggle("completed", task.completed != null);
+		document.getElementById("editorTaskTitleBox").checked = (task.status == 'completed');
+		document.getElementById("editorTaskTitleP").classList.toggle("completed", task.status == 'completed');
 		document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
 		document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
 		this.taskListBox.setSelected(selectedTaskList());
