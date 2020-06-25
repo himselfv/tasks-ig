@@ -53,8 +53,8 @@ function initUi() {
 	taskmenu = dropdownInit('taskmenu');
 	taskmenu.button.title = "Task actions";
 	taskmenu.button.classList.add("button");
-	taskmenu.add("taskTabBtn", taskEntryTabFocused, "—> Tab");
-	taskmenu.add("taskShiftTabBtn", taskEntryShiftTabFocused, "<— Shift-Tab");
+	taskmenu.add("taskTabBtn", taskEntryTabFocused, "â€”> Tab");
+	taskmenu.add("taskShiftTabBtn", taskEntryShiftTabFocused, "<â€” Shift-Tab");
 	taskmenu.addSeparator();
 	taskmenu.add("taskCopyJSON", taskEntryCopyJSON, "Copy JSON");
 	taskmenu.add("taskExportToFile", taskEntryExportToFile, "Export to file...");
@@ -1222,13 +1222,14 @@ TaskListPanel.prototype.reload = function() {
 			continue;
 		
 		//Add a "grayed line" representing the account
-		let option = document.createElement("li");
-		option.innerHTML = '<p>'+account.uiName()+'</p>';
+		let option = this.addItem(account.uiName());
+		option.classList.add('account');
 		option.extraValue = new TaskListHandle(account.id, undefined);
+		option.addEventListener('click', () => { this.optionClicked(option); })
 		if (!this.selectAccounts)
 			option.disabled = true; //Normally can't select this
 		
-		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists || isArrayEmpty(account.ui.tasklists)) {
+		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists) {
 			if (this.selectFailedAccounts)
 				option.disabled = false; //No task lists => make the account always selectable
 			if (account.error)
@@ -1238,39 +1239,47 @@ TaskListPanel.prototype.reload = function() {
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
 				option.textContent = option.textContent+' (no lists)';
 			option.classList.add("grayed");
-			option.addEventListener('click', () => { this.optionClicked(option); })
-			this.box.appendChild(option);
 			continue;
 		} else
-		//Otherwise add account entry if the options tell us so
-		if (this.showAccounts)
-			this.box.appendChild(option);
-		
-		let ul = document.createElement('ul');
-		option.appendChild(ul);
+		if (isArrayEmpty(account.ui.tasklists)) {
+			//No-lists accounts should be shown normally
+		}
+		if (!this.showAccounts)
+			option.display = "none";
 		
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
-			let option = document.createElement("li");
+			let option = this.addItem(tasklist.title);
 			option.extraValue = new TaskListHandle(account.id,  tasklist.id);
-			option.textContent = tasklist.title;
-			option.classList.add('offset');
+			option.classList.add('tasklist');
 			option.addEventListener('click', () => { this.optionClicked(option); })
-			ul.appendChild(option);
+		}
+		
+		if (account.tasklistAdd) {
+			let option = this.addItem("ï¼‹"); /* Add list */
+			option.extraValue = new TaskListHandle(account.id, null);
+			option.classList.add('tasklistAdd');
+			option.addEventListener('click', () => { tasklistAdd(account); })
 		}
 	}
 	
 	if (accounts.length <= 0) {
-		let option = document.createElement("option");
-		option.hidden = true;
-		option.text = "No accounts";
+		let option = this.addItem("No accounts");
+		option.classList.add('account');
+		option.classList.add('grayed');
 		option.extraValue = null;
-		option.addEventListener('click', () => { this.optionClicked(option); })
-		this.box.appendChild(option);
-		this.box.classList.add("grayed");
-	} else {
-		this.box.classList.remove("grayed");
 	}
+	
+	let option = this.addItem("Add account")
+	option.classList.add('accountAdd');
+	option.addEventListener('click', () => { StartNewAccountUi({ hasCancel:true, }) })
+}
+TaskListPanel.prototype.addItem = function(title) {
+	let option = document.createElement("li");
+	if (title)
+		option.textContent = title;
+	this.box.appendChild(option);
+	return option;
 }
 TaskListPanel.prototype.optionClicked = function(option) {
 	let value = option.extraValue;
@@ -2292,20 +2301,22 @@ function tasksActionsUpdate() {
 Tasklist and account actions
 */
 
-function tasklistAdd() {
-	if (!backend || !backend.tasklistAdd) return;
-	var title = prompt("Enter a name for the new task list in '"+backend.uiName()+"':", "");
+//If account is null assumes currently selected one
+function tasklistAdd(account) {
+	if (!account) account = backend;
+	if (!account || !account.tasklistAdd) return;
+	var title = prompt("Enter a name for the new task list in '"+account.uiName()+"':", "");
 	if (!title)
 		return;
 
 	var newTasklistId = null;
-	var job = backend.tasklistAdd(title)
+	var job = account.tasklistAdd(title)
 	.then(result => {
 		newTasklistId = result.id;
-		return reloadAccountTaskLists(backend)
+		return reloadAccountTaskLists(account)
 	})
 	.then(response => {
-		setSelectedTaskList(new TaskListHandle(backend, newTasklistId));
+		setSelectedTaskList(new TaskListHandle(account, newTasklistId));
 	});
 	pushJob(job);
 }
