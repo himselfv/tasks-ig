@@ -1063,7 +1063,8 @@ TaskListBox.prototype.setSelected = function(tasklist, noNotify) {
 	if (this.box.value == tasklist)
 		return; //nothing to change
 	this.box.value = tasklist;
-	this.changed(); //Won't get called automatically
+	if (!noNotify)
+		this.changed(); //Won't get called automatically
 }
 TaskListBox.prototype.changed = function() {
 	this.box.dispatchEvent(new Event('change'));
@@ -1211,10 +1212,36 @@ function TaskListPanel(boxElement) {
 	this.showAccounts = options.showAccountsInCombo;
 	this.selectAccounts = options.accountsClickable;
 	this.selectFailedAccounts = false;
+	this.sizeLoad();
+	this.box.addEventListener('resize', () => { this.sizeSave(); });
+	//Dragging and resizing
+	this.box.addEventListener("click", event => { this.dragStart(event); });
+	this.box.addEventListener("dragstart", event => { this.dragStart(event); });
+	this.box.addEventListener("dragend",  event => { this.dragEnd(event); });
+	this.box.addEventListener("dragmove",  event => { this.dragMove(event); });
+}
+//Saves and restores user-defined width of the panel. The base element must have id.
+TaskListPanel.prototype.sizeSave = function() {
+	console.log('Saving size:', this.box.id, this.box.offsetWidth, this.box.clientWidth);
+	setLocalStorageItem("tasksIg_"+this.box.id+"_width", this.box.offsetWidth);
+}
+TaskListPanel.prototype.sizeLoad = function() {
+	let width = Number(getLocalStorageItem("tasksIg_"+this.box.id+"_width"));
+	console.log('Restoring size:', this.box.id, width);
+	if (width)
+		this.box.style.width = width;
 }
 TaskListPanel.prototype.reload = function() {
 	console.debug('tasklistPanelReload');
 	nodeRemoveAllChildren(this.box);
+	
+	//Add a dummy entry as a title
+	{
+		let option = document.createElement('p');
+		option.textContent = 'Task lists:';
+		option.classList.add('title');
+		this.box.appendChild(option);
+	}
 	
 	for (let i in accounts) {
 		let account = accounts[i];
@@ -1227,7 +1254,7 @@ TaskListPanel.prototype.reload = function() {
 		option.extraValue = new TaskListHandle(account.id, undefined);
 		option.addEventListener('click', () => { this.optionClicked(option); })
 		if (!this.selectAccounts)
-			option.disabled = true; //Normally can't select this
+			option.classList.add('disabled');
 		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists) {
 			if (this.selectFailedAccounts)
@@ -1273,6 +1300,9 @@ TaskListPanel.prototype.reload = function() {
 	let option = this.addItem("Add account")
 	option.classList.add('accountAdd');
 	option.addEventListener('click', () => { StartNewAccountUi({ hasCancel:true, }) })
+	
+	//Reapply selection
+	this.applySelected(this.selected);
 }
 TaskListPanel.prototype.addItem = function(title) {
 	let option = document.createElement("li");
@@ -1287,6 +1317,38 @@ TaskListPanel.prototype.optionClicked = function(option) {
 		return;
 	setSelectedTaskList(value);
 }
+TaskListPanel.prototype.setSelected = function(tasklist, noNotify) {
+	console.debug('TaskListPanel.setSelected', arguments);
+	if (String(this.selected)==String(tasklist)) return;
+	this.selected = tasklist;
+	this.applySelected(this.selected);
+}
+TaskListPanel.prototype.applySelected = function(tasklist) {
+	var children = this.box.children;
+	for (var i = 0; i < children.length; i++)
+		children[i].classList.toggle('selected', !!tasklist && (String(children[i].extraValue)==String(tasklist)));
+}
+TaskListPanel.prototype.dragStart = function(event) {
+	this.dragContext = {}; //stores some things temporarily while dragging
+	console.log('dragStart', event);
+
+	console.log('a', event.offsetX, 'b', this.box.offsetWidth, 'c', this.box.style.borderRightWidth);
+	console.log(this.box.style);
+	if (event.offsetX >= this.box.offsetWidth - this.box.style.borderRightWidth) {
+       alert('clicked on the left border!');
+    }
+
+	//To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
+	//we need to shield the page while dragging
+	//this.dragContext.shield = createDragShield();
+}
+TaskListPanel.prototype.dragEnd = function(event) {
+	//Remove the shield
+	document.body.removeChild(dragContext.shield);
+	delete dragContext.shield;
+}
+TaskListPanel.prototype.dragMove = function(event) {
+}
 
 var leftPanel = new TaskListPanel(document.getElementById('listPanel'));
 
@@ -1296,11 +1358,14 @@ var backend = null;
 
 function selectedTaskList(){ return tasklistBox.selected(); }
 function selectedTaskListTitle() { return tasklistBox.selectedTitle(); }
-function setSelectedTaskList(tasklist, noNotify) { return tasklistBox.setSelected(tasklist, noNotify); }
-//Called when the selected task list had been chagned
+function setSelectedTaskList(tasklist, noNotify) {
+	tasklistBox.setSelected(tasklist, noNotify);
+}
+//Called when the selected task list had been chagned in the task list combo box
 function selectedTaskListChanged() {
 	console.debug('selectedTaskListChanged');
 	let tasklist = selectedTaskList();
+	leftPanel.setSelected(tasklist);
 	if (!!tasklist && !!tasklist.account)
 		backend = tasklist.account;
 	else
@@ -1736,10 +1801,22 @@ function tasksActionsUpdate() {
   }
 
 
-  /*
-  Drag handling
-  */
-  var dragContext = {}; //stores some things temporarily while dragging
+/*
+Drag handling
+*/
+function createDragShield() {
+	let shield = document.createElement("div");
+    shield.classList.add("dragging");
+    shield.style.position = "fixed";
+    shield.style.left = "0px";
+    shield.style.right = "0px";
+    shield.style.top = "0px";
+    shield.style.bottom = "0px";
+    shield.style.zIndex = 10;
+    document.body.appendChild(shield);
+}
+
+var dragContext = {}; //stores some things temporarily while dragging
 
   //Starts the drag
   function taskEntryDragStart(event) {
@@ -1756,15 +1833,7 @@ function tasksActionsUpdate() {
     
     //To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
     //we need to shield the page while dragging
-    dragContext.shield = document.createElement("div");
-    dragContext.shield.classList.add("dragging");
-    dragContext.shield.style.position = "fixed";
-    dragContext.shield.style.left = "0px";
-    dragContext.shield.style.right = "0px";
-    dragContext.shield.style.top = "0px";
-    dragContext.shield.style.bottom = "0px";
-    dragContext.shield.style.zIndex = 10;
-    document.body.appendChild(dragContext.shield);
+    dragContext.shield = createDragShield();
     
     //Remember existing place for simple restoration
     //We need previous sibling because next sibling might well be our child

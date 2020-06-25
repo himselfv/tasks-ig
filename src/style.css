@@ -43,7 +43,7 @@ Error message popup
   bottom: 1em;
   left: 50%;
   transform: translateX(-50%);
-  border: lightgrey 1px solid;
+  border: LightGrey 1px solid;
   box-shadow: 0px 2px 4px 0px rgba(0,0,0,0.2);
   padding: 1em;
 }
@@ -89,7 +89,7 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   /*align-items: baseline;*/ /* Not needed now that buttons are images */
   padding: 2px 2px;
   padding-bottom: 3px;
-  /*border-bottom: lightgrey 1px solid;*/ /* A line under the title */
+  /*border-bottom: LightGrey 1px solid;*/ /* A line under the title */
   /*margin-bottom: 4px;*/ /* A space under the line */
 }
 
@@ -115,7 +115,7 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   margin-top: 1em;
 }
 #listFooter {
-  border-top: lightgrey 1px solid;
+  border-top: LightGrey 1px solid;
   /* Align buttons to the right */
   display: flex;
   flex-direction: row;
@@ -151,14 +151,22 @@ Activity indicator
 
 /*
 Task list panel
+  selected: Currently selected
+  disabled: Not selectable
+  grayed: Not fully functional but selectable
 */
 #listPanel {
   display: flex;
   flex-direction: column;
-  border-right: 3px solid #E3E9FF;
+  border-right: 3px solid LightGrey; /* same as borders in the main pane */
+    /* alternative: #E3E9FF */
   padding: 0px 0.1em;
   resize: horizontal; /* can be resized */
-  overflow-y: scroll; /* vertical scrollbar */
+  overflow-x: hidden;
+  overflow-y: auto; /* vertical scrollbar when needed */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
   user-select: none; /* text unselectable (if the user accidentally double-clicks) */
 }
 @media(max-width: 600px) { #listPanel {
@@ -171,12 +179,28 @@ Task list panel
   margin: 0px;
   padding: 0.3em 0.5em;
   border: 1px solid white;
+}
+#listPanel > li:not(.disabled),
+#listPanel > li:not(.disabled):after {
   cursor: pointer;
 }
-#listPanel > li:hover,
-#listPanel > li:hover:after {
+#listPanel > li:hover:not(.disabled),
+#listPanel > li:hover:not(.disabled):after {
+  /* Different highlight: */
   background-color: #E3E9FF;
   border: 1px solid DodgerBlue;
+  /* Same highlight as main menu button:
+  background-color: LightSkyBlue; == #87CEFA
+  border: 1px solid lightgray; */
+}
+#listPanel > .selected {
+  /* Same as the focused task in the main list */
+  border-top: 1px solid #F7E784;
+  border-bottom: 1px solid #F7E784;
+}
+/* List panel title */
+#listPanel > .title {
+  display: none; /* currently hidden */
 }
 #listPanel > .account,
 #listPanel > .accountAdd {
@@ -201,7 +225,9 @@ To replace "Add account" text:
 #listPanel > .tasklist,
 #listPanel > .tasklistAdd {
   list-style-type: none;
-  color: DodgerBlue;
+  /*color: DodgerBlue;*/
+  /*color: #4D6C98;*/
+  color: #4E6D9A;
   padding-left: 1.0em;
   font-weight: bold;
 }
@@ -230,7 +256,7 @@ Dropdown basics
   background-color: #f1f1f1;
   min-width: 120px;
   box-shadow: 0px 2px 4px 0px rgba(0,0,0,0.2);
-  border: lightgrey 1px solid;
+  border: LightGrey 1px solid;
   z-index: 1;
   right:0;
 }
@@ -338,7 +364,7 @@ Task nodes
 
 /* Task focus and mouseover */
 .task {
-  border-top: 1px solid white; /* So the size doesn't change on focu */
+  border-top: 1px solid white; /* So the size doesn't change on focus */
   border-bottom: 1px solid white;
 }
 .task.focused {
@@ -641,3 +667,15 @@ This scales the bottom elements away from the bottom.
 */
 }
 }
+
+
+/*
+Override any theme colors uniformly
+*/
+/* All borders have the same color: */
+#listPanel, #listHeader, #listFooter {
+  /*border-color: LightGrey;*/
+  border-color: #E3E9FF; /*-- brighter version */
+}
+
+
