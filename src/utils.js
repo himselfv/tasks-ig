@@ -725,6 +725,24 @@ function li(content) {
 }
 utils.export(li);
 
+//Retrieves HTML element inner bounds (excluding padding, borders and everything)
+//Those are the values that you set with "width: Apx; height: Bpx;"
+function getInnerClientRect(element) {
+	/*
+	One semi-reliable way is asking window.getComputedStyle(element).width/height:
+	  https://stackoverflow.com/a/25197206/
+	But computed styles may at times return values from the CSS directly, like "auto" or "30%".
+	So let's do this manually.
+	*/
+	var cs = getComputedStyle(element);
+	let width = element.clientWidth // width with padding
+	let height = element.clientHeight // height with padding
+	height -= parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
+	width -= parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
+	return { width: width, height: height };
+}
+utils.export(getInnerClientRect);
+
 
 /*
 Splitters and dragging
@@ -844,8 +862,11 @@ DragMgr.prototype.startDrag = function() {
 	
     //To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
     //we need to shield the page while dragging
-    if (this.autoShield)
+    if (this.autoShield) {
     	this.shield = createDragShield();
+    	if (this.autoShieldCursorStyle)
+    		this.shield.style.cursor = this.autoShieldCursorStyle;
+    }
 
 	//Move first time now that it's in position:absolute
 	let r = this.dragEntry.getBoundingClientRect();
@@ -923,8 +944,8 @@ TimeoutDragMgr.prototype.startDrag = function() {
 
 /*
 Splitter element.
- * Saves and restores widths
  * Vertical or horizontal
+ * Saves and restores resizeable element sizes
 TODO:
  * Detects which element to the left or to the right should be resized
  
@@ -950,20 +971,20 @@ function Splitter(element, id) {
 	this.dragMgr.dragStart = () => { return this.dragStart(); }
 	this.dragMgr.dragEnd = (cancelDrag) => { return this.dragEnd(cancelDrag); }
 	this.dragMgr.dragMove = (pos) => { return this.dragMove(pos); }
-
+	this.adjustShieldStyle();
 }
 utils.export(Splitter);
 Splitter.ID_BASE = 'splitter_';
 //Automatically detects whether we are vertical or horizontal.
 Splitter.prototype.autoDetectDirection = function() {
 	let style = window.getComputedStyle(this.box.parentElement);
-	console.log(this.box.parentElement, style.flexDirection);
 	if (style.flexDirection=='row')
 		this.setDirection('V');
 	else if (style.flexDirection=='column')
 		this.setDirection('H');
 	else
 		this.setDirection(null);
+	this.adjustShieldStyle();
 	//Which element do we grow?
 	let prev = this.box.previousElementSibling;
 	let prevStyle = prev ? window.getComputedStyle(prev) : null;
@@ -975,54 +996,79 @@ Splitter.prototype.autoDetectDirection = function() {
 		this.growElement = next;
 	else
 		this.growElement = prev;
-	console.log(prevStyle.flexGrow, nextStyle.flexGrow);
-	console.log(this.growElement);
 }
 //H = ---; V = |.
 Splitter.prototype.setDirection = function(value) {
-	this.style = value;
+	this.direction = value;
 	this.box.classList.toggle('splitter', true);
-	this.box.classList.toggle('splitterV', (this.style=='V'));
-	this.box.classList.toggle('splitterH', (this.style=='H'));
+	this.box.classList.toggle('splitterV', (this.direction=='V'));
+	this.box.classList.toggle('splitterH', (this.direction=='H'));
+}
+Splitter.prototype.adjustShieldStyle = function() {
+	if (!this.dragMgr) //can be called while still not created
+		return;
+	if (this.direction=='V')
+		this.dragMgr.autoShieldCursorStyle = 'ew-resize';
+	else if (this.direction=='H')
+		this.dragMgr.autoShieldCursorStyle = 'ns-resize';
+	else
+		this.dragMgr.autoShieldCursorStyle = 'move';
 }
 //Saves and restores user-defined width of the panel. The base element must have id.
 Splitter.prototype.sizeSave = function() {
 	if (!this.id || !this.growElement) return;
-	//TODO: Height, if vertical
-	console.log('Saving size:', this.id, this.growElement.offsetWidth, this.growElement.clientWidth);
-	setLocalStorageItem(Splitter.ID_BASE+this.id+".width", this.growElement.offsetWidth);
+	let rect = getInnerClientRect(this.growElement);
+	if (this.direction=='H')
+		setLocalStorageItem(Splitter.ID_BASE+this.id+'.height', rect.height);
+	else
+		setLocalStorageItem(Splitter.ID_BASE+this.id+'.width', rect.width);
 }
 Splitter.prototype.sizeLoad = function() {
 	if (!this.id || !this.growElement) return;
-	//TODO: Height, if vertical
-	let width = Number(getLocalStorageItem(Splitter.ID_BASE+this.id+".width"));
-	console.log('Restoring size:', this.box.id, width);
-	if (width)
-		this.growElement.style.width = width+'px';
+	if (this.direction=='H') {
+		let height = Number(getLocalStorageItem(Splitter.ID_BASE+this.id+'.height'));
+		if (height)
+			this.growElement.style.height = height+'px';
+	} else {
+		let width = Number(getLocalStorageItem(Splitter.ID_BASE+this.id+'.width'));
+		if (width)
+			this.growElement.style.width = width+'px';
+	}
 }
 Splitter.prototype.dragStart = function() {
-	console.log('dragStart');
 	if (!this.growElement)
 		return;
-	//TODO: Height, if vertical
-	this.dragStartWidth = this.growElement.style.width;
+	//Store initial splitter.x/y and the corresponding growElement's width/height
+	this.dragBoxStart = this.box.getBoundingClientRect();
+	this.dragElementStart = getInnerClientRect(this.growElement); //inner! we're going to use this in adjusting
+	//Store initial EXPLICIT size config to restore on cancel
+	this.dragElementBackup = { width: this.growElement.style.width, height: this.growElement.style.height };
 	return true;
 }
 Splitter.prototype.dragMove = function(pos) {
-	console.log('dragMove', pos);
-	//TODO: Y, if vertical
-	this.growElement.style.width = pos.x + 'px';
+	if (!this.growElement) return;
+	
+	//Adjust growElement's rect according to the required change in splitter's X
+	let splXShift = (pos.x-this.dragBoxStart.width/2) - this.dragBoxStart.x;
+	let splYShift = (pos.y-this.dragBoxStart.height/2) - this.dragBoxStart.y;
+	let newW = this.dragElementStart.width + splXShift;
+	let newH = this.dragElementStart.height + splYShift;
+	
+	if (this.direction=='H')
+		this.growElement.style.height = newH+'px';
+	else
+		this.growElement.style.width = newW+'px';
 }
 Splitter.prototype.dragEnd = function(cancelDrag) {
-	console.log('dragEnd', cancelDrag);
-	//TODO: Height, if vertical
-	if (cancelDrag && (typeof this.dragStartWidth != 'undefined')) {
-		this.growElement.style.width = this.dragStartWidth;
-		delete this.dragStartWidth;
+	delete this.dragBoxStart;
+	delete this.dragElementStart;
+	if (cancelDrag && (typeof this.dragElementBackup != 'undefined')) {
+		this.growElement.style.width = this.dragElementBackup.width;
+		this.growElement.style.height = this.dragElementBackup.height;
+		delete this.dragElementBackup;
 	} else
 		this.sizeSave();
 }
-
 
 
 /*

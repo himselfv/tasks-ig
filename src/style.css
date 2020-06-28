@@ -75,6 +75,7 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
 }
 #listPanel {
   width: 200px;
+  flex-shrink: 0;
 }
 #listBody {
   display: flex;
@@ -180,7 +181,7 @@ Task list panel
   display: none;
 }}
 #listSplitter {
-  width: 3px;
+  width: 4px;
   background-color: LightGrey; /* same as borders in the main pane */
     /* alternative: #E3E9FF */
 }
