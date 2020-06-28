@@ -740,8 +740,193 @@ function createDragShield() {
     shield.style.bottom = "0px";
     shield.style.zIndex = 10;
     document.body.appendChild(shield);
+    return shield;
 }
 utils.export(createDragShield);
+
+
+/*
+Drag manager. Implements custom dragging of an object.
+*/
+function DragMgr(element) {
+	document.addEventListener("mousemove", (event) => this.onDocumentDragMouseMove(event));
+	document.addEventListener("mouseup", (event) => this.onDocumentDragMouseUp(event));
+	document.addEventListener("touchmove", (event) => this.onDocumentDragMouseMove(event));
+	document.addEventListener("touchend", (event) => this.onDocumentDragMouseUp(event));
+	document.addEventListener("touchcancel", (event) => this.onDocumentDragTouchCancel(event));
+	if (element)
+		this.addElement(element);
+}
+utils.export(DragMgr);
+//Registers another element to be managed by this drag manager
+DragMgr.prototype.addElement = function(element) {
+	element.addEventListener("dragstart", (event) => { return false; }); //disable native drag
+	element.addEventListener("mousedown", (event) => this.onDragMouseDown(event));
+	element.addEventListener("mousemove", (event) => this.onDragMouseMove(event));
+	element.addEventListener("mouseup", (event) => this.onDragMouseUp(event));
+	element.addEventListener("touchstart", (event) => this.onDragMouseDown(event));
+	element.addEventListener("touchmove", (event) => this.onDragMouseMove(event));
+	element.addEventListener("touchend", (event) => this.onDragMouseUp(event));
+	element.addEventListener("touchcancel", (event) => this.onDragTouchCancel(event));
+}
+
+DragMgr.prototype.dragConfigure = function(entry, event) {
+	this.dragEntry = entry; //element to which the event have bubbled
+
+	//calculate true offset relative to taskEntry
+	var trueOffset = (event.touches) ? 
+		{ x: event.touches[0].offsetX, y: event.touches[0].offsetY } :
+		{ x: event.offsetX, y: event.offsetY };
+	var target = event.target;
+	while (target && (target!=this.dragEntry)) {
+		trueOffset.x += target.offsetLeft;
+		trueOffset.y += target.offsetTop;
+		target = target.offsetParent;
+	}
+
+	this.dragOffsetPos = trueOffset;
+}
+//Drag anywhere and hold
+DragMgr.prototype.onDragMouseDown = function(event) {
+	this.dragConfigure(event.currentTarget, event)
+	this.startDrag(); //immediately
+	event.stopPropagation(); //prevent selection and drag handling on lower levels
+	event.preventDefault();
+}
+DragMgr.prototype.onDragMouseUp = function(event) {
+	this.endDrag(false);
+}
+DragMgr.prototype.onDragTouchCancel = function(event) {
+	this.endDrag(true); //cancel
+}
+DragMgr.prototype.onDragMouseMove = function(event) {
+	if (this.dragging)
+		//Dragging, ignore mouse move events for the node itself
+		event.preventDefault();
+}
+DragMgr.prototype.onDocumentDragMouseMove = function(event) {
+	if (this.dragging) {
+		if (event.touches)
+			this.dragMove({x:event.touches[0].clientX, y:event.touches[0].clientY});
+		else
+			this.dragMove({x:event.clientX, y:event.clientY});
+		event.preventDefault();
+	}
+}
+DragMgr.prototype.onDocumentDragMouseUp = function(event) {
+	//Mouseup is not required to fire, and does not fire under some conditions,
+	//when the mouse is released outside the dragged element's borders.
+	//This is a fallback:
+	if (this.dragging || this.dragEntry)
+		this.onDragMouseUp(event);
+}
+DragMgr.prototype.onDocumentDragTouchCancel = function(event) {
+	if (this.dragging || this.dragEntry)
+		this.onDragTouchCancel(event);
+}
+//Starts the drag
+DragMgr.prototype.startDrag = function() {
+	//From now on we're dragging
+	this.dragging = true;
+	
+	this.dragStart(this.dragEntry);
+
+	//Move first time now that it's in position:absolute
+	let r = this.dragEntry.getBoundingClientRect();
+	this.dragMove({
+		x: r.left + this.dragOffsetPos.x,
+		y: r.top + this.dragOffsetPos.y,
+	});
+}
+//Ends the drag and commits the move
+DragMgr.prototype.endDrag = function(cancelDrag) {
+	if (!this.dragging) { //not yet dragging => nothing to restore
+		this.dragEntry = null;
+		return;
+	}
+
+	this.dragging = false;
+	if (!this.dragEntry) return;
+
+	this.dragEnd(cancelDrag);
+
+	this.dragEntry = null;
+}
+//The following functions are meant to be overriden by clients.
+DragMgr.prototype.dragStart = function() {
+}
+DragMgr.prototype.dragEnd = function(cancelDrag) {
+}
+//Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
+DragMgr.prototype.dragMove = function(pos) {
+}
+
+
+
+function TimeoutDragMgr(element) {
+	DragMgr.call(this, element);
+}
+inherit(DragMgr, TimeoutDragMgr);
+utils.export(TimeoutDragMgr);
+TimeoutDragMgr.prototype.dragConfigure = function(entry, event) {
+	this.dragStartTimerAbort();
+	DragMgr.prototype.dragConfigure.call(this, entry, event);
+}
+
+TimeoutDragMgr.prototype.dragStartTimerAbort = function() {
+	if (this.dragStartTimer)
+		clearTimeout(this.dragStartTimer);
+	this.dragStartTimer = null;
+}
+TimeoutDragMgr.prototype.onEntryDragMouseDown = function(event) {
+	this.dragConfigure(event.currentTarget, event)
+	this.dragStartTimer = setTimeout(this.dragStart, 500);
+}
+TimeoutDragMgr.prototype.onEntryDragMouseUp = function(event) {
+	this.dragStartTimerAbort();
+	DragMgr.prototype.onEntryDragMouseUp.call(this, event);
+}
+TimeoutDragMgr.prototype.onEntryDragTouchCancel = function(event) {
+	this.dragStartTimerAbort();
+	DragMgr.prototype.onEntryDragTouchCancel.call(this, event);
+}
+TimeoutDragMgr.prototype.onEntryDragMouseMove = function(event) {
+	if (!this.dragging)
+		//Mouse moved before timer fired, abort timer
+		this.dragStartTimerAbort();
+	DragMgr.prototype.onEntryDragMouseMove.call(this, event);
+}
+TimeoutDragMgr.prototype.startDrag = function() {
+	this.dragStartTimerAbort();
+	DragMgr.prototype.startDrag.call(this, event);
+}
+
+function TaskDragMgr(element) {
+	TimeoutDragMgr.call(this, element);
+}
+inherit(TimeoutDragMgr, TaskDragMgr);
+utils.export(TaskDragMgr);
+TaskDragMgr.prototype.dragStart = function() {
+	//Notify the subscribers
+	//We leave most of the drag handling outside for now
+	var event = new CustomEvent("dragstart");
+	event.entry = this.dragEntry;
+	this.dispatchEvent(event);
+}
+TaskDragMgr.prototype.dragEnd = function(cancelDrag) {
+	//Notify the subscribers
+	var event = new CustomEvent("dragend");
+	event.entry = this.dragEntry;
+	event.cancelDrag = cancelDrag;
+	this.dispatchEvent(event);
+}
+TaskDragMgr.prototype.dragMove = function(pos) {
+	//Notify the subscribers
+	var event = new CustomEvent("dragmove");
+	event.entry = this.dragEntry;
+	event.pos = pos;
+	this.dispatchEvent(event);
+}
 
 
 /*
@@ -762,23 +947,17 @@ function Splitter(element, id) {
 	} else {
 		this.box = document.createElement('div');
 	}
-	this.box.draggable = true;
 	
 	//For size saving and loading an ID must be passed
 	this.id = id ? id : this.box.id;
 	this.sizeLoad();
+	
 	//Dragging and resizing
-	this.box.addEventListener("dragstart", event => { return this.dragStart(event); });
-	this.box.addEventListener("dragend",  event => { return this.dragEnd(event); });
-	this.box.addEventListener("dragmove",  event => { return this.dragMove(event); });
-	entry.addEventListener("dragstart", (event) => { return false; }); //disable native drag
-	entry.addEventListener("mousedown", (event) => this.onEntryDragMouseDown(event));
-	entry.addEventListener("mousemove", (event) => this.onEntryDragMouseMove(event));
-	entry.addEventListener("mouseup", (event) => this.onEntryDragMouseUp(event));
-	entry.addEventListener("touchstart", (event) => this.onEntryDragMouseDown(event));
-	entry.addEventListener("touchmove", (event) => this.onEntryDragMouseMove(event));
-	entry.addEventListener("touchend", (event) => this.onEntryDragMouseUp(event));
-	entry.addEventListener("touchcancel", (event) => this.onEntryDragTouchCancel(event));
+	this.dragMgr = new DragMgr(this.box);
+	this.dragMgr.dragStart = () => { this.dragStart(); }
+	this.dragMgr.dragEnd = (cancelDrag) => { this.dragEnd(cancelDrag); }
+	this.dragMgr.dragMove = (pos) => { this.dragMove(pos); }
+
 }
 utils.export(Splitter);
 Splitter.ID_BASE = 'splitter_';
@@ -792,6 +971,19 @@ Splitter.prototype.autoDetectDirection = function() {
 		this.setDirection('H');
 	else
 		this.setDirection(null);
+	//Which element do we grow?
+	let prev = this.box.previousElementSibling;
+	let prevStyle = prev ? window.getComputedStyle(prev) : null;
+	let next = this.box.nextElementSibling;
+	let nextStyle = next ? window.getComputedStyle(next) : null;
+	if (!prevStyle || !nextStyle)
+		this.growElement = null;
+	else if (!nextStyle.flexGrow)
+		this.growElement = next;
+	else
+		this.growElement = prev;
+	console.log(prevStyle.flexGrow, nextStyle.flexGrow);
+	console.log(this.growElement);
 }
 //H = ---; V = |.
 Splitter.prototype.setDirection = function(value) {
@@ -802,38 +994,48 @@ Splitter.prototype.setDirection = function(value) {
 }
 //Saves and restores user-defined width of the panel. The base element must have id.
 Splitter.prototype.sizeSave = function() {
-	if (!this.id) return;
-	console.log('Saving size:', this.id, this.box.offsetWidth, this.box.clientWidth);
-	setLocalStorageItem(Splitter.ID_BASE+this.id+".width", this.box.offsetWidth);
+	if (!this.id || !this.growElement) return;
+	console.log('Saving size:', this.id, this.growElement.offsetWidth, this.growElement.clientWidth);
+	setLocalStorageItem(Splitter.ID_BASE+this.id+".width", this.growElement.offsetWidth);
 }
 Splitter.prototype.sizeLoad = function() {
-	if (!this.id) return;
-	if (!this.style) return; //can't load for unknown style
+	if (!this.id || !this.growElement) return;
 	let width = Number(getLocalStorageItem(Splitter.ID_BASE+this.id+".width"));
 	console.log('Restoring size:', this.box.id, width);
 	if (width)
-		this.box.style.width = width;
+		this.growElement.style.width = width+'px';
 }
-Splitter.prototype.dragStart = function(event) {
-	if (!this.style) return; //can't load for unknown style
-	this.dragContext = {}; //stores some things temporarily while dragging
-	console.log('dragStart', event);
-
+Splitter.prototype.dragStart = function() {
+	console.log('dragStart');
+	if (!this.growElement)
+		return;
+	this.dragStartWidth = this.growElement.style.width;
 	//To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
 	//we need to shield the page while dragging
-	//this.dragContext.shield = createDragShield();
-	return true;
+	this.dragShield = createDragShield();
 }
-Splitter.prototype.dragEnd = function(event) {
-	console.log('dragEnd', event);
-	if (!this.dragContext) return;
+Splitter.prototype.dragMove = function(pos) {
+	console.log('dragMove', pos);
+	this.growElement.style.width = pos.x + 'px';
+}
+Splitter.prototype.dragEnd = function(cancelDrag) {
+	console.log('dragEnd', cancelDrag);
+	if (cancelDrag && (typeof this.dragStartWidth != 'undefined')) {
+		this.growElement.style.width = this.dragStartWidth;
+		delete this.dragStartWidth;
+	} else
+		this.sizeSave();
 	//Remove the shield
-	document.body.removeChild(dragContext.shield);
-	delete dragContext.shield;
+	if (this.dragShield) {
+		document.body.removeChild(this.dragShield);
+		delete this.dragShield;
+	}
 }
-Splitter.prototype.dragMove = function(event) {
-	if (!this.dragContext) return;
-}
+
+
+
+
+
 
 
 /*
