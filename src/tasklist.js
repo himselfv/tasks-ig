@@ -30,11 +30,11 @@ var unit = new Unit((typeof exports != 'undefined') && exports);
 function TaskList(where) {
 	this.root = where;
 	this.initCustomEvents();
-	document.addEventListener("mousemove", (event) => this.onDocumentDragMouseMove(event));
-	document.addEventListener("mouseup", (event) => this.onDocumentDragMouseUp(event));
-	document.addEventListener("touchmove", (event) => this.onDocumentDragMouseMove(event));
-	document.addEventListener("touchend", (event) => this.onDocumentDragMouseUp(event));
-	document.addEventListener("touchcancel", (event) => this.onDocumentDragTouchCancel(event));
+	this.dragMgr = new TimeoutDragMgr();
+	this.dragMgr.dragStartTime = 500;
+	this.dragMgr.dragStart = () => { return this.dragStart() };
+	this.dragMgr.dragMove = (pos) => { return this.dragMove(pos) };
+	this.dragMgr.dragEnd = (cancelDrag) => { return this.dragEnd(cancelDrag) };
 }
 unit.export(TaskList);
 TaskList.prototype.toString = function() {
@@ -160,14 +160,7 @@ TaskList.prototype.appendTasksWithChildren = function(tasks, level, taskRecords)
 TaskList.prototype.createEntry = function(task, level) {
 	var entry = new TaskEntry(task);
 	entry.setLevel(level);
-	entry.addEventListener("dragstart", (event) => { return false; }); //disable native drag
-	entry.addEventListener("mousedown", (event) => this.onEntryDragMouseDown(event));
-	entry.addEventListener("mousemove", (event) => this.onEntryDragMouseMove(event));
-	entry.addEventListener("mouseup", (event) => this.onEntryDragMouseUp(event));
-	entry.addEventListener("touchstart", (event) => this.onEntryDragMouseDown(event));
-	entry.addEventListener("touchmove", (event) => this.onEntryDragMouseMove(event));
-	entry.addEventListener("touchend", (event) => this.onEntryDragMouseUp(event));
-	entry.addEventListener("touchcancel", (event) => this.onEntryDragTouchCancel(event));
+	this.dragMgr.addElement(entry);
 	entry.addEventListener("focusin", (event) => this.onEntryFocus(event));
 	entry.addEventListener("focusout", (event) => this.onEntryBlur(event));
 	entry.gripCtl.addEventListener("mousedown", (event) => this.onEntryDragGripMouseDown(event));
@@ -372,9 +365,13 @@ function elementIsTaskEntryNode(element) {
 	return element && Object.prototype.hasOwnProperty.call(element, "taskId");
 }
 //Returns the task node that contains a given control, or null
-function elementGetOwnerTaskEntry(element) {
+function elementGetOwnerTaskNode(element) {
 	while (element && !elementIsTaskEntryNode(element))
 		element = element.parentNode;
+	return element;
+}
+function elementGetOwnerTaskEntry(element) {
+	element = elementGetOwnerTaskNode(element)
 	return element ? element.taskEntry : null;
 }
 unit.export(elementGetOwnerTaskEntry);
@@ -694,139 +691,39 @@ The following fields are implicitly added on drag:
   dragging = false; //actually dragging
   dragOffsetPos = { x: null, y: null }; //Mouse offset from the TL of the element at the start of the drag
 */
-
-//Prepares the context for drag but does not start it right away. 
-//Call taskEntryDragStart to proceed with dragging.
-//Event: The click event that caused the drag preparations.
-TaskList.prototype.dragConfigure = function(entry, event) {
-	this.dragStartTimerAbort();
-	this.dragEntry = entry; //taskEntry to which the event have bubbled
-
-	//calculate true offset relative to taskEntry
-	var trueOffset = (event.touches) ? 
-		{ x: event.touches[0].offsetX, y: event.touches[0].offsetY } :
-		{ x: event.offsetX, y: event.offsetY };
-	var target = event.target;
-	while (target && (target!=this.dragEntry.node)) {
-		trueOffset.x += target.offsetLeft;
-		trueOffset.y += target.offsetTop;
-		target = target.offsetParent;
-	}
-
-	this.dragOffsetPos = trueOffset;
-}
-
-TaskList.prototype.dragStartTimerAbort = function() {
-	if (this.dragStartTimer)
-		clearTimeout(this.dragStartTimer);
-	this.dragStartTimer = null;
-}
-
-//Drag anywhere and hold
-TaskList.prototype.onEntryDragMouseDown = function(event) {
-	//console.log("onEntryDragMouseDown");
-	this.dragConfigure(event.currentTarget, event)
-	this.dragStartTimer = setTimeout(this.dragStart, 500);
-}
 //Drag on a grip
 TaskList.prototype.onEntryDragGripMouseDown = function(event) {
-	//console.log("onEntryDragGripMouseDown");
-	this.dragConfigure(elementGetOwnerTaskEntry(event.target), event);
-	this.dragStart(); //immediately
+	this.dragMgr.dragConfigure(elementGetOwnerTaskNode(event.target), event);
+	this.dragMgr.startDrag(); //immediately
 	event.stopPropagation(); //handled here, don't start the timer
 	event.preventDefault();
 }
-TaskList.prototype.onEntryDragMouseUp = function(event) {
-	//console.log("onEntryDragMouseUp");
-	this.dragStartTimerAbort();
-	this.dragEnd(false);
-}
-TaskList.prototype.onEntryDragTouchCancel = function(event) {
-	//console.log("onEntryDragMouseUp");
-	this.dragStartTimerAbort();
-	this.dragEnd(true); //cancel
-}
-TaskList.prototype.onEntryDragMouseMove = function(event) {
-	if (this.dragging)
-		//Dragging, ignore mouse move events for the node itself
-		event.preventDefault();
-	else
-		//Mouse moved before timer fired, abort timer
-		this.dragStartTimerAbort();
-}
-TaskList.prototype.onDocumentDragMouseMove = function(event) {
-	if (this.dragging) {
-		if (event.touches)
-			this.dragUpdate({x:event.touches[0].clientX, y:event.touches[0].clientY});
-		else
-			this.dragUpdate({x:event.clientX, y:event.clientY});
-		event.preventDefault();
-	}
-}
-TaskList.prototype.onDocumentDragMouseUp = function(event) {
-	//Mouseup is not required to fire, and does not fire under some conditions,
-	//when the mouse is released outside the dragged element's borders.
-	//This is a fallback:
-	if (this.dragging || this.dragEntry)
-		this.onEntryDragMouseUp(event);
-}
-TaskList.prototype.onDocumentDragTouchCancel = function(event) {
-	if (this.dragging || this.dragEntry)
-		this.onEntryDragTouchCancel(event);
-}
-
-//Starts the drag
+//Drag started
 TaskList.prototype.dragStart = function() {
-	//console.log("startDrag")
-	this.dragStartTimerAbort();
-
-	//From now on we're dragging
-	this.dragging = true;
-	
 	//Notify the subscribers
 	//We leave most of the drag handling outside for now
 	var event = new CustomEvent("dragstart");
-	event.entry = this.dragEntry;
+	event.entry = this.dragMgr.dragEntry ? this.dragMgr.dragEntry.taskEntry : null;
 	this.dispatchEvent(event);
-
-	//Move first time now that it's in position:absolute
-	let r = this.dragEntry.node.getBoundingClientRect();
-	this.dragUpdate({
-		x: r.left + this.dragOffsetPos.x,
-		y: r.top + this.dragOffsetPos.y,
-	});
+	return true;
 }
-
-//Ends the drag and commits the move
+//Drag cancelled/commited
 TaskList.prototype.dragEnd = function(cancelDrag) {
-	if (!this.dragging) { //not yet dragging => nothing to restore
-		this.dragEntry = null;
-		return;
-	}
-
-	//console.log("endDrag");
-	this.dragging = false;
-	if (!this.dragEntry) return;
-
 	//Notify the subscribers
 	var event = new CustomEvent("dragend");
-	event.entry = this.dragEntry;
+	event.entry = this.dragMgr.dragEntry ? this.dragMgr.dragEntry.taskEntry : null;
 	event.cancelDrag = cancelDrag;
 	this.dispatchEvent(event);
-	
-	this.dragEntry = null;
 }
-
 //Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
-TaskList.prototype.dragUpdate = function(pos) {
-	//console.log("dragUpdate: x="+pos.x+", y="+pos.y);
-	
+TaskList.prototype.dragMove = function(pos) {
 	//Notify the subscribers
 	var event = new CustomEvent("dragmove");
-	event.entry = this.dragEntry;
+	event.entry = this.dragMgr.dragEntry ? this.dragMgr.dragEntry.taskEntry : null;
 	event.pos = pos;
 	this.dispatchEvent(event);
 }
+
 
 //Returns the task entry at a given viewport point { x: int, y: int }
 TaskList.prototype.entryFromViewportPoint = function(pt) {

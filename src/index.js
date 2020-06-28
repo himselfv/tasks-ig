@@ -1330,16 +1330,8 @@ TaskListPanel.prototype.applySelected = function(tasklist) {
 }
 TaskListPanel.prototype.dragStart = function(event) {
 	this.dragContext = {}; //stores some things temporarily while dragging
-	console.log('dragStart', event);
-
-	//To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
-	//we need to shield the page while dragging
-	//this.dragContext.shield = createDragShield();
 }
 TaskListPanel.prototype.dragEnd = function(event) {
-	//Remove the shield
-	document.body.removeChild(dragContext.shield);
-	delete dragContext.shield;
 }
 TaskListPanel.prototype.dragMove = function(event) {
 }
@@ -1815,9 +1807,6 @@ var dragContext = {}; //stores some things temporarily while dragging
     var dragNode = event.entry.node;
     dragNode.classList.add("dragging");
     
-    //To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
-    //we need to shield the page while dragging
-    dragContext.shield = createDragShield();
     
     //Remember existing place for simple restoration
     //We need previous sibling because next sibling might well be our child
@@ -1855,10 +1844,6 @@ var dragContext = {}; //stores some things temporarily while dragging
       if (newLevel != dragContext.oldLevel)
         node.taskEntry.setLevel(node.taskEntry.getLevel() - dragContext.oldLevel + newLevel); //warning, likes to add as strings
     }
-    
-    //Remove the shield
-    document.body.removeChild(dragContext.shield);
-    delete dragContext.shield;
     
     //restore backed up properties
     dragNode.classList.remove("dragging");
