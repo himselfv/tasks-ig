@@ -1332,12 +1332,6 @@ TaskListPanel.prototype.dragStart = function(event) {
 	this.dragContext = {}; //stores some things temporarily while dragging
 	console.log('dragStart', event);
 
-	console.log('a', event.offsetX, 'b', this.box.offsetWidth, 'c', this.box.style.borderRightWidth);
-	console.log(this.box.style);
-	if (event.offsetX >= this.box.offsetWidth - this.box.style.borderRightWidth) {
-       alert('clicked on the left border!');
-    }
-
 	//To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
 	//we need to shield the page while dragging
 	//this.dragContext.shield = createDragShield();
@@ -1349,8 +1343,10 @@ TaskListPanel.prototype.dragEnd = function(event) {
 }
 TaskListPanel.prototype.dragMove = function(event) {
 }
-
 var leftPanel = new TaskListPanel(document.getElementById('listPanel'));
+
+Splitter.ID_BASE = "tasksIg_";
+var leftSplitter = new Splitter(document.getElementById('listSplitter'));
 
 
 //Backend for the currently selected list. Only set if the backend is initialized.
@@ -1804,18 +1800,6 @@ function tasksActionsUpdate() {
 /*
 Drag handling
 */
-function createDragShield() {
-	let shield = document.createElement("div");
-    shield.classList.add("dragging");
-    shield.style.position = "fixed";
-    shield.style.left = "0px";
-    shield.style.right = "0px";
-    shield.style.top = "0px";
-    shield.style.bottom = "0px";
-    shield.style.zIndex = 10;
-    document.body.appendChild(shield);
-}
-
 var dragContext = {}; //stores some things temporarily while dragging
 
   //Starts the drag

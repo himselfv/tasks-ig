@@ -726,6 +726,115 @@ function li(content) {
 utils.export(li);
 
 
+/*
+Splitters and dragging
+*/
+
+function createDragShield() {
+	let shield = document.createElement("div");
+    shield.classList.add("dragging");
+    shield.style.position = "fixed";
+    shield.style.left = "0px";
+    shield.style.right = "0px";
+    shield.style.top = "0px";
+    shield.style.bottom = "0px";
+    shield.style.zIndex = 10;
+    document.body.appendChild(shield);
+}
+utils.export(createDragShield);
+
+
+/*
+Splitter element.
+ * Saves and restores widths
+ * Vertical or horizontal
+TODO:
+ * Detects which element to the left or to the right should be resized
+ 
+For width-saving to work:
+ 1. Pass ID for this particular element (or set ID for the HTML element)
+ 2. Set static Splitter.ID_BASE - so that different pages don't clash.
+*/
+function Splitter(element, id) {
+	this.box = element;
+	if (this.box) {
+		this.autoDetectDirection();
+	} else {
+		this.box = document.createElement('div');
+	}
+	this.box.draggable = true;
+	
+	//For size saving and loading an ID must be passed
+	this.id = id ? id : this.box.id;
+	this.sizeLoad();
+	//Dragging and resizing
+	this.box.addEventListener("dragstart", event => { return this.dragStart(event); });
+	this.box.addEventListener("dragend",  event => { return this.dragEnd(event); });
+	this.box.addEventListener("dragmove",  event => { return this.dragMove(event); });
+	entry.addEventListener("dragstart", (event) => { return false; }); //disable native drag
+	entry.addEventListener("mousedown", (event) => this.onEntryDragMouseDown(event));
+	entry.addEventListener("mousemove", (event) => this.onEntryDragMouseMove(event));
+	entry.addEventListener("mouseup", (event) => this.onEntryDragMouseUp(event));
+	entry.addEventListener("touchstart", (event) => this.onEntryDragMouseDown(event));
+	entry.addEventListener("touchmove", (event) => this.onEntryDragMouseMove(event));
+	entry.addEventListener("touchend", (event) => this.onEntryDragMouseUp(event));
+	entry.addEventListener("touchcancel", (event) => this.onEntryDragTouchCancel(event));
+}
+utils.export(Splitter);
+Splitter.ID_BASE = 'splitter_';
+//Automatically detects whether we are vertical or horizontal.
+Splitter.prototype.autoDetectDirection = function() {
+	let style = window.getComputedStyle(this.box.parentElement);
+	console.log(this.box.parentElement, style.flexDirection);
+	if (style.flexDirection=='row')
+		this.setDirection('V');
+	else if (style.flexDirection=='column')
+		this.setDirection('H');
+	else
+		this.setDirection(null);
+}
+//H = ---; V = |.
+Splitter.prototype.setDirection = function(value) {
+	this.style = value;
+	this.box.classList.toggle('splitter', true);
+	this.box.classList.toggle('splitterV', (this.style=='V'));
+	this.box.classList.toggle('splitterH', (this.style=='H'));
+}
+//Saves and restores user-defined width of the panel. The base element must have id.
+Splitter.prototype.sizeSave = function() {
+	if (!this.id) return;
+	console.log('Saving size:', this.id, this.box.offsetWidth, this.box.clientWidth);
+	setLocalStorageItem(Splitter.ID_BASE+this.id+".width", this.box.offsetWidth);
+}
+Splitter.prototype.sizeLoad = function() {
+	if (!this.id) return;
+	if (!this.style) return; //can't load for unknown style
+	let width = Number(getLocalStorageItem(Splitter.ID_BASE+this.id+".width"));
+	console.log('Restoring size:', this.box.id, width);
+	if (width)
+		this.box.style.width = width;
+}
+Splitter.prototype.dragStart = function(event) {
+	if (!this.style) return; //can't load for unknown style
+	this.dragContext = {}; //stores some things temporarily while dragging
+	console.log('dragStart', event);
+
+	//To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
+	//we need to shield the page while dragging
+	//this.dragContext.shield = createDragShield();
+	return true;
+}
+Splitter.prototype.dragEnd = function(event) {
+	console.log('dragEnd', event);
+	if (!this.dragContext) return;
+	//Remove the shield
+	document.body.removeChild(dragContext.shield);
+	delete dragContext.shield;
+}
+Splitter.prototype.dragMove = function(event) {
+	if (!this.dragContext) return;
+}
+
 
 /*
 Custom page object.
