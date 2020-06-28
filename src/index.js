@@ -1259,12 +1259,17 @@ TaskListPanel.prototype.reload = function() {
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists) {
 			if (this.selectFailedAccounts)
 				option.disabled = false; //No task lists => make the account always selectable
-			if (account.error)
+			if (account.error) {
 				option.textContent = option.textContent+' (error)';
-			else if (!account.isSignedIn())
-				option.textContent = option.textContent+' (signing in)';
-			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
+				option.classList.add('error');
+			}
+			else if (!account.isSignedIn()) {
+				option.classList.add('loading');
+			}
+			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists)) {
 				option.textContent = option.textContent+' (no lists)';
+				option.classList.add('empty');
+			}
 			option.classList.add("grayed");
 			continue;
 		} else

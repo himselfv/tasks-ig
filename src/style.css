@@ -219,10 +219,16 @@ Task list panel
 #listPanel > .accountAdd {
   margin: 0px;
   margin-top: 0.5em;
+  vertical-align: baseline;
 }
 #listPanel > .accountAdd {
   color: gray;
   font-weight: normal;
+}
+#listPanel > .account.loading:after { /* Spinning wheel while loading */
+  content: url("res/loading5_16.gif");
+  position: relative;
+  top: 0.2em;
 }
 /*
 To replace "Add account" text:
