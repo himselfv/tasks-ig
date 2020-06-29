@@ -230,6 +230,9 @@ Task list panel
   position: relative;
   top: 0.2em;
 }
+#listPanel > .dragging {
+  opacity: 0.75;
+}
 /*
 To replace "Add account" text:
 #listPanel > .accountAdd {

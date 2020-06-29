@@ -920,7 +920,7 @@ DragMgr.prototype.endDrag = function(cancelDrag) {
 	this.dragEntry = null;
 }
 //The following functions are meant to be overriden by clients.
-DragMgr.prototype.dragStart = function() { return true; }
+DragMgr.prototype.dragStart = function(entry) { return true; }
 DragMgr.prototype.dragEnd = function(cancelDrag) {}
 //Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
 DragMgr.prototype.dragMove = function(pos) {}

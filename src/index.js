@@ -1325,12 +1325,102 @@ TaskListPanel.prototype.applySelected = function(tasklist) {
 	for (var i = 0; i < children.length; i++)
 		children[i].classList.toggle('selected', !!tasklist && (String(children[i].extraValue)==String(tasklist)));
 }
-TaskListPanel.prototype.dragStart = function() {
+TaskListPanel.prototype.nodeFromViewportPoint = function(pt) {
+	var node = this.box.firstElementChild;
+	var nodeRect = null;
+	while (node) {
+		nodeRect = node.getBoundingClientRect();
+		//Entries are full-width so only check the Y
+		if ((pt.y >= nodeRect.top) && (pt.y < nodeRect.bottom))
+  			break;
+		node = node.nextElementSibling;
+	}
+	return node;
+}
+TaskListPanel.prototype.dragStart = function(entry) {
+	//Cancel any text selection that might be going on due to not capturing that initial mouse click
+	document.activeElement.blur();
+	resetSelection();
+	
+	//Configure node for dragging
+    var dragNode = entry;
+    dragNode.classList.add("dragging");
+    
+	//Create drag context
+	this.dragContext = {};
+	this.dragContext.node = dragNode;
+	
+	//Remember existing place for simple restoration
+	this.dragContext.oldPrev = dragNode.previousElementSibling;
+	
+	//Hide all children (== same level entries until next account entry)
+    this.dragContext.oldChildren = document.createElement("div");
+    this.dragContext.oldChildren.style.display = "none";
+    let child = dragNode.nextSibling;
+    while (child && !child.classList.contains('account')) {
+    	let nextChild = child.nextSibling;
+    	this.dragContext.oldChildren.insertBefore(child, null);
+    	child = nextChild;
+    }
+	
 	return true;
 }
-TaskListPanel.prototype.dragMove = function(cancelDrag) {
+TaskListPanel.prototype.dragEnd = function(cancelDrag) {
+	if (!this.dragContext) return;
+	var dragNode = this.dragContext.node;
+
+	if (cancelDrag) {
+		//Move the node back to where it was
+		let oldPrev = this.dragContext.oldPrev;
+		oldPrev.parentNode.insertBefore(dragNode, oldPrev.nextElement);
+	}
+
+	//Unhide all children + move to where the parent is
+	let nextNode = dragNode.nextElementSibling;
+	for (let i=0; i < this.dragContext.oldChildren.children.length;) { //don't increment, stay at 0
+		let node = this.dragContext.oldChildren.children[i];
+		dragNode.parentNode.insertBefore(node, nextNode);
+	}
+	
+	dragNode.classList.remove("dragging");
+	
+	if (!cancelDrag && (this.dragContext.oldPrev != dragNode.previousElement)) {
+		//TODO: Make the same changes in the account list
+		//TODO: And apply to other controls
+	}
+	delete this.dragContext;
 }
-TaskListPanel.prototype.dragEnd = function(pos) {
+TaskListPanel.prototype.dragMove = function(pos) {
+	if (!this.dragContext) return;
+	var dragNode = this.dragContext.node;
+	
+	//Move the node to a new place in the same parent list, tentatively
+	let targetNode = this.nodeFromViewportPoint(pos);
+	console.log('TaskListPanel: targetNode=', targetNode);
+    if (!targetNode || (targetNode == dragNode))
+      return; //leave the dragged node where it is
+	
+	var nodeRect = targetNode.getBoundingClientRect();
+	
+    //Whether we move it above or before the node depends on where the node is now
+    var dragNodeRect = dragNode.getBoundingClientRect();
+    var insertAfter = (dragNodeRect.top < nodeRect.top);
+    
+    /*
+    Nodes may be of different heights so we risk causing infinite switch sequence.
+    Only move if the pointer is in the top (bottom) dragNodeHeight of the target node.
+    */
+    if (insertAfter) {
+      if (pos.y < nodeRect.bottom - dragNodeRect.height)
+        return;
+    } else {
+      if (pos.y > nodeRect.top + dragNodeRect.height)
+        return;
+    }
+    
+    var beforeNode = (insertAfter) ? targetNode.nextElementSibling : targetNode;
+    var afterNode = (insertAfter) ? targetNode : targetNode.previousElementSibling;
+    this.box.insertBefore(dragNode, beforeNode)
 }
 var leftPanel = new TaskListPanel(document.getElementById('listPanel'));
 
