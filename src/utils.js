@@ -782,6 +782,10 @@ function DragMgr(element) {
 		this.addElement(element);
 	//Set to true to automatically create a drag shield (prevents interaction with the page)
 	this.autoShield = false;
+	//Start dragging only after this delay. If >0, passes the initial click through.
+	this.dragDelay = 0;
+	//Start dragging immediately on mouse click. Otherwise waits for mouse move and passes the initial click through.
+	this.immediateDrag = false;
 }
 utils.export(DragMgr);
 //Registers another element to be managed by this drag manager
@@ -799,6 +803,7 @@ DragMgr.prototype.addElement = function(element) {
 //Call taskEntryDragStart to proceed with dragging.
 //Event: The click event that caused the drag preparations.
 DragMgr.prototype.dragConfigure = function(entry, event) {
+	this.dragStartTimerAbort();
 	this.dragEntry = entry; //element to which the event have bubbled
 
 	//calculate true offset relative to taskEntry
@@ -813,25 +818,44 @@ DragMgr.prototype.dragConfigure = function(entry, event) {
 	}
 	this.dragOffsetPos = trueOffset;
 }
+DragMgr.prototype.dragStartTimerAbort = function() {
+	if (this.dragStartTimer)
+		clearTimeout(this.dragStartTimer);
+	this.dragStartTimer = null;
+}
 //Drag anywhere and hold
 DragMgr.prototype.onDragMouseDown = function(event) {
-	this.dragConfigure(event.currentTarget, event)
+	this.dragConfigure(event.currentTarget, event);
+	if (this.dragDelay > 0) {
+		this.dragStartTimer = setTimeout(this.startDrag.bind(this), this.dragDelay);
+		return;
+	}
+	if (!this.immediateDrag)
+		return;
 	this.startDrag(); //immediately
 	event.stopPropagation(); //prevent selection and drag handling on lower levels
 	event.preventDefault();
 }
 DragMgr.prototype.onDragMouseUp = function(event) {
+	this.dragStartTimerAbort();
 	this.endDrag(false);
 }
 DragMgr.prototype.onDragTouchCancel = function(event) {
+	this.dragStartTimerAbort();
 	this.endDrag(true); //cancel
 }
 DragMgr.prototype.onDragMouseMove = function(event) {
-	if (this.dragging)
-		//Dragging, ignore mouse move events for the node itself
+	//Mouse moved before timer fired, abort timer
+	if ((this.dragDelay > 0) && !this.dragging)
+		this.dragStartTimerAbort();
+	//Dragging, ignore mouse move events for the node itself
+	if (this.dragging || (!this.immediateDrag && this.dragEntry))
 		event.preventDefault();
 }
 DragMgr.prototype.onDocumentDragMouseMove = function(event) {
+	//Start non-immediate drag on mouse move
+	if (!this.immediateDrag && this.dragEntry && !this.dragging)
+		this.startDrag();
 	if (this.dragging) {
 		if (event.touches)
 			this.dragMove({x:event.touches[0].clientX, y:event.touches[0].clientY});
@@ -853,6 +877,8 @@ DragMgr.prototype.onDocumentDragTouchCancel = function(event) {
 }
 //Starts the drag
 DragMgr.prototype.startDrag = function() {
+	this.dragStartTimerAbort();
+	
 	//From now on we're dragging
 	this.dragging = true;
 	if (!this.dragStart(this.dragEntry)) {
@@ -901,48 +927,6 @@ DragMgr.prototype.dragMove = function(pos) {}
 
 
 /*
-Only activates dragging after holding the left mouse button for dragStartTime milliseconds.
-*/
-function TimeoutDragMgr(element) {
-	DragMgr.call(this, element);
-	this.dragStartTime = 500; //Drag start timeout
-}
-inherit(DragMgr, TimeoutDragMgr);
-utils.export(TimeoutDragMgr);
-TimeoutDragMgr.prototype.dragConfigure = function(entry, event) {
-	this.dragStartTimerAbort();
-	DragMgr.prototype.dragConfigure.call(this, entry, event);
-}
-TimeoutDragMgr.prototype.dragStartTimerAbort = function() {
-	if (this.dragStartTimer)
-		clearTimeout(this.dragStartTimer);
-	this.dragStartTimer = null;
-}
-TimeoutDragMgr.prototype.onDragMouseDown = function(event) {
-	this.dragConfigure(event.currentTarget, event)
-	this.dragStartTimer = setTimeout(()=> {this.startDrag();}, this.dragStartTime);
-}
-TimeoutDragMgr.prototype.onDragMouseUp = function(event) {
-	this.dragStartTimerAbort();
-	DragMgr.prototype.onDragMouseUp.call(this, event);
-}
-TimeoutDragMgr.prototype.onDragTouchCancel = function(event) {
-	this.dragStartTimerAbort();
-	DragMgr.prototype.onDragTouchCancel.call(this, event);
-}
-TimeoutDragMgr.prototype.onDragMouseMove = function(event) {
-	if (!this.dragging)
-		//Mouse moved before timer fired, abort timer
-		this.dragStartTimerAbort();
-	DragMgr.prototype.onDragMouseMove.call(this, event);
-}
-TimeoutDragMgr.prototype.startDrag = function() {
-	this.dragStartTimerAbort();
-	DragMgr.prototype.startDrag.call(this);
-}
-
-
-/*
 Splitter element.
  * Vertical or horizontal
  * Saves and restores resizeable element sizes
@@ -968,6 +952,7 @@ function Splitter(element, id) {
 	//Dragging and resizing
 	this.dragMgr = new DragMgr(this.box);
 	this.dragMgr.autoShield = true;
+	this.dragMgr.immediateDrag = true;
 	this.dragMgr.dragStart = this.dragStart.bind(this);
 	this.dragMgr.dragEnd = this.dragEnd.bind(this);
 	this.dragMgr.dragMove = this.dragMove.bind(this);

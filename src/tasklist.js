@@ -30,8 +30,8 @@ var unit = new Unit((typeof exports != 'undefined') && exports);
 function TaskList(where) {
 	this.root = where;
 	this.initCustomEvents();
-	this.dragMgr = new TimeoutDragMgr();
-	this.dragMgr.dragStartTime = 500;
+	this.dragMgr = new DragMgr();
+	this.dragMgr.dragDelay = 500;
 	this.dragMgr.dragStart = this.dragStart.bind(this);
 	this.dragMgr.dragMove = this.dragMove.bind(this);
 	this.dragMgr.dragEnd = this.dragEnd.bind(this);
