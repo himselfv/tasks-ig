@@ -1209,27 +1209,13 @@ function TaskListPanel(boxElement) {
 		boxElement = document.createElement('div');
 	boxElement.classList.add('tasklistPanel');
 	this.box = boxElement;
-	this.showAccounts = options.showAccountsInCombo;
+	this.showAccounts = true; //Task list panel always shows account names - would look weird otherwise with "Add task list" buttons
 	this.selectAccounts = options.accountsClickable;
 	this.selectFailedAccounts = false;
-	this.sizeLoad();
-	this.box.addEventListener('resize', () => { this.sizeSave(); });
-	//Dragging and resizing
-	this.box.addEventListener("click", event => { this.dragStart(event); });
+	//Item dragging
 	this.box.addEventListener("dragstart", event => { this.dragStart(event); });
 	this.box.addEventListener("dragend",  event => { this.dragEnd(event); });
 	this.box.addEventListener("dragmove",  event => { this.dragMove(event); });
-}
-//Saves and restores user-defined width of the panel. The base element must have id.
-TaskListPanel.prototype.sizeSave = function() {
-	console.log('Saving size:', this.box.id, this.box.offsetWidth, this.box.clientWidth);
-	setLocalStorageItem("tasksIg_"+this.box.id+"_width", this.box.offsetWidth);
-}
-TaskListPanel.prototype.sizeLoad = function() {
-	let width = Number(getLocalStorageItem("tasksIg_"+this.box.id+"_width"));
-	console.log('Restoring size:', this.box.id, width);
-	if (width)
-		this.box.style.width = width;
 }
 TaskListPanel.prototype.reload = function() {
 	console.debug('tasklistPanelReload');
@@ -1256,6 +1242,10 @@ TaskListPanel.prototype.reload = function() {
 		if (!this.selectAccounts)
 			option.classList.add('disabled');
 		
+		//Note: TaskListPanel looks weird when not showing accounts
+		if (!this.showAccounts)
+			option.style.display = "none";
+		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists) {
 			if (this.selectFailedAccounts)
 				option.classList.remove('disabled');; //No task lists => make the account always selectable
@@ -1276,8 +1266,6 @@ TaskListPanel.prototype.reload = function() {
 		if (isArrayEmpty(account.ui.tasklists)) {
 			//No-lists accounts should be shown normally
 		}
-		if (!this.showAccounts)
-			option.display = "none";
 		
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
