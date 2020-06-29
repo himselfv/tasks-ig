@@ -90,7 +90,7 @@ function BackendDisconnectsAfterAWhile() {
 }
 newTestBackend(BackendTestBase, BackendDisconnectsAfterAWhile, "Disconnect after a while");
 BackendDisconnectsAfterAWhile.prototype.init = function() {
-	setTimeout(() => { this.signout(); }, 5000);
+	setTimeout(() => this.signout.bind(this), 5000);
 	return Promise.resolve();
 }
 

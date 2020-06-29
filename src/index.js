@@ -488,15 +488,15 @@ function AccountsPage() {
 	CustomPage.call(this, document.getElementById('accountListPage'));
 	
 	this.content = document.getElementById('accountList');
-	this.content.onchange = () => { this.updateAccountActions(); };
+	this.content.onchange = this.updateAccountActions.bind(this);
 	
-	document.getElementById('accountListClose').onclick = () => { this.cancelClick(); };
-	document.getElementById('accountListAdd').onclick = () => { this.addClick();};
-	document.getElementById('accountListEditSettings').onclick = () => { this.editSettingsClick();};
-	document.getElementById('accountListDelete').onclick = () => { this.deleteClick();};
-	document.getElementById('accountListReset').onclick = () => { this.resetClick();};
-	document.getElementById('accountListMoveUp').onclick = () => { this.moveUpClick();};
-	document.getElementById('accountListMoveDown').onclick = () => { this.moveDownClick();};
+	document.getElementById('accountListClose').onclick = this.cancelClick.bind(this);
+	document.getElementById('accountListAdd').onclick = this.addClick.bind(this);
+	document.getElementById('accountListEditSettings').onclick = this.editSettingsClick.bind(this);
+	document.getElementById('accountListDelete').onclick = this.deleteClick.bind(this);
+	document.getElementById('accountListReset').onclick = this.resetClick.bind(this);
+	document.getElementById('accountListMoveUp').onclick = this.moveUpClick.bind(this);
+	document.getElementById('accountListMoveDown').onclick = this.moveDownClick.bind(this);
 	
 	document.getElementById('accountListReset').classList.toggle('hidden', !options.debug);
 	
@@ -651,7 +651,7 @@ BackendSelectPage.prototype.reload = function() {
 		let btn = document.createElement("button");
 		btn.textContent = item.uiName || item.name;
 		btn.associatedBackend = item;
-		btn.onclick = () => { this.backendClicked(btn); };
+		btn.onclick = this.backendClicked.bind(this, btn);
 		this.page.appendChild(btn);
 	});
 	
@@ -661,7 +661,7 @@ BackendSelectPage.prototype.reload = function() {
 		this.page.appendChild(sep);
 		let btn = document.createElement("button");
 		btn.textContent = 'Cancel';
-		btn.onclick = () => { this.cancelClick(); };
+		btn.onclick = this.cancelClick.bind(this);
 		this.page.appendChild(btn);
 	}
 }
@@ -755,8 +755,8 @@ function SettingsPage(titleText, settings, values) {
 	CustomPage.call(this, document.getElementById('settingsPage'));
 	this.btnOk = document.getElementById('settingsOk');
 	this.btnCancel = document.getElementById('settingsCancel');
-	this.btnOk.onclick = () => this.okClick();
-	this.btnCancel.onclick = () => this.cancelClick();
+	this.btnOk.onclick = this.okClick.bind(this);
+	this.btnCancel.onclick = this.cancelClick.bind(this);
 	this.content = document.getElementById('settingsContent');
 	
 	let pageTitle = document.getElementById('settingsPageTitle');
@@ -1078,7 +1078,7 @@ Tries to select the best available replacement if the exact list is temporarily 
 function MainTaskListBox(boxElement) {
 	TaskListBox.call(this, boxElement);
 	this.selectFailedAccounts = true;
-	this.box.addEventListener('change', () => { this._handleChanged(); })
+	this.box.addEventListener('change', this._handleChanged.bind(this));
 }
 inherit(TaskListBox, MainTaskListBox);
 MainTaskListBox.prototype.reload = function() {
@@ -1213,9 +1213,11 @@ function TaskListPanel(boxElement) {
 	this.selectAccounts = options.accountsClickable;
 	this.selectFailedAccounts = false;
 	//Item dragging
-	this.box.addEventListener("dragstart", event => { this.dragStart(event); });
-	this.box.addEventListener("dragend",  event => { this.dragEnd(event); });
-	this.box.addEventListener("dragmove",  event => { this.dragMove(event); });
+	this.dragMgr = new DragMgr();
+	this.dragMgr.autoShield = true;
+	this.dragMgr.dragStart = this.dragStart.bind(this);
+	this.dragMgr.dragMove = this.dragMove.bind(this);
+	this.dragMgr.dragEnd = this.dragEnd.bind(this);
 }
 TaskListPanel.prototype.reload = function() {
 	console.debug('tasklistPanelReload');
@@ -1238,9 +1240,10 @@ TaskListPanel.prototype.reload = function() {
 		let option = this.addItem(account.uiName());
 		option.classList.add('account');
 		option.extraValue = new TaskListHandle(account.id, undefined);
-		option.addEventListener('click', () => { this.optionClicked(option); })
+		option.addEventListener('click', this.optionClicked.bind(this, option));
 		if (!this.selectAccounts)
 			option.classList.add('disabled');
+		this.dragMgr.addElement(option);
 		
 		//Note: TaskListPanel looks weird when not showing accounts
 		if (!this.showAccounts)
@@ -1272,14 +1275,14 @@ TaskListPanel.prototype.reload = function() {
 			let option = this.addItem(tasklist.title);
 			option.extraValue = new TaskListHandle(account.id,  tasklist.id);
 			option.classList.add('tasklist');
-			option.addEventListener('click', () => { this.optionClicked(option); })
+			option.addEventListener('click', this.optionClicked.bind(this, option));
 		}
 		
 		if (account.tasklistAdd) {
 			let option = this.addItem("＋"); /* Add list */
 			option.extraValue = new TaskListHandle(account.id, null);
 			option.classList.add('tasklistAdd');
-			option.addEventListener('click', () => { tasklistAdd(account); })
+			option.addEventListener('click', tasklistAdd.bind(null, account));
 		}
 	}
 	
@@ -1292,7 +1295,7 @@ TaskListPanel.prototype.reload = function() {
 	
 	let option = this.addItem("Add account")
 	option.classList.add('accountAdd');
-	option.addEventListener('click', () => { StartNewAccountUi({ hasCancel:true, }) })
+	option.addEventListener('click', StartNewAccountUi.bind(null, { hasCancel:true, }));
 	
 	//Reapply selection
 	this.applySelected(this.selected);
@@ -1321,12 +1324,12 @@ TaskListPanel.prototype.applySelected = function(tasklist) {
 	for (var i = 0; i < children.length; i++)
 		children[i].classList.toggle('selected', !!tasklist && (String(children[i].extraValue)==String(tasklist)));
 }
-TaskListPanel.prototype.dragStart = function(event) {
-	this.dragContext = {}; //stores some things temporarily while dragging
+TaskListPanel.prototype.dragStart = function() {
+	return true;
 }
-TaskListPanel.prototype.dragEnd = function(event) {
+TaskListPanel.prototype.dragMove = function(cancelDrag) {
 }
-TaskListPanel.prototype.dragMove = function(event) {
+TaskListPanel.prototype.dragEnd = function(pos) {
 }
 var leftPanel = new TaskListPanel(document.getElementById('listPanel'));
 
@@ -2404,18 +2407,18 @@ function Editor() {
 	this.taskId = null;
 	this.listPageBackup = {}; //overwritten properties of listPage
 	
-	document.getElementById('editorTaskTitleBox').onchange = () => { this.setDirty(true); }
-	document.getElementById('editorTaskDateP').onchange = () => { this.setDirty(true); }
-	document.getElementById('editorTaskNotes').oninput = () => { this.setDirty(true); }
-	document.getElementById('editorTaskNotes').onpaste = () => { this.setDirty(true); }
+	document.getElementById('editorTaskTitleBox').onchange = this.setDirty.bind(this, true);
+	document.getElementById('editorTaskDateP').onchange = this.setDirty.bind(this, true);
+	document.getElementById('editorTaskNotes').oninput = this.setDirty.bind(this, true);
+	document.getElementById('editorTaskNotes').onpaste = this.setDirty.bind(this, true);
 	
 	//Preserve proper "this" by lambdas
-	this.taskListBox.box.onchange = () => { this.taskListChanged(); };
-	this.saveBtn.onclick = () => { this.saveClose(); };
-	this.saveCopyBtn.onclick = () => { this.saveCopyClose(); }
-	this.saveContinueBtn.onclick = () => { this.saveContinue(); }
-	this.cancelBtn.onclick = () => { this.cancel(); };
-	this.deleteBtn.onclick = () => { this.deleteBtnClick(); };
+	this.taskListBox.box.onchange = this.taskListChanged.bind(this);
+	this.saveBtn.onclick = this.saveClose.bind(this);
+	this.saveCopyBtn.onclick = this.saveCopyClose.bind(this);
+	this.saveContinueBtn.onclick = this.saveContinue.bind(this);
+	this.cancelBtn.onclick = this.cancel.bind(this);
+	this.deleteBtn.onclick = this.deleteBtnClick.bind(this);
 }
 //Show the editor
 Editor.prototype.open = function(taskId) {

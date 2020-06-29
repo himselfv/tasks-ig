@@ -773,11 +773,11 @@ Implements custom dragging of HTML elements. Usage:
 Will track both touch-drag and mouse drag, over all the document.
 */
 function DragMgr(element) {
-	document.addEventListener("mousemove", (event) => this.onDocumentDragMouseMove(event));
-	document.addEventListener("mouseup", (event) => this.onDocumentDragMouseUp(event));
-	document.addEventListener("touchmove", (event) => this.onDocumentDragMouseMove(event));
-	document.addEventListener("touchend", (event) => this.onDocumentDragMouseUp(event));
-	document.addEventListener("touchcancel", (event) => this.onDocumentDragTouchCancel(event));
+	document.addEventListener("mousemove", this.onDocumentDragMouseMove.bind(this));
+	document.addEventListener("mouseup", this.onDocumentDragMouseUp.bind(this));
+	document.addEventListener("touchmove", this.onDocumentDragMouseMove.bind(this));
+	document.addEventListener("touchend", this.onDocumentDragMouseUp.bind(this));
+	document.addEventListener("touchcancel", this.onDocumentDragTouchCancel.bind(this));
 	if (element)
 		this.addElement(element);
 	//Set to true to automatically create a drag shield (prevents interaction with the page)
@@ -786,14 +786,14 @@ function DragMgr(element) {
 utils.export(DragMgr);
 //Registers another element to be managed by this drag manager
 DragMgr.prototype.addElement = function(element) {
-	element.addEventListener("dragstart", (event) => { return false; }); //disable native drag
-	element.addEventListener("mousedown", (event) => this.onDragMouseDown(event));
-	element.addEventListener("mousemove", (event) => this.onDragMouseMove(event));
-	element.addEventListener("mouseup", (event) => this.onDragMouseUp(event));
-	element.addEventListener("touchstart", (event) => this.onDragMouseDown(event));
-	element.addEventListener("touchmove", (event) => this.onDragMouseMove(event));
-	element.addEventListener("touchend", (event) => this.onDragMouseUp(event));
-	element.addEventListener("touchcancel", (event) => this.onDragTouchCancel(event));
+	element.addEventListener("dragstart", (event) => false); //disable native drag
+	element.addEventListener("mousedown", this.onDragMouseDown.bind(this));
+	element.addEventListener("mousemove", this.onDragMouseMove.bind(this));
+	element.addEventListener("mouseup", this.onDragMouseUp.bind(this));
+	element.addEventListener("touchstart", this.onDragMouseDown.bind(this));
+	element.addEventListener("touchmove", this.onDragMouseMove.bind(this));
+	element.addEventListener("touchend", this.onDragMouseUp.bind(this));
+	element.addEventListener("touchcancel", this.onDragTouchCancel.bind(this));
 }
 //Prepares the context for drag but does not start it right away.
 //Call taskEntryDragStart to proceed with dragging.
@@ -968,9 +968,9 @@ function Splitter(element, id) {
 	//Dragging and resizing
 	this.dragMgr = new DragMgr(this.box);
 	this.dragMgr.autoShield = true;
-	this.dragMgr.dragStart = () => { return this.dragStart(); }
-	this.dragMgr.dragEnd = (cancelDrag) => { return this.dragEnd(cancelDrag); }
-	this.dragMgr.dragMove = (pos) => { return this.dragMove(pos); }
+	this.dragMgr.dragStart = this.dragStart.bind(this);
+	this.dragMgr.dragEnd = this.dragEnd.bind(this);
+	this.dragMgr.dragMove = this.dragMove.bind(this);
 	this.adjustShieldStyle();
 }
 utils.export(Splitter);

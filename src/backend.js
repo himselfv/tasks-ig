@@ -95,7 +95,7 @@ function Tasks() {}
 unit.export(Tasks);
 //Sorts an array of tasks according to their positions
 Tasks.sort = function(tasks) {
-	return tasks.sort((a, b) => { return a.position - b.position; });
+	return tasks.sort((a, b) => a.position - b.position);
 }
 //Converts an array of tasks to an id->task dictionary 
 Tasks.dict = function(tasks) {
@@ -210,7 +210,7 @@ Detects additions, deletions and edits between two dictionaries
 Returns a dict of key => {oldValue, newValue} pairs.
 */
 function diffDict(oldDict, newDict, comparer) {
-	comparer = comparer || ((a, b) => { return (a==b)}); //The default naive comparer
+	comparer = comparer || ((a, b) => (a==b)); //The default naive comparer
 	oldDict = oldDict || {};
 	newDict = newDict || {};
 	var res = {};
@@ -1097,7 +1097,7 @@ Backend.prototype.getChildren = function (parentId, tasklistId) {
 			continue;
 		list.push(task);
 	}
-	list = list.sort((a, b) => { return a.position - b.position; });
+	list = list.sort((a, b) => a.position - b.position);
 	return Promise.resolve(list);
 }
 //Returns an array of all children tasks of a given task at any level

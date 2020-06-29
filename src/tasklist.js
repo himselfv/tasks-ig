@@ -32,9 +32,9 @@ function TaskList(where) {
 	this.initCustomEvents();
 	this.dragMgr = new TimeoutDragMgr();
 	this.dragMgr.dragStartTime = 500;
-	this.dragMgr.dragStart = () => { return this.dragStart() };
-	this.dragMgr.dragMove = (pos) => { return this.dragMove(pos) };
-	this.dragMgr.dragEnd = (cancelDrag) => { return this.dragEnd(cancelDrag) };
+	this.dragMgr.dragStart = this.dragStart.bind(this);
+	this.dragMgr.dragMove = this.dragMove.bind(this);
+	this.dragMgr.dragEnd = this.dragEnd.bind(this);
 }
 unit.export(TaskList);
 TaskList.prototype.toString = function() {
@@ -117,7 +117,7 @@ TaskList.prototype.appendTaskChildren = function(parentId, level, taskRecords) {
 		children.push(task);
 	}
 	//Sort by position
-	children = children.sort((a, b) => { return a.position - b.position; });
+	children = children.sort((a, b) => a.position - b.position);
 	//Publish, with recursive children
 	this.appendTasksWithChildren(children, level, taskRecords)
 }
@@ -161,11 +161,11 @@ TaskList.prototype.createEntry = function(task, level) {
 	var entry = new TaskEntry(task);
 	entry.setLevel(level);
 	this.dragMgr.addElement(entry);
-	entry.addEventListener("focusin", (event) => this.onEntryFocus(event));
-	entry.addEventListener("focusout", (event) => this.onEntryBlur(event));
-	entry.gripCtl.addEventListener("mousedown", (event) => this.onEntryDragGripMouseDown(event));
-	entry.gripCtl.addEventListener("touchstart", (event) => this.onEntryDragGripMouseDown(event));
-	entry.titleCtl.addEventListener("blur", (event) => this.onEntryTitleFocusOut(event), true);
+	entry.addEventListener("focusin", this.onEntryFocus.bind(this));
+	entry.addEventListener("focusout", this.onEntryBlur.bind(this));
+	entry.gripCtl.addEventListener("mousedown", this.onEntryDragGripMouseDown.bind(this));
+	entry.gripCtl.addEventListener("touchstart", this.onEntryDragGripMouseDown.bind(this));
+	entry.titleCtl.addEventListener("blur", this.onEntryTitleFocusOut.bind(this), true);
 	return entry;
 }
 
@@ -183,7 +183,7 @@ function TaskEntry(task) {
 	this.node.className = "task";
 	this.node.taskId = task.id;
 	this.node.taskEntry = this; //reverse link
-	this.node.addEventListener("click", (event) => this.onNodeClicked(event));
+	this.node.addEventListener("click", this.onNodeClicked.bind(this));
 
 	var item = null;
 
@@ -196,7 +196,7 @@ function TaskEntry(task) {
 	item.type = "checkbox";
 	item.className = "taskCheck";
 	item.display = "inline";
-	item.addEventListener("change", (event) => this.onChecked(event));
+	item.addEventListener("change", this.onChecked.bind(this));
 	this.node.appendChild(item);
 	this.checkCtl = item;
 
@@ -207,27 +207,27 @@ function TaskEntry(task) {
 	item = document.createElement("div");
 	item.className = "taskTitle";
 	item.contentEditable=true;
-	item.addEventListener("input", (event) => this.onTitleInput(event));
-	item.addEventListener("paste", (event) => this.onTitlePaste(event));
+	item.addEventListener("input", this.onTitleInput.bind(this));
+	item.addEventListener("paste", this.onTitlePaste.bind(this));
 	wrap.appendChild(item);
 	this.titleCtl = item;
 
 	item = document.createElement("p");
 	item.className = "taskNotesShort";
-	item.addEventListener("click", (event) => this.onEditClicked(event));
+	item.addEventListener("click", this.onEditClicked.bind(this));
 	wrap.appendChild(item);
 	this.notesCtl = item;
 
 	item = document.createElement("p");
 	item.className = "taskDue";
-	item.addEventListener("click", (event) => this.onEditClicked(event));
+	item.addEventListener("click", this.onEditClicked.bind(this));
 	wrap.appendChild(item);
 	this.dueCtl = item;
 
 	item = document.createElement("a");
 	item.className = "taskEditLink";
 	item.appendChild(document.createTextNode(">"));
-	item.addEventListener("click", (event) => this.onEditClicked(this));
+	item.addEventListener("click", this.onEditClicked.bind(this));
 	this.node.appendChild(item);
 
 	this.setTitle(task.title);

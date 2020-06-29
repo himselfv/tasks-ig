@@ -24,7 +24,7 @@ unit.export(BackendLocal);
 
 function BackendLocalStorage() {
 	BackendLocal.call(this);
-	window.addEventListener('storage', (event) => this.localStorageChanged(event));
+	window.addEventListener('storage', this.localStorageChanged.bind(this));
 	this.storage = window.localStorage;
 }
 inherit(BackendLocal, BackendLocalStorage);
