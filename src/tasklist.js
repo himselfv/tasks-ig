@@ -31,6 +31,7 @@ function TaskList(where) {
 	this.root = where;
 	this.initCustomEvents();
 	this.dragMgr = new DragMgr();
+	this.dragMgr.autoShield = true;
 	this.dragMgr.dragDelay = 500;
 	this.dragMgr.dragStart = this.dragStart.bind(this);
 	this.dragMgr.dragMove = this.dragMove.bind(this);
