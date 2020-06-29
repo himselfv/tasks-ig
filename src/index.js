@@ -1258,7 +1258,7 @@ TaskListPanel.prototype.reload = function() {
 		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists) {
 			if (this.selectFailedAccounts)
-				option.disabled = false; //No task lists => make the account always selectable
+				option.classList.remove('disabled');; //No task lists => make the account always selectable
 			if (account.error) {
 				option.textContent = option.textContent+' (error)';
 				option.classList.add('error');
@@ -1317,9 +1317,9 @@ TaskListPanel.prototype.addItem = function(title) {
 	return option;
 }
 TaskListPanel.prototype.optionClicked = function(option) {
+	if (option.classList.contains('disabled')) return;
 	let value = option.extraValue;
-	if (!value)
-		return;
+	if (!value) return;
 	setSelectedTaskList(value);
 }
 TaskListPanel.prototype.setSelected = function(tasklist, noNotify) {
