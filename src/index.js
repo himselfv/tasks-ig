@@ -755,7 +755,7 @@ function SettingsPage(titleText, settings, values) {
 	CustomPage.call(this, document.getElementById('settingsPage'));
 	this.btnOk = document.getElementById('settingsOk');
 	this.btnCancel = document.getElementById('settingsCancel');
-	this.btnOk.onclick = this.okClick.bind(this);
+	this.btnOk.onclick = this.okClick.bind(this, null);
 	this.btnCancel.onclick = this.cancelClick.bind(this);
 	this.content = document.getElementById('settingsContent');
 	
