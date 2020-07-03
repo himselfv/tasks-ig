@@ -390,8 +390,6 @@ function accountDelete(id) {
 		accountListChanged();
 	}
 }
-
-
 //Accepts account objects, IDs (strings) and indices (integers). Returns index or -1.
 Accounts.findIndex = function(account) {
 	if (Number.isInteger(account))
@@ -444,11 +442,7 @@ Accounts.move = function(account, insertBefore) {
 	accountListChanged(); //the order has changed
 }
 //Switches places for accounts #i and #j in the ordered account list
-function accountSwap(i, j) {
-	return (i>j) ? Accounts.move(j, i) : Accounts.move(i, j);
-}
-
-
+function accountSwap(i, j) { return (i>j) ? Accounts.move(j, i) : Accounts.move(i, j); }
 //Called when the _runtime_ account list changes either due to initial loading, or addition/deletion/reordering
 function accountListChanged() {
 	console.debug('accountsListChanged; accounts=', accounts);
@@ -510,8 +504,6 @@ function accountStateChanged(account) {
 			//But the available actions might have changed
 			accountActionsUpdate();
 }
-
-
 
 
 
