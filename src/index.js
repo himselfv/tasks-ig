@@ -286,6 +286,7 @@ Account list
 Possible backends self-register in backends.js/backends.
 Account configuration is stored in localstorage; we try to load all accounts automatically.
 */
+function Accounts() {}
 //Loads the current list of accounts and tries to activate each
 function accountsLoad() {
 	console.log('accountsLoad');
@@ -389,30 +390,64 @@ function accountDelete(id) {
 		accountListChanged();
 	}
 }
-//Switches places for accounts #i and #j in the ordered account list
-function accountSwap(i, j) {
-	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
-	if (!Number.isInteger(i) || !Number.isInteger(j) || (i < 0)  || (j < 0) || (i >= accountList.length) || (j >= accountList.Length)) {
-		console.error('accountSwap: invalid arguments: ', arguments);
+
+
+//Accepts account objects, IDs (strings) and indices (integers). Returns index or -1.
+Accounts.findIndex = function(account) {
+	if (Number.isInteger(account))
+		return account;
+	return accounts.findIndex(item => (item==account) || (item.id==account));
+}
+//Same but returns a runtime account object or null
+Accounts.find = function(account) {
+	let i = this.findIndex(account);
+	return ((i >= 0) && (i < accounts.length)) ? accounts[i] : null;
+}
+function accountFind(id) { return Accounts.find(id); } //compatibility
+Accounts.move = function(account, insertBefore) {
+	console.debug('Accounts.move', account, insertBefore);
+	account = this.findIndex(account);
+	if (account < 0) {
+		console.warn('Account not found: '+account);
 		return;
 	}
 	
-	var tmp = accountList[i];
-	accountList[i] = accountList[j];
-	accountList[j] = tmp;
+	if (insertBefore) {
+		insertBefore = this.findIndex(insertBefore);
+		if (insertBefore < 0) {
+			console.warn('Account not found: '+insertBefore);
+			return;
+		}
+	} else
+		insertBefore = accounts.length;
+	
+	if (insertBefore==account) return;
+	if (insertBefore>account) insertBefore--;
+
+	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
+	let tmp1=accountList[account];
+	let tmp2=accounts[account];
+	while (account<insertBefore) {
+		accountList[account] = accountList[account+1];
+		accounts[account] = accounts[account+1];
+		account++;
+	}
+	while (account>insertBefore) {
+		accountList[account] = accountList[account-1];
+		accounts[account] = accounts[account-1];
+		account--;
+	}
+	accountList[account] = tmp1;
+	accounts[account] = tmp2;
 	setLocalStorageItem("tasksIg_accounts", accountList);
 	
-	//Also switch the loaded account slots
-	tmp = accounts[i];
-	accounts[i] = accounts[j];
-	accounts[j] = tmp;
 	accountListChanged(); //the order has changed
 }
-//Returns a runtime account object based on its ID
-function accountFind(id) {
-	let i = accounts.findIndex(item => (item.id==id));
-	return (i >= 0) ? accounts[i] : null;
+//Switches places for accounts #i and #j in the ordered account list
+function accountSwap(i, j) {
+	return (i>j) ? Accounts.move(j, i) : Accounts.move(i, j);
 }
+
 
 //Called when the _runtime_ account list changes either due to initial loading, or addition/deletion/reordering
 function accountListChanged() {
@@ -475,6 +510,9 @@ function accountStateChanged(account) {
 			//But the available actions might have changed
 			accountActionsUpdate();
 }
+
+
+
 
 
 /*
@@ -1387,37 +1425,14 @@ TaskListPanel.prototype.dragStart = function(entry) {
 	//Remember existing place for simple restoration
 	this.dragContext.oldPrev = dragNode.previousElementSibling;
 	
-	//Hide all children
-    this.dragContext.oldChildren = document.createElement("div");
-    this.dragContext.oldChildren.style.display = "none";
-    for (let child of this.getAccountChildren(dragNode))
-    	this.dragContext.oldChildren.insertBefore(child, null);
+	if (dragNode.classList.contains('account')) {
+		//Hide all children
+	    this.dragContext.oldChildren = document.createElement("div");
+	    this.dragContext.oldChildren.style.display = "none";
+	    for (let child of this.getAccountChildren(dragNode))
+	    	this.dragContext.oldChildren.insertBefore(child, null);
+	}
 	return true;
-}
-TaskListPanel.prototype.dragEnd = function(cancelDrag) {
-	if (!this.dragContext) return;
-	var dragNode = this.dragContext.node;
-
-	if (cancelDrag) {
-		//Move the node back to where it was
-		let oldPrev = this.dragContext.oldPrev;
-		oldPrev.parentNode.insertBefore(dragNode, oldPrev.nextElement);
-	}
-
-	//Unhide all children + move to where the parent is
-	let nextNode = dragNode.nextElementSibling;
-	for (let i=0; i < this.dragContext.oldChildren.children.length;) { //don't increment, stay at 0
-		let node = this.dragContext.oldChildren.children[i];
-		dragNode.parentNode.insertBefore(node, nextNode);
-	}
-	
-	dragNode.classList.remove("dragging");
-	
-	if (!cancelDrag && (this.dragContext.oldPrev != dragNode.previousElement)) {
-		//TODO: Make the same changes in the account list
-		//TODO: And apply to other controls
-	}
-	delete this.dragContext;
 }
 TaskListPanel.prototype.dragMove = function(pos) {
 	if (!this.dragContext) return;
@@ -1427,7 +1442,6 @@ TaskListPanel.prototype.dragMove = function(pos) {
 	let targetNode = this.nodeFromViewportPoint(pos);
     if (!targetNode || (targetNode == dragNode))
       return; //leave the dragged node where it is
-	
 	
 	//Find the closest account nodes above and below the mouse pointer
 	let prevAccount = this.findPreviousAccount(targetNode); //can be the same node
@@ -1471,22 +1485,47 @@ TaskListPanel.prototype.dragMove = function(pos) {
 		insertBefore = prevAccountNodes[prevAccountNodes.length-1].nextSibling;
 	else
 		insertBefore = nextAccount; //even if nullptr
-	
-	
-    /*
-    Nodes may be of different heights so we risk causing infinite switch sequence.
-    Only move if the pointer is in the top (bottom) dragNodeHeight of the target node.
-    */
-    /*if (insertAfter) {
-      if (pos.y < nodeRect.bottom - dragNodeRect.height)
-        return;
-    } else {
-      if (pos.y > nodeRect.top + dragNodeRect.height)
-        return;
-    }*/
     
     if (insertBefore)
     	this.box.insertBefore(dragNode, insertBefore);
+}
+
+TaskListPanel.prototype.dragEnd = function(cancelDrag) {
+	if (!this.dragContext) return;
+	var dragNode = this.dragContext.node;
+
+	if (cancelDrag) {
+		//Move the node back to where it was
+		let oldPrev = this.dragContext.oldPrev;
+		oldPrev.parentNode.insertBefore(dragNode, oldPrev.nextElement);
+	}
+
+	//Unhide all children + move to where the parent is
+	let nextNode = dragNode.nextElementSibling;
+	for (let i=0; i < this.dragContext.oldChildren.children.length;) { //don't increment, stay at 0
+		let node = this.dragContext.oldChildren.children[i];
+		dragNode.parentNode.insertBefore(node, nextNode);
+	}
+	
+	dragNode.classList.remove("dragging");
+	
+	if (!cancelDrag && (this.dragContext.oldPrev != dragNode.previousElement)) {
+		if (dragNode.classList.contains('account'))
+			this.dragAccountApply(dragNode)
+	}
+	delete this.dragContext;
+}
+//Applies the changes made by dragging an account node to the application account list
+TaskListPanel.prototype.dragAccountApply = function(dragNode) {
+	//Find the account index
+	let accountId = dragNode.extraValue.account;
+	
+	//Find the next account in the panel
+	let nextAccount = this.findNextAccount(dragNode.nextSibling); //may be null
+	let nextAccountId = nextAccount ? nextAccount.extraValue.account : null;
+	
+	//Move
+	Accounts.move(accountId, nextAccountId);
 }
 var leftPanel = new TaskListPanel(document.getElementById('listPanel'));
 
