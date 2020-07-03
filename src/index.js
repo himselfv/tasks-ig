@@ -1337,6 +1337,40 @@ TaskListPanel.prototype.nodeFromViewportPoint = function(pt) {
 	}
 	return node;
 }
+//Locates the parent account node for the given node
+TaskListPanel.prototype.findParentAccount = function(node) {
+	if (!node.nodeType==Node.ELEMENT_NODE)
+		node = node.previousElementSibling;
+	while (!!node && !node.classList.contains('account')) {
+		//If the node is not one of the supported account children then it's outside any account
+		if (!node.classList.contains('tasklist') && !node.classList.contains('taskListAdd'))
+			return null;
+		node = node.previousElementSibling;
+	}
+	return node;
+}
+//Locates the first account node at or before the given node (may be unrelated to the given node)
+TaskListPanel.prototype.findPreviousAccount = function(node) {
+	while (!!node && !node.classList.contains('account'))
+		node = node.previousElementSibling;
+	return node;
+}
+TaskListPanel.prototype.findNextAccount = function(node) {
+	while (!!node && !node.classList.contains('account'))
+		node = node.nextElementSibling;
+	return node;
+}
+//Returns a list of all child nodes for the given account node
+TaskListPanel.prototype.getAccountChildren = function(accountNode) {
+	let results = [];
+	//Child nodes are same level elements with a number of styles + non-element nodes around them
+    let child = accountNode.nextSibling;
+    while (child && (child.nodeType!=Node.ELEMENT_NODE || child.classList.contains('tasklist') || child.classList.contains('tasklistAdd'))) {
+    	results.push(child);
+    	child = child.nextSibling;
+    }
+    return results;
+}
 TaskListPanel.prototype.dragStart = function(entry) {
 	//Cancel any text selection that might be going on due to not capturing that initial mouse click
 	document.activeElement.blur();
@@ -1353,16 +1387,11 @@ TaskListPanel.prototype.dragStart = function(entry) {
 	//Remember existing place for simple restoration
 	this.dragContext.oldPrev = dragNode.previousElementSibling;
 	
-	//Hide all children (== same level entries until next account entry)
+	//Hide all children
     this.dragContext.oldChildren = document.createElement("div");
     this.dragContext.oldChildren.style.display = "none";
-    let child = dragNode.nextSibling;
-    while (child && !child.classList.contains('account')) {
-    	let nextChild = child.nextSibling;
+    for (let child of this.getAccountChildren(dragNode))
     	this.dragContext.oldChildren.insertBefore(child, null);
-    	child = nextChild;
-    }
-	
 	return true;
 }
 TaskListPanel.prototype.dragEnd = function(cancelDrag) {
@@ -1396,31 +1425,68 @@ TaskListPanel.prototype.dragMove = function(pos) {
 	
 	//Move the node to a new place in the same parent list, tentatively
 	let targetNode = this.nodeFromViewportPoint(pos);
-	console.log('TaskListPanel: targetNode=', targetNode);
     if (!targetNode || (targetNode == dragNode))
       return; //leave the dragged node where it is
 	
-	var nodeRect = targetNode.getBoundingClientRect();
 	
-    //Whether we move it above or before the node depends on where the node is now
-    var dragNodeRect = dragNode.getBoundingClientRect();
-    var insertAfter = (dragNodeRect.top < nodeRect.top);
-    
+	//Find the closest account nodes above and below the mouse pointer
+	let prevAccount = this.findPreviousAccount(targetNode); //can be the same node
+	let nextAccount = this.findNextAccount(targetNode.nextSibling);
+	//console.log('prev=', prevAccount, 'next=', nextAccount);
+	
+	//Find the dimensions of both accounts with their children
+	let prevAccountRect = null;
+	let prevAccountNodes = null;
+	if (prevAccount) {
+		prevAccountRect = prevAccount.getBoundingClientRect();
+		prevAccountRect = { top: prevAccountRect.top, bottom: prevAccountRect.bottom };
+		prevAccountNodes = this.getAccountChildren(prevAccount);
+		if (prevAccountNodes.length > 0)
+			prevAccountRect.bottom = prevAccountNodes[prevAccountNodes.length-1].getBoundingClientRect().bottom;
+		prevAccountNodes.unshift(prevAccount); //for simplicity
+	}
+	//console.log('pos=',pos,'rect=',prevAccountRect);
+
+	//For nextAccount we only care about the top
+	let nextAccountRect = nextAccount ? nextAccount.getBoundingClientRect() : null;
+	
+	let insertBefore = null;
+	
+	//If our pointer is inside the prevAccount then what matters is in which half it is
+	if (!!prevAccount && (pos.y > prevAccountRect.top) && (pos.y < prevAccountRect.bottom)) {
+		if (pos.y >= (prevAccountRect.top + prevAccountRect.bottom)/2.0)
+			insertBefore = prevAccountNodes[prevAccountNodes.length-1].nextSibling;
+		else
+			insertBefore = prevAccountNodes[0];
+	}
+	//Otherwise if both accounts are available then we stick to the closest of them
+	else if (!!prevAccount && !!nextAccount) {
+		if (pos.y - prevAccountRect.bottom > nextAccountRect.top - pos.y)
+			insertBefore = nextAccount;
+		else
+			insertBefore = prevAccountNodes[prevAccountNodes.length-1].nextSibling;
+	}
+	//Otherwise stick to whichever is available
+	else if (prevAccount)
+		insertBefore = prevAccountNodes[prevAccountNodes.length-1].nextSibling;
+	else
+		insertBefore = nextAccount; //even if nullptr
+	
+	
     /*
     Nodes may be of different heights so we risk causing infinite switch sequence.
     Only move if the pointer is in the top (bottom) dragNodeHeight of the target node.
     */
-    if (insertAfter) {
+    /*if (insertAfter) {
       if (pos.y < nodeRect.bottom - dragNodeRect.height)
         return;
     } else {
       if (pos.y > nodeRect.top + dragNodeRect.height)
         return;
-    }
+    }*/
     
-    var beforeNode = (insertAfter) ? targetNode.nextElementSibling : targetNode;
-    var afterNode = (insertAfter) ? targetNode : targetNode.previousElementSibling;
-    this.box.insertBefore(dragNode, beforeNode)
+    if (insertBefore)
+    	this.box.insertBefore(dragNode, insertBefore);
 }
 var leftPanel = new TaskListPanel(document.getElementById('listPanel'));
 
