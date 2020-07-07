@@ -185,20 +185,20 @@ Task list panel
   background-color: LightGrey; /* same as borders in the main pane */
     /* alternative: #E3E9FF */
 }
-#listPanel > li,
-#listPanel > li:after {
+#listPanel li,
+#listPanel li:after {
   font-size: 1.05em;
   list-style-type: none;
   margin: 0px;
   padding: 0.3em 0.5em;
   border: 1px solid white;
 }
-#listPanel > li:not(.disabled),
-#listPanel > li:not(.disabled):after {
+#listPanel li:not(.disabled),
+#listPanel li:not(.disabled):after {
   cursor: pointer;
 }
-#listPanel > li:hover:not(.disabled),
-#listPanel > li:hover:not(.disabled):after {
+#listPanel li:hover:not(.disabled),
+#listPanel li:hover:not(.disabled):after {
   /* Different highlight: */
   background-color: #E3E9FF;
   border: 1px solid DodgerBlue;
@@ -206,46 +206,46 @@ Task list panel
   background-color: LightSkyBlue; == #87CEFA
   border: 1px solid lightgray; */
 }
-#listPanel > .selected {
+#listPanel .selected {
   /* Same as the focused task in the main list */
   border-top: 1px solid #F7E784;
   border-bottom: 1px solid #F7E784;
 }
 /* List panel title */
-#listPanel > .title {
+#listPanel .title {
   display: none; /* currently hidden */
 }
-#listPanel > .account,
-#listPanel > .accountAdd {
+#listPanel .account,
+#listPanel .accountAdd {
   margin: 0px;
   margin-top: 0.5em;
   vertical-align: baseline;
 }
-#listPanel > .accountAdd {
+#listPanel .accountAdd {
   color: gray;
   font-weight: normal;
 }
-#listPanel > .account.loading:after { /* Spinning wheel while loading */
+#listPanel .account.loading:after { /* Spinning wheel while loading */
   content: url("res/loading5_16.gif");
   position: relative;
   top: 0.2em;
 }
-#listPanel > .dragging {
+#listPanel .dragging {
   opacity: 0.75;
 }
 /*
 To replace "Add account" text:
-#listPanel > .accountAdd {
+#listPanel .accountAdd {
   visibility:hidden;
 }
-#listPanel > .accountAdd:after {
+#listPanel .accountAdd:after {
   content: "＋"; -- to use a text
   content: url("res/plus2.png"); -- to use an image
   visibility: visible;
 }
 */
-#listPanel > .tasklist,
-#listPanel > .tasklistAdd {
+#listPanel .tasklist,
+#listPanel .tasklistAdd {
   list-style-type: none;
   /*color: DodgerBlue;*/
   /*color: #4D6C98;*/
@@ -253,7 +253,7 @@ To replace "Add account" text:
   padding-left: 1.0em;
   font-weight: bold;
 }
-#listPanel > .tasklistAdd {
+#listPanel .tasklistAdd {
   color: gray;
   font-weight: normal;
 }
@@ -262,6 +262,22 @@ To replace "Add account" text:
 }
 
 
+/*
+List panel toolbar
+*/
+#listPanelToolbar {
+  display: flex;
+  flex-direction: row;
+}
+
+
+/*
+List toolbar
+*/
+#listToolbar {
+  display: flex;
+  flex-direction: row;
+}
 
 
 /*
@@ -336,6 +352,8 @@ Bottom panel buttons
   font-color: DodgerBlue;
   font-weight: bold;
   cursor: pointer;
+  font-size: 0; /* Hide button captions */
+  align-self: center; /* Baseline align fails with font-size 0 */
 }
 .button:hover {
   background-color: LightSkyBlue;

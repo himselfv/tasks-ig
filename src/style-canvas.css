@@ -1,0 +1,93 @@
+/* All fonts are always Arial,sans-serif */
+html, body {
+  font-family: Arial,sans-serif;
+}
+
+/* Headline */
+#listHeader, #listSelectBox {
+  background-color: #E3E9FF;
+}
+#listSelectBox {
+  font-size: 1.5em;
+  font-weight: normal;
+}
+/* Pixel-perfect 29px headline */
+#listHeader, #listSelectBox {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+#listHeader {
+  padding: 1px;
+}
+#mainmenu .dropbtn {
+  min-height: 20px;
+}
+
+/* No padding for tasklistPanel */
+#listPanel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+/* Title is the same color, same size as headline */
+#listPanelToolbar {
+  background-color: #E3E9FF;
+  min-height: 29px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+#listPanel .accountAdd {
+  display: none; /* hide additional "add account" */
+}
+
+/* Panel toolbar */
+#listPanelToolbar .button {
+  font-size: 1em; /* Show captions */
+  font-weight: normal;
+  background: linear-gradient(#FFFFFFFF, #DDDDDDDD);
+  border: 1px solid #AAAAAA;
+  border-radius: 2px;
+  margin: 2px;
+  padding: 0;
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-top: 3px;
+}
+#listPanelToolbar #panelAccountAdd:before {
+  content: url(res/plus.png);
+  vertical-align: middle;
+  margin-right: 5px;
+}
+#listPanelToolbar #panelListAdd:before {
+  content: url(res/plus.png);
+  vertical-align: middle;
+  margin-right: 5px;
+}
+
+/* Main toolbar */
+#listToolbar {
+  background: linear-gradient(#FFFFFF, #DDDDDD);
+  border-bottom: 1px solid #D5D5D5;
+}
+#listToolbar .button {
+  margin: 1px;
+  font-size: 1em; /* Show captions */
+  font-weight: normal;
+}
+#listToolbar #tbTaskNew:before {
+  content: url(res/plus2.png);
+  vertical-align: middle;
+  margin-right: 5px;
+}
+
+/* Tasks */
+.task {
+  max-width: 75%; /* Tasks are limited to 75% of the full width */
+}
+@media(max-width: 600px) {
+.task {
+  max-width: initial; /* But I do not think this should happen in collapsed form */
+}
+}

@@ -701,6 +701,7 @@ function buttonNew(id, onclick, title) {
 	button.classList.add("button");
 	button.id = id;
 	button.title = title;
+	button.textContent = title;
 	button.addEventListener("click", onclick);
 	return button;
 }

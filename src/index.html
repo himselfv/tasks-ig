@@ -5,16 +5,21 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style-canvas.css">
 </head>
 <body>
   <div id="listPage" class="page hidden" style="z-index: 0;">
-    <div id="listPanel"></div>
+    <div id="listPanel">
+      <div id="listPanelToolbar"></div>
+      <div id="listPanelContent"></div>
+    </div>
     <div id="listSplitter"></div>
     <div id="listBody">
       <div id="listHeader">
         <select id="listSelectBox"></select>
         <div id="mainmenu" class="dropdown"></div>
       </div>
+      <div id="listToolbar"></div>
       <div id="listMessages"></div>
       <div id="listContent"></div>
       <div id="listFooter">

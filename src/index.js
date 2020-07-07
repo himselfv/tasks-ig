@@ -34,7 +34,7 @@ function initUi() {
 	mainmenu = dropdownInit('mainmenu');
 	mainmenu.button.title = "Task list action";
 	mainmenu.add('menuReloadBtn', reloadAllAccountsTaskLists, "Reload");
-	mainmenu.add('listAddBtn', tasklistAdd, "Add list...");
+	mainmenu.add('listAddBtn', tasklistAdd.bind(null, null), "Add list...");
 	mainmenu.add('listRenameBtn', tasklistRename, "Rename list...");
 	mainmenu.add('listDeleteBtn', tasklistDelete, "Delete list");
 	//This is a dangerous nuke account option; hide it from general users:
@@ -49,6 +49,25 @@ function initUi() {
 	
 	element('listFooter').insertBefore(buttonNew("taskAddBtn", taskEntryAddClicked, "Add task"), element('taskmenu'));
 	element('listFooter').insertBefore(buttonNew("taskDeleteBtn", taskEntryDeleteFocusedClicked, "Delete task"), element('taskmenu'));
+	
+	let panelToolbar = element('listPanelToolbar');
+	panelToolbar.insertBefore(buttonNew('panelAccountAdd', accountAdd, 'Add account'), null);
+	panelToolbar.insertBefore(buttonNew('panelListAdd', tasklistAdd.bind(null, null), 'New list'), null);
+	
+	let listToolbar = element('listToolbar');
+	//Clear completed | +New task |
+	listToolbar.insertBefore(buttonNew('tbTaskNew', taskEntryAddClicked, 'New task'), null);
+	//View: <my order> | <sort by date> | <completed tasks> | <trash>
+	listToolbar.insertBefore(buttonNew('tbTaskEdit', taskEntryEditFocusedClicked, 'Edit details'), null);
+	listToolbar.insertBefore(buttonNew('tbTaskTab', taskEntryTabFocused, '—>'), null);
+	listToolbar.insertBefore(buttonNew('tbTaskShiftTab', taskEntryShiftTabFocused, '<—'), null);
+	//listToolbar.insertBefore(buttonNew('tbTaskMoveUp', taskEntryMoveUp, '[Up icon]'));
+	//listToolbar.insertBefore(buttonNew('tbTaskMoveDown', taskEntryMoveDown, '[Down icon]'));
+	listToolbar.insertBefore(buttonNew('tbTaskDelete', taskEntryDeleteFocusedClicked, 'Delete'), null);
+	//listToolbar.insertBefore(buttonNew('tbRefresh', taskListRefresh, 'Refresh'));
+	//listToolbar.insertBefore(buttonNew('tbPrint', taskListPrint, '[Print icon]'));
+	
+	
 	
 	taskmenu = dropdownInit('taskmenu');
 	taskmenu.button.title = "Task actions";
@@ -770,6 +789,9 @@ function StartNewAccountUi(params) {
 		addBackendPage.resolve(event.results);
 	});
 	return addBackendPage.waitResult();
+}
+function accountAdd() {
+	return StartNewAccountUi({ hasCancel: true })
 }
 
 
@@ -1519,7 +1541,7 @@ TaskListPanel.prototype.dragAccountApply = function(dragNode) {
 	//Move
 	Accounts.move(accountId, nextAccountId);
 }
-var leftPanel = new TaskListPanel(document.getElementById('listPanel'));
+var leftPanel = new TaskListPanel(document.getElementById('listPanelContent'));
 
 Splitter.ID_BASE = "tasksIg_";
 var leftSplitter = new Splitter(document.getElementById('listSplitter'));
@@ -2526,6 +2548,7 @@ Tasklist and account actions
 //If account is null assumes currently selected one
 function tasklistAdd(account) {
 	if (!account) account = backend;
+	console.log(account);
 	if (!account || !account.tasklistAdd) return;
 	var title = prompt("Enter a name for the new task list in '"+account.uiName()+"':", "");
 	if (!title)
