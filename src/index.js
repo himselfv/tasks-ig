@@ -41,33 +41,33 @@ function initUi() {
 	if (options.debug)
 		mainmenu.add('accountResetBtn', accountReset, "Reset account");
 	mainmenu.addSeparator();
-	mainmenu.add('accountsBtn', accountsPageOpen, "Accounts...");
+	mainmenu.add('accountsBtn', AccountsPage.new.bind(AccountsPage), "Accounts...");
 	mainmenu.add('optionsBtn', optionsPageOpen, "Options...");
 	
 	element('listContent').addEventListener("click", tasklistClick);
 	element('listContent').addEventListener("dblclick", tasklistDblClick);
 	
 	element('listFooter').insertBefore(buttonNew("taskAddBtn", taskEntryAddClicked, "Add task"), element('taskmenu'));
-	element('listFooter').insertBefore(buttonNew("taskDeleteBtn", taskEntryDeleteFocusedClicked, "Delete task"), element('taskmenu'));
+	element('listFooter').insertBefore(buttonNew("taskDeleteBtn", taskEntryDeleteFocused, "Delete task"), element('taskmenu'));
 	
 	let panelToolbar = element('listPanelToolbar');
 	panelToolbar.insertBefore(buttonNew('panelAccountAdd', accountAdd, 'Add account'), null);
 	panelToolbar.insertBefore(buttonNew('panelListAdd', tasklistAdd.bind(null, null), 'New list'), null);
 	
 	let listToolbar = element('listToolbar');
-	//Clear completed | +New task |
-	listToolbar.insertBefore(buttonNew('tbTaskNew', taskEntryAddClicked, 'New task'), null);
+	listToolbar.insertBefore(buttonNew('tbClearCompleted', tasklistClearCompleted, 'Clear completed'), null);
+	listToolbar.insertBefore(buttonNew('tbTaskAdd', taskEntryAddClicked, 'New task'), null);
 	//View: <my order> | <sort by date> | <completed tasks> | <trash>
-	listToolbar.insertBefore(buttonNew('tbTaskEdit', taskEntryEditFocusedClicked, 'Edit details'), null);
-	listToolbar.insertBefore(buttonNew('tbTaskTab', taskEntryTabFocused, '—>'), null);
-	listToolbar.insertBefore(buttonNew('tbTaskShiftTab', taskEntryShiftTabFocused, '<—'), null);
-	//listToolbar.insertBefore(buttonNew('tbTaskMoveUp', taskEntryMoveUp, '[Up icon]'));
-	//listToolbar.insertBefore(buttonNew('tbTaskMoveDown', taskEntryMoveDown, '[Down icon]'));
-	listToolbar.insertBefore(buttonNew('tbTaskDelete', taskEntryDeleteFocusedClicked, 'Delete'), null);
-	//listToolbar.insertBefore(buttonNew('tbRefresh', taskListRefresh, 'Refresh'));
+	listToolbar.insertBefore(buttonNew('tbShowCompleted', filterShowCompleted, 'Show completed'), null);
+	listToolbar.insertBefore(buttonNew('tbTaskEdit', taskEntryEditFocused, 'Edit details'), null);
+	listToolbar.insertBefore(buttonNew('tbTaskTab', taskEntryTabFocused, 'Indent'), null);
+	listToolbar.insertBefore(buttonNew('tbTaskShiftTab', taskEntryShiftTabFocused, 'Unindent'), null);
+	listToolbar.insertBefore(buttonNew('tbTaskMoveUp', taskMoveEntryUpFocused, 'Move up'), null);
+	listToolbar.insertBefore(buttonNew('tbTaskMoveDown', taskMoveEntryDownFocused, 'Move down'), null);
+	listToolbar.insertBefore(buttonNew('tbTaskDelete', taskEntryDeleteFocused, 'Delete'), null);
+	listToolbar.insertBefore(buttonNew('tbTaskDeleteWithChildren', taskEntryDeleteRecursiveFocused, 'Delete w/children'), null);
+	listToolbar.insertBefore(buttonNew('tbRefresh', tasklistReloadSelected, 'Refresh'), null);
 	//listToolbar.insertBefore(buttonNew('tbPrint', taskListPrint, '[Print icon]'));
-	
-	
 	
 	taskmenu = dropdownInit('taskmenu');
 	taskmenu.button.title = "Task actions";
@@ -77,8 +77,8 @@ function initUi() {
 	taskmenu.addSeparator();
 	taskmenu.add("taskCopyJSON", taskEntryCopyJSON, "Copy JSON");
 	taskmenu.add("taskExportToFile", taskEntryExportToFile, "Export to file...");
-	taskmenu.add("taskEditFocused", taskEntryEditFocusedClicked, "Edit");
-	taskmenu.add("taskDeleteRecursive", taskEntryDeleteRecursiveFocusedClicked, "Delete w/children");
+	taskmenu.add("taskEditFocused", taskEntryEditFocused, "Edit");
+	taskmenu.add("taskDeleteRecursive", taskEntryDeleteRecursiveFocused, "Delete w/children");
 	taskmenu.addSeparator();
 	taskmenu.add("tasksExportAllToFile", taskEntryExportAllToFile, "Export all to file...");
 	taskmenu.add("", tasklistReloadSelected, "Refresh");
@@ -357,8 +357,8 @@ function accountsLoad() {
 }
 //Permanently adds a new account based on its Backend() object and signin() params.
 //Assign it an .id
-function accountAdd(account, params) {
-	console.log('accountAdd', arguments);
+Accounts.add = function(account, params) {
+	console.log('Accounts.add', arguments);
 	if (!account || !account.constructor || !account.constructor.name) {
 		console.error('accountAdd: invalid account object: ', account);
 		return;
@@ -389,9 +389,9 @@ function accountAdd(account, params) {
 	accountListChanged();
 }
 //Deletes the account by its id.
-function accountDelete(id) {
+Accounts.delete = function(id) {
 	//NB: account.signout() if you can before passing it here, to close any session cookies
-	console.log('accountDelete:', id);
+	console.log('Accounts.delete:', id);
 	
 	//Delete the account data
 	window.localStorage.removeItem("tasksIg_account_"+id);
@@ -461,7 +461,7 @@ Accounts.move = function(account, insertBefore) {
 	accountListChanged(); //the order has changed
 }
 //Switches places for accounts #i and #j in the ordered account list
-function accountSwap(i, j) { return (i>j) ? Accounts.move(j, i) : Accounts.move(i, j); }
+Accounts.swap = function(i, j) { return (i>j) ? Accounts.move(j, i) : Accounts.move(i, j); }
 //Called when the _runtime_ account list changes either due to initial loading, or addition/deletion/reordering
 function accountListChanged() {
 	console.debug('accountsListChanged; accounts=', accounts);
@@ -530,9 +530,6 @@ function accountStateChanged(account) {
 Account list page
 Allows to add, remove, reorder accounts, in the future perhaps reorder/hide task lists inside accounts.
 */
-function accountsPageOpen() {
-	new AccountsPage();
-}
 function AccountsPage() {
 	CustomPage.call(this, document.getElementById('accountListPage'));
 	
@@ -553,6 +550,9 @@ function AccountsPage() {
 	this.reload();
 }
 inherit(CustomPage, AccountsPage);
+AccountsPage.new = function() {
+	return new AccountsPage();
+}
 AccountsPage.prototype.close = function() {
 	console.debug('AccountsPage.close');
 	this.page.classList.add("hidden");
@@ -586,7 +586,7 @@ AccountsPage.prototype.moveUpClick = function() {
 	//First move the visuals
 	this.content.insertBefore(this.content.options[index], this.content.options[index-1]);
 	//Now the accounts
-	accountSwap(index, index-1);
+	Accounts.swap(index, index-1);
 	this.updateAccountActions(); //Positions have changed
 }
 AccountsPage.prototype.moveDownClick = function() {
@@ -596,7 +596,7 @@ AccountsPage.prototype.moveDownClick = function() {
 	//First move the visuals
 	this.content.insertBefore(this.content.options[index+1], this.content.options[index]);
 	//Now the accounts
-	accountSwap(index+1, index);
+	Accounts.swap(index+1, index);
 	this.updateAccountActions(); //Positions have changed
 }
 AccountsPage.prototype.addClick = function() {
@@ -633,7 +633,7 @@ AccountsPage.prototype.deleteClick = function() {
 	})
 	.then(() => {
 		if (doDelete) {
-			accountDelete(account.id);
+			Accounts.delete(account.id);
 			this.content.options[index].remove();
 			this.updateAccountActions(); //onchanged() won't get called automatically
 		}
@@ -750,7 +750,7 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 	})
 	.then(setupResults => {
 		//console.debug('Backend.setup() success; params:', setupResults);
-		accountAdd(backend, setupResults);
+		Accounts.add(backend, setupResults);
 		this.okClick(backend); //for now just run the default completion routine
 		//TODO: maybe split this into a "backend selection" which will run okClicked() over the selected backend
 		//  + "add backend process" which will handle that to open settings etc and conditionally resolve()?
@@ -1572,6 +1572,7 @@ function selectedTaskListChanged() {
 function tasklistActionsUpdate() {
 	var tasklist = selectedTaskList();
 	console.debug('tasklistActionsUpdate:', tasklist, backend);
+	element('panelListAdd').classList.toggle('hidden',	!backend || !backend.tasklistAdd);
 	element("listAddBtn").classList.toggle("hidden",    !backend || !backend.tasklistAdd);
 	element("listRenameBtn").classList.toggle("hidden", !backend || !backend.tasklistUpdate || !tasklist);
 	element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
@@ -1724,8 +1725,10 @@ function tasksFocusChanged() {
 //Updates available task actions depending on the selected task and backend functionality
 function tasksActionsUpdate() {
 	console.debug('tasksActionUpdate');
+	var list = selectedTaskList();
+	console.log(list);
 	var entry = tasks.getFocusedEntry();
-	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert);
+	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert || !list);
 	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
 	element("taskTabBtn").classList.toggle("hidden", !backend || !backend.move || !entry);
 	element("taskShiftTabBtn").classList.toggle("hidden", !backend || !backend.move ||!entry);
@@ -1734,6 +1737,17 @@ function tasksActionsUpdate() {
 	element("taskExportToFile").classList.toggle("hidden", !entry);
 	element("taskEditFocused").classList.toggle("hidden", !backend || !entry); //even without !backend.update -- the task can be copied or moved
 	element("taskDeleteRecursive").classList.toggle("hidden", !backend || !backend.move ||!entry);
+	
+	element('tbTaskAdd').classList.toggle("hidden", !backend || !backend.insert || !list);
+	element('tbTaskEdit').classList.toggle("hidden", !backend || !entry);
+	element('tbTaskTab').classList.toggle("hidden", !backend || !backend.move || !entry);
+	element('tbTaskShiftTab').classList.toggle("hidden", !backend || !backend.move ||!entry);
+	element('tbTaskMoveUp').classList.toggle("hidden", !backend || !backend.move || !entry);
+	element('tbTaskMoveDown').classList.toggle("hidden", !backend || !backend.move ||!entry);
+	element('tbTaskDelete').classList.toggle("hidden", !backend || !backend.delete || !entry);
+	
+	element('tbShowCompleted').classList.toggle("hidden", !backend || !list);
+	element('tbClearCompleted').classList.toggle("hidden", !backend || !list || !backend.delete);
 }
 
 
@@ -1750,7 +1764,7 @@ function tasksActionsUpdate() {
     taskEntryEdit(event.entry)
   }
   //Called when the edit button is clicked for the focused task
-  function taskEntryEditFocusedClicked() {
+  function taskEntryEditFocused() {
     taskEntryEdit(tasks.getFocusedEntry());
   }
   
@@ -1771,13 +1785,13 @@ function tasksActionsUpdate() {
     var newEntry = taskNewInCurrentList({}, null, null);
     newEntry.setCaret(0); //move focus to it
   }
-  function taskEntryDeleteFocusedClicked(event) {
+  function taskEntryDeleteFocused(event) {
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
     taskDelete(focusedEntry, false);
   }
-  function taskEntryDeleteRecursiveFocusedClicked(event) {
+  function taskEntryDeleteRecursiveFocused(event) {
     var focusedEntry = tasks.getFocusedEntry();
     if (!focusedEntry)
       return;
@@ -2213,6 +2227,10 @@ var dragContext = {}; //stores some things temporarily while dragging
     	.then(ids => backend.move(ids[0], ids[1], ids[2]));
     pushJob(job);
   }
+  function taskMoveEntryUpFocused() {
+    var focusedEntry = tasks.getFocusedEntry();
+    if (focusedEntry) taskMoveEntryUp(focusedEntry);
+  }
 
   //Moves the entry to after the entry below it, on the same level as the entry below it.
   function taskMoveEntryDown(entry) {
@@ -2253,6 +2271,10 @@ var dragContext = {}; //stores some things temporarily while dragging
     var job = taskEntryNeedIds([entry, newParent, newPrevSibling])
     	.then(ids => backend.move(ids[0], ids[1], ids[2]));
     pushJob(job);
+  }
+  function taskMoveEntryDownFocused() {
+    var focusedEntry = tasks.getFocusedEntry();
+    if (focusedEntry) taskMoveEntryDown(focusedEntry);
   }
 
 
@@ -2598,6 +2620,13 @@ function tasklistDelete() {
 	var job = tasklist.account.tasklistDelete(tasklist.tasklist)
 	.then(result => reloadAccountTaskLists(tasklist.account));
 	pushJob(job);
+}
+
+function filterShowCompleted() {
+	//TODO
+}
+function tasklistClearCompleted() {
+	//TODO
 }
 
 

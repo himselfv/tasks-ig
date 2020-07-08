@@ -42,6 +42,7 @@ html, body {
   display: none; /* hide additional "add account" */
 }
 
+
 /* Panel toolbar */
 #listPanelToolbar .button {
   font-size: 1em; /* Show captions */
@@ -66,21 +67,113 @@ html, body {
   margin-right: 5px;
 }
 
-/* Main toolbar */
+
+/*
+Main canvas toolbar:
+	Clear completed | +New task |
+	View: <my order> | <sort by date> | <completed tasks> | <trash>
+	{Tab} {ShiftTab} | {Up} {Down} | {Delete} | Refresh | {Print}
+The <View> block lived basically anywhere at different points of time.
+ */
 #listToolbar {
   background: linear-gradient(#FFFFFF, #DDDDDD);
   border-bottom: 1px solid #D5D5D5;
+  padding: 2px; /* sic */
+  color: #516B97;
 }
-#listToolbar .button {
-  margin: 1px;
+#listToolbar .button { /* Should be 24px with borders */
+  margin: 0px;
+  border: 1px solid transparent;
+  padding: 1px;
   font-size: 1em; /* Show captions */
   font-weight: normal;
+  vertical-align: bottom;
 }
-#listToolbar #tbTaskNew:before {
-  content: url(res/plus2.png);
+#listToolbar .button.checked {
+  border-color: #A1BADF;
+}
+#listToolbar .button:hover {
+  border-color: #729BD1;
+  background-color: #DDE1EB;
+}
+#listToolbar .button:before {
+  display: inline-block;
+  vertical-align: middle;
+  height: 100%;
+}
+#listToolbar .button { display: none; }
+/* Show only specific buttons and order them explicitly  */
+#listToolbar #tbTaskAdd,
+#listToolbar #tbTaskEdit,
+#listToolbar #tbTaskTab,
+#listToolbar #tbTaskShiftTab,
+#listToolbar #tbTaskMoveUp,
+#listToolbar #tbTaskMoveDown,
+#listToolbar #tbTaskDelete,
+#listToolbar #tbClearCompleted,
+#listToolbar #tbRefresh,
+#listToolbar #tbPrint,
+#listToolbar #tbSortCustom,
+#listToolbar #tbSortByDate,
+#listToolbar #tbShowCompleted,
+#listToolbar #tbShowDeleted
+{ display: block; }
+#tbClearCompleted { order: 11; }
+#tbTaskAdd { order: 12; }
+#tbSortCustom { order: 21; }
+#tbSortByDate { order: 22; }
+#tbShowCompleted { order: 23; }
+#tbShowDeleted { order: 24; }
+#tbTaskEdit { order: 31; }
+#tbTaskTab { order: 32; }
+#tbTaskShiftTab { order: 33; }
+#tbTaskMoveUp { order: 34; }
+#tbTaskMoveDown { order: 35; }
+#tbTaskDelete { order: 36; }
+#tbRefresh { order: 37; }
+#tbPrint { order: 38; }
+/* Enable splitters after some tasks */
+#tbTaskAdd:after, #tbTaskEdit:after, #tbTaskShiftTab:after, #tbTaskMoveDown:after, #tbTaskDelete:after,
+#tbClearCompleted:after, #tbRefresh:after, #tbPrint:after,
+#tbSortCustom:after, #tbSortByDate:after, #tbShowCompleted:after, #tbShowDeleted:after
+{
+  display: inline-block;
+  content: "";
+  min-width: 1px;
+  min-height: 1rem; /* font-size can be 0 if caption is hidden */
+  height: 1em;
+  vertical-align: middle;
+  margin-left: 4px; border-right: 2px groove #D6D6D6; }
+/* Prepend "View" to order panel */
+#tbSortCustom:before { content: "View: "; }
+/* Icons for some buttons */
+#tbTaskAdd:before, #tbTaskDelete:before {
+  display: inline-block; /* for scaling */
+  filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
   vertical-align: middle;
   margin-right: 5px;
+  height: 24;
 }
+/* Hide captions for some of icon buttons */
+#listToolbar #tbTaskDelete {
+  font-size: 0; /* Hide captions */
+}
+#listToolbar #tbTaskDelete:after {
+  margin-left: 0;
+}
+/* Plus icon for the New button */
+#tbTaskAdd:before {
+  content: url(res/plus2.png);
+  transform: scale(0.85);
+  transform-origin: 13px 13px; /* deblurs transform: https://stackoverflow.com/questions/29037176/ */
+}
+#tbTaskDelete:before {
+  content: url("res/trash2.png");
+  transform: scale(0.85);
+  transform-origin: 13px 13px;
+}
+
+
 
 /* Tasks */
 .task {

@@ -268,6 +268,7 @@ List panel toolbar
 #listPanelToolbar {
   display: flex;
   flex-direction: row;
+  flex-wrap: wrap;
 }
 
 
@@ -344,6 +345,7 @@ Bottom panel buttons
   min-width: 20px;
   min-height: 20px;
   max-height: 20px;
+  height: 20px; /* explicit height useful for children to be able to height:X% */
   display: block;
   background-repeat: no-repeat;
   background-position: center;
