@@ -743,8 +743,20 @@ function li(content) {
 }
 utils.export(li);
 
-//Retrieves HTML element inner bounds (excluding padding, borders and everything)
-//Those are the values that you set with "width: Apx; height: Bpx;"
+/*
+HTML box model - see:
+  https://developer.mozilla.org/en-US/docs/Web/API/Element/clientWidth
+Basically (right side):
+  Content Padding [Scroll] Border Margin
+Various values:
+  "width: Apx" sets (Content + Padding + Scroll) width
+  clientWidth returns (Content + Padding), which may be less than "width: Apx" if a Scroll eats some.
+  getBoundingClientRect returns (Content Padding Scroll Border), but not Margin.
+
+These functions:
+  getInnerClientRect: returns (Content + Padding + Scroll), in other words the same thing you set with "width:..; height:..;"
+  getContentRect: returns (Content) without any padding.
+*/
 function getInnerClientRect(element) {
 	/*
 	One semi-reliable way is asking window.getComputedStyle(element).width/height:
@@ -752,14 +764,25 @@ function getInnerClientRect(element) {
 	But computed styles may at times return values from the CSS directly, like "auto" or "30%".
 	So let's do this manually.
 	*/
+	let rect = element.getBoundingClientRect();
+	let width = rect.width;
+	let height = rect.height;
 	var cs = getComputedStyle(element);
-	let width = element.clientWidth // width with padding
-	let height = element.clientHeight // height with padding
+	console.log('clw, clh:', width, height, 'cs', cs);
+	height -= parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)
+	width -= parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth)
+	return { width: width, height: height };
+}
+utils.export(getInnerClientRect);
+function getContentRect(element) {
+	let width = element.clientWidth // width with padding but without scrollbars
+	let height = element.clientHeight // height with padding but without scrollbars
+	var cs = getComputedStyle(element);
 	height -= parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom)
 	width -= parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight)
 	return { width: width, height: height };
 }
-utils.export(getInnerClientRect);
+utils.export(getContentRect);
 
 
 /*
@@ -1044,6 +1067,7 @@ Splitter.prototype.dragStart = function() {
 	//Store initial splitter.x/y and the corresponding growElement's width/height
 	this.dragBoxStart = this.box.getBoundingClientRect();
 	this.dragElementStart = getInnerClientRect(this.growElement); //inner! we're going to use this in adjusting
+	console.log('dbs:', this.dragBoxStart, 'des:', this.dragElementStart);
 	//Store initial EXPLICIT size config to restore on cancel
 	this.dragElementBackup = { width: this.growElement.style.width, height: this.growElement.style.height };
 	return true;
