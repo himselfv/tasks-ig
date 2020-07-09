@@ -328,7 +328,8 @@ Toolbars, the defaults (overrideable).
   display: flex;
   flex-direction: row;
   flex-wrap: wrap; /* normally, grow */
-  overflow: hidden; /* shouldn't scroll or overflow if not growing */
+  overflow: hidden; /* shouldn't scroll or overflow if can't grow */
+  flex-shrink: 0; /* do not shrink less than min. if wrap is enabled, that's all lines, if not, one line/your min-height */
 }
 
 /*

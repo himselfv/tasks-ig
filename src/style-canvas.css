@@ -40,6 +40,7 @@ html, body {
   margin: 0;
   padding: 0;
   border: 0;
+  flex-shrink: 0; /* do not shrink even if we need more space */
 }
 #listPanel .accountAdd {
   display: none; /* hide additional "add account" */
