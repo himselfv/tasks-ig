@@ -24,12 +24,15 @@ html, body {
   min-height: 20px;
 }
 
-/* No padding for tasklistPanel */
+/* Default listPanel width is 142 + splitter 4 */
 #listPanel {
+  width: 142px;
+  /* No padding for tasklistPanel */
   margin: 0;
   padding: 0;
   border: 0;
 }
+#listSplitter { width: 4px; }
 /* Title is the same color, same size as headline */
 #listPanelToolbar {
   background-color: #E3E9FF;
@@ -56,16 +59,8 @@ html, body {
   padding-right: 5px;
   padding-top: 3px;
 }
-#listPanelToolbar #panelAccountAdd:before {
-  content: url(res/plus.png);
-  vertical-align: middle;
-  margin-right: 5px;
-}
-#listPanelToolbar #panelListAdd:before {
-  content: url(res/plus.png);
-  vertical-align: middle;
-  margin-right: 5px;
-}
+#listPanelToolbar #panelAccountAdd:before { content: url(res/plus.png); }
+#listPanelToolbar #panelListAdd:before { content: url(res/plus.png); }
 
 
 /*
@@ -95,11 +90,6 @@ The <View> block lived basically anywhere at different points of time.
 #listToolbar .button:hover {
   border-color: #729BD1;
   background-color: #DDE1EB;
-}
-#listToolbar .button:before {
-  display: inline-block;
-  vertical-align: middle;
-  height: 100%;
 }
 #listToolbar .button { display: none; }
 /* Show only specific buttons and order them explicitly  */

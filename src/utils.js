@@ -696,16 +696,33 @@ window.addEventListener("click", (event) => {
 /*
 Buttons
 */
-function buttonNew(id, onclick, title) {
+function buttonNew(id, onclick, title, options) {
 	var button = document.createElement("a");
 	button.classList.add("button");
 	button.id = id;
 	button.title = title;
 	button.textContent = title;
+	if (options && options['autocheck'])
+		button.addEventListener("click", buttonNew.autocheckClick.bind(button));
 	button.addEventListener("click", onclick);
+	button.setChecked = buttonNew.setChecked.bind(button);
+	button.setEnabled = buttonNew.setEnabled.bind(button);
+	if (options) {
+		if ('enabled' in options) button.setEnabled(options['enabled']);
+		if ('checked' in options) button.setChecked(options['checked']);
+	}
 	return button;
 }
 utils.export(buttonNew);
+buttonNew.autocheckClick = function(event) {
+	this.classList.toggle('checked');
+}
+buttonNew.setChecked = function(checked) {
+	this.classList.toggle('checked', checked);
+}
+buttonNew.setEnabled = function(enabled) {
+	this.classList.toggle('disabled', !enabled);
+}
 function linkNew(id, onclick, title) {
 	var link = document.createElement("a");
 	link.href = '#';

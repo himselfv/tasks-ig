@@ -58,7 +58,7 @@ function initUi() {
 	listToolbar.insertBefore(buttonNew('tbClearCompleted', tasklistClearCompleted, 'Clear completed'), null);
 	listToolbar.insertBefore(buttonNew('tbTaskAdd', taskEntryAddClicked, 'New task'), null);
 	//View: <my order> | <sort by date> | <completed tasks> | <trash>
-	listToolbar.insertBefore(buttonNew('tbShowCompleted', filterShowCompleted, 'Show completed'), null);
+	listToolbar.insertBefore(buttonNew('tbShowCompleted', filterShowCompleted, 'Show completed', { autocheck: true }), null);
 	listToolbar.insertBefore(buttonNew('tbTaskEdit', taskEntryEditFocused, 'Edit details'), null);
 	listToolbar.insertBefore(buttonNew('tbTaskTab', taskEntryTabFocused, 'Indent'), null);
 	listToolbar.insertBefore(buttonNew('tbTaskShiftTab', taskEntryShiftTabFocused, 'Unindent'), null);

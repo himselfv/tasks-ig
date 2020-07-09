@@ -262,24 +262,6 @@ To replace "Add account" text:
 }
 
 
-/*
-List panel toolbar
-*/
-#listPanelToolbar {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-}
-
-
-/*
-List toolbar
-*/
-#listToolbar {
-  display: flex;
-  flex-direction: row;
-}
-
 
 /*
 Dropdown basics
@@ -338,27 +320,54 @@ Main menu
   background-color: LightSkyBlue;
 }
 
+
 /*
-Bottom panel buttons
+Toolbars, the defaults (overrideable).
+*/
+.toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap; /* normally, grow */
+  overflow: hidden; /* shouldn't scroll or overflow if not growing */
+}
+
+/*
+Toobar/bottom panel buttons.
+By default captions are hidden, to show: set font-size.
 */
 .button {
+  display: block;
+  box-sizing: content-box;
+  padding: 2px;
   min-width: 20px;
   min-height: 20px;
   max-height: 20px;
   height: 20px; /* explicit height useful for children to be able to height:X% */
-  display: block;
+  cursor: pointer;
+  font-color: DodgerBlue;
+  font-size: 0; /* hide captions by default */
+  align-self: center; /* Baseline align fails with font-size 0 */
+  overflow: hidden; /* do not spill */
+}
+.button {
   background-repeat: no-repeat;
   background-position: center;
-  padding: 2px;
-  box-sizing: content-box;
-  font-color: DodgerBlue;
-  font-weight: bold;
-  cursor: pointer;
-  font-size: 0; /* Hide button captions */
-  align-self: center; /* Baseline align fails with font-size 0 */
+  /* Set background-image in descendants to use only image */
+}
+.button:before {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 5px;
+  height: 100%;
+  /* Set content:url() in descendants to use image+caption  */
 }
 .button:hover {
   background-color: LightSkyBlue;
+}
+.button.checked { /* Buttons can be on/off, set .checked for that */
+  border-color: #A1BADF;
+}
+.button.disabled { /* Buttons can be disabled==grayed out */
 }
 /* See https://codepen.io/sosuke/pen/Pjoqqp to generate filters: black->color */
 #taskAddBtn {
