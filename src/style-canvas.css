@@ -92,8 +92,15 @@ The <View> block lived basically anywhere at different points of time.
   border-color: #729BD1;
   background-color: #DDE1EB;
 }
+/* We could gray out buttons instead of hiding them, but that's not really what happens in Canvas, even though there are grayed out icons.
+#listToolbar .button.hidden {
+  display: block !important;
+  color: #8594A7;
+  filter: invert(59%) sepia(11%) saturate(516%) hue-rotate(174deg) brightness(95%) contrast(95%);
+  pointer-events: none;
+} */
+/* Hide all buttons and only show specific ones */
 #listToolbar .button { display: none; }
-/* Show only specific buttons and order them explicitly  */
 #listToolbar #tbTaskAdd,
 #listToolbar #tbTaskEdit,
 #listToolbar #tbTaskTab,
@@ -138,32 +145,46 @@ The <View> block lived basically anywhere at different points of time.
 /* Prepend "View" to order panel */
 #tbSortCustom:before { content: "View: "; }
 /* Icons for some buttons */
-#tbTaskAdd:before, #tbTaskDelete:before {
+#tbTaskAdd:before,
+#tbTaskDelete:before,
+#listToolbar #tbTaskTab:before,
+#listToolbar #tbTaskShiftTab:before,
+#listToolbar #tbTaskMoveUp:before,
+#listToolbar #tbTaskMoveDown:before {
   display: inline-block; /* for scaling */
-  filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
   vertical-align: middle;
-  margin-right: 5px;
+  /*margin-right: 5px;*/
   height: 24;
+  /*margin-top:2px;*/
+  min-width: 20px;
 }
 /* Hide captions for some of icon buttons */
-#listToolbar #tbTaskDelete {
+#listToolbar #tbTaskDelete,
+#listToolbar #tbTaskTab,
+#listToolbar #tbTaskShiftTab,
+#listToolbar #tbTaskMoveUp,
+#listToolbar #tbTaskMoveDown {
   font-size: 0; /* Hide captions */
+  filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
+}
+#listToolbar #tbTaskAdd:before {
+  filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
 }
 #listToolbar #tbTaskDelete:after {
   margin-left: 0;
 }
 /* Plus icon for the New button */
-#tbTaskAdd:before {
-  content: url(res/plus2.png);
+#tbTaskAdd:before,
+#tbTaskDelete:before {
   transform: scale(0.85);
   transform-origin: 13px 13px; /* deblurs transform: https://stackoverflow.com/questions/29037176/ */
 }
-#tbTaskDelete:before {
-  content: url("res/trash2.png");
-  transform: scale(0.85);
-  transform-origin: 13px 13px;
-}
-
+#tbTaskAdd:before { content: url(res/plus2.png); }
+#tbTaskDelete:before { content: url(res/trash2.png); }
+#tbTaskTab { background-image: url(res/ikigai-4871557-16.png); }
+#tbTaskShiftTab { background-image: url(res/ikigai-4871564-16.png); }
+#tbTaskMoveUp { background-image: url(res/visual-arrow-5539635.png); }
+#tbTaskMoveDown { background-image: url(res/visual-arrow-5539636.png); }
 
 
 /* Tasks */

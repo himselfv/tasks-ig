@@ -358,7 +358,7 @@ By default captions are hidden, to show: set font-size.
 .button:before {
   display: inline-block;
   vertical-align: middle;
-  margin-right: 5px;
+  margin-right: 5px; /*between image and caption*/
   height: 100%;
   /* Set content:url() in descendants to use image+caption  */
 }
