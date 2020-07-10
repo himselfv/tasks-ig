@@ -24,16 +24,13 @@ body {
   background-color: white; /* hide everything underneath */
 }
 
+/* See https://codepen.io/sosuke/pen/Pjoqqp to generate filters: black->color */
 
-/*
-Special classes that are applied in certain situations
-*/
-/* A way to hide any elements without overwriting their display: property. */
-.hidden {
-  display: none !important;
-}
+/* Applied to hide any element without overwriting their display: property. */
+.hidden { display: none !important; }
 /* Applied to the last focused task entry. It'll be the target of operations */
 .focused {}
+
 
 /*
 Error message popup
@@ -47,6 +44,104 @@ Error message popup
   box-shadow: 0px 2px 4px 0px rgba(0,0,0,0.2);
   padding: 1em;
 }
+
+
+/* Splitters */
+.splitter {
+  width: 3px;
+  background-color: LightGrey;
+}
+.splitterV { cursor: ew-resize; }
+.splitterH { cursor: ns-resize; }
+
+
+/*
+Toolbar basics (overrideable)
+By default captions are hidden, to show: set font-size.
+*/
+.toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap; /* normally grow */
+  overflow: hidden; /* shouldn't scroll or overflow if can't grow */
+  flex-shrink: 0; /* do not shrink less than min. if wrap is enabled, that's all lines, if not, one line/your min-height */
+}
+.button {
+  display: block;
+  box-sizing: content-box;
+  padding: 2px;
+  min-width: 20px;
+  min-height: 20px;
+  max-height: 20px;
+  height: 20px; /* explicit height useful for children to be able to height:X% */
+  cursor: pointer;
+  font-color: DodgerBlue;
+  font-size: 0; /* hide captions by default */
+  align-self: center; /* Baseline align fails with font-size 0 */
+  overflow: hidden; /* do not spill */
+}
+.button {
+  background-repeat: no-repeat;
+  background-position: center;
+  /* Set background-image in descendants to use only image */
+}
+.button:before {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 5px; /*between image and caption*/
+  height: 100%;
+  /* Set content:url() in descendants to use image+caption  */
+}
+.button:hover {
+  background-color: LightSkyBlue;
+}
+.button.checked { /* Buttons can be on/off, set .checked for that */
+  border-color: #A1BADF;
+}
+.button.disabled { /* Buttons can be disabled==grayed out */ }
+.button.hidden { /* Buttons can be hidden, normally that's just normal hiding */ }
+
+
+/*
+Dropdown basics
+The button itself will be .dropdown .dropbtn
+*/
+.dropdown {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f1f1f1;
+  min-width: 120px;
+  box-shadow: 0px 2px 4px 0px rgba(0,0,0,0.2);
+  border: LightGrey 1px solid;
+  z-index: 1;
+  right:0;
+}
+/* Show the dropdown menu -- added to the dropdown-content when it's visible */
+.dropdown-content.show {
+  display:block;
+}
+/* Links inside the content */
+.dropdown-content a {
+  color: black;
+  padding: 6px 8px;
+  text-decoration: none;
+  display: block;
+}
+.dropdown-content a:hover {
+  background-color: #ddd;
+}
+.menu-separator {
+  display: block;
+  width: 95%;
+  border-bottom: 1px solid lightgray;
+  margin: 2px 2px;
+}
+
 
 /*
 Task list selection box
@@ -87,24 +182,21 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
 #listHeader {
   display: flex;
   flex-direction: row;
-  /*align-items: baseline;*/ /* Not needed now that buttons are images */
   padding: 2px 2px;
   padding-bottom: 3px;
   /*border-bottom: LightGrey 1px solid;*/ /* A line under the title */
   /*margin-bottom: 4px;*/ /* A space under the line */
 }
-
 #listSelectBox { /* a taskListBox */
   font-family: Arial, sans-serif;
   font-size: 14px;
   font-weight: bold;
   border: 0px;
-  /*min-width: 40%;*/
-  /*min-width: 12em;*/
-  /*margin-left: 10px;*/
   flex-grow:10;
   margin-right:4px;
 }
+#listToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
+#listToolbar { display: none; } /* hide in default design */
 #listContent,
 #listMessages { /* both fill 100% height */
   width: 100%;
@@ -150,15 +242,6 @@ Activity indicator
 }
 
 
-/* Splitters */
-.splitter {
-  width: 3px;
-  background-color: LightGrey;
-}
-.splitterV { cursor: ew-resize; }
-.splitterH { cursor: ns-resize; }
-
-
 /*
 Task list panel
   selected: Currently selected
@@ -177,14 +260,17 @@ Task list panel
   -ms-user-select: none;
   user-select: none; /* text unselectable (if the user accidentally double-clicks) */
 }
-@media(max-width: 600px) { #listPanel {
-  display: none;
-}}
 #listSplitter {
   width: 4px;
   background-color: LightGrey; /* same as borders in the main pane */
     /* alternative: #E3E9FF */
 }
+@media(max-width: 600px) {
+  #listPanel { display: none; }
+  #listSplitter { display: none; }
+}
+#listPanelToolbar { display: none; } /* hide in default design */
+#listPanelToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
 #listPanel li,
 #listPanel li:after {
   font-size: 1.05em;
@@ -212,9 +298,7 @@ Task list panel
   border-bottom: 1px solid #F7E784;
 }
 /* List panel title */
-#listPanel .title {
-  display: none; /* currently hidden */
-}
+#listPanel .title { display: none; } /* hide in default design */
 #listPanel .account,
 #listPanel .accountAdd {
   margin: 0px;
@@ -262,46 +346,6 @@ To replace "Add account" text:
 }
 
 
-
-/*
-Dropdown basics
-*/
-.dropdown {
-  position: relative;
-  display: inline-block;
-  cursor: pointer;
-}
-.dropdown-content {
-  display: none;
-  position: absolute;
-  background-color: #f1f1f1;
-  min-width: 120px;
-  box-shadow: 0px 2px 4px 0px rgba(0,0,0,0.2);
-  border: LightGrey 1px solid;
-  z-index: 1;
-  right:0;
-}
-/* Show the dropdown menu -- added to the dropdown-content when it's visible */
-.dropdown-content.show {
-  display:block;
-}
-/* Links inside the content */
-.dropdown-content a {
-  color: black;
-  padding: 6px 8px;
-  text-decoration: none;
-  display: block;
-}
-.dropdown-content a:hover {
-  background-color: #ddd;
-}
-.menu-separator {
-  display: block;
-  width: 95%;
-  border-bottom: 1px solid lightgray;
-  margin: 2px 2px;
-}
-
 /*
 Main menu
 */
@@ -320,66 +364,12 @@ Main menu
   background-color: LightSkyBlue;
 }
 
-
 /*
-Toolbars, the defaults (overrideable).
+Bottom toolbar panel.
 */
-.toolbar {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap; /* normally, grow */
-  overflow: hidden; /* shouldn't scroll or overflow if can't grow */
-  flex-shrink: 0; /* do not shrink less than min. if wrap is enabled, that's all lines, if not, one line/your min-height */
-}
-
-/*
-Toobar/bottom panel buttons.
-By default captions are hidden, to show: set font-size.
-*/
-.button {
-  display: block;
-  box-sizing: content-box;
-  padding: 2px;
-  min-width: 20px;
-  min-height: 20px;
-  max-height: 20px;
-  height: 20px; /* explicit height useful for children to be able to height:X% */
-  cursor: pointer;
-  font-color: DodgerBlue;
-  font-size: 0; /* hide captions by default */
-  align-self: center; /* Baseline align fails with font-size 0 */
-  overflow: hidden; /* do not spill */
-}
-.button {
-  background-repeat: no-repeat;
-  background-position: center;
-  /* Set background-image in descendants to use only image */
-}
-.button:before {
-  display: inline-block;
-  vertical-align: middle;
-  margin-right: 5px; /*between image and caption*/
-  height: 100%;
-  /* Set content:url() in descendants to use image+caption  */
-}
-.button:hover {
-  background-color: LightSkyBlue;
-}
-.button.checked { /* Buttons can be on/off, set .checked for that */
-  border-color: #A1BADF;
-}
-.button.disabled { /* Buttons can be disabled==grayed out */
-}
-/* See https://codepen.io/sosuke/pen/Pjoqqp to generate filters: black->color */
-#taskAddBtn {
-  background-image: url("res/plus2.png");
-}
-#taskDeleteBtn {
-  background-image: url("res/trash2.png");
-}
-#taskmenu .button {
-  background-image: url("res/items3.png");
-}
+#taskAddBtn { background-image: url("res/plus2.png"); }
+#taskDeleteBtn { background-image: url("res/trash2.png"); }
+#taskmenu .button { background-image: url("res/items3.png"); }
 #taskAddBtn, #taskDeleteBtn, #taskmenu .button {
   filter: invert(41%) sepia(37%) saturate(581%) hue-rotate(176deg) brightness(91%) contrast(87%); /* black -> 4D6C98 */
 }
@@ -390,8 +380,7 @@ By default captions are hidden, to show: set font-size.
 /*
 Task menu
 */
-#taskmenu {
-}
+#taskmenu {}
 #taskmenu .dropdown-content {
   right: 0;
   bottom: 24px;
@@ -399,6 +388,7 @@ Task menu
 #taskmenu .dropdown-content a {
   padding: 6px 8px;
 }
+
 
 
 /*
@@ -413,8 +403,9 @@ Task nodes
   /* To have some of the controls full-height,
   leave height padding==0 here and set margins on individual controls instead */
 }
-
-/* Task focus and mouseover */
+/*
+Focus and mouseover
+*/
 .task {
   border-top: 1px solid white; /* So the size doesn't change on focus */
   border-bottom: 1px solid white;
@@ -424,9 +415,8 @@ Task nodes
   border-bottom: 1px solid #F7E784;
 }
 .task:hover {}
-
 /*
-Task dragging
+Dragging
 */
 .task.dragging { /* Set while dragging the node */
   opacity: 0.75;
@@ -524,7 +514,6 @@ Everything inside is packed unless overriden
 .task.deleted .taskCheck {
   visibility: hidden;
 }
-
 
 /* Edit link */
 .task .taskEditLink {
