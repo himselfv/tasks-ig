@@ -121,6 +121,9 @@ The button itself will be .dropdown .dropbtn
   z-index: 1;
   right:0;
 }
+.dropdown .dropbtn.dropopen { /* dropbtn's state when dropdown is open */
+  background-color: #f1f1f1;
+}
 /* Show the dropdown menu -- added to the dropdown-content when it's visible */
 .dropdown-content.show {
   display:block;

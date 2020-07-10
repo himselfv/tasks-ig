@@ -682,14 +682,17 @@ function dropdownGetContent(element) {
 	return element.getElementsByClassName("dropdown-content")[0];
 }
 function dropdownClick(event) {
+	event.target.classList.toggle('dropopen');
 	dropdownGetContent(event.target.parentNode).classList.toggle("show");
 }
 window.addEventListener("click", (event) => {
 	var dropdowns = document.getElementsByClassName("dropdown-content");
 	for (let i=0; i<dropdowns.length; i++) {
 		let thisButton = dropdownGetButton(dropdowns[i].parentNode);
-		if ((event.target != thisButton) && dropdowns[i].classList.contains('show'))
+		if ((event.target != thisButton) && dropdowns[i].classList.contains('show')) {
+			thisButton.classList.remove('dropopen');
 			dropdowns[i].classList.remove('show');
+		}
 	}
 });
 
@@ -705,6 +708,8 @@ function buttonNew(id, onclick, title, options) {
 	if (options && options['autocheck'])
 		button.addEventListener("click", buttonNew.autocheckClick.bind(button));
 	button.addEventListener("click", onclick);
+	button.isChecked = buttonNew.isChecked.bind(button);
+	button.isEnabled = buttonNew.isEnabled.bind(button);
 	button.setChecked = buttonNew.setChecked.bind(button);
 	button.setEnabled = buttonNew.setEnabled.bind(button);
 	if (options) {
@@ -716,6 +721,12 @@ function buttonNew(id, onclick, title, options) {
 utils.export(buttonNew);
 buttonNew.autocheckClick = function(event) {
 	this.classList.toggle('checked');
+}
+buttonNew.isChecked = function() {
+	return this.classList.contains('checked');
+}
+buttonNew.isEnabled = function() {
+	return !this.classList.contains('disabled');
 }
 buttonNew.setChecked = function(checked) {
 	this.classList.toggle('checked', checked);
