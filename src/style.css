@@ -121,6 +121,17 @@ The button itself will be .dropdown .dropbtn
   z-index: 1;
   right:0;
 }
+.dropdown .dropbtn {
+  display: block;
+  background-repeat: no-repeat;
+  background-position: center;
+  /* Default size, borders, background image */
+  border: 1px solid lightgray;
+}
+.dropdown .dropbtn:hover {
+  /* Highlight the button */
+  background-color: LightSkyBlue;
+}
 .dropdown .dropbtn.dropopen { /* dropbtn's state when dropdown is open */
   background-color: #f1f1f1;
 }
@@ -347,6 +358,15 @@ To replace "Add account" text:
 #listPanel .grayed {
   color: gray;
 }
+
+#listPanel .account .dropbtn {
+  background-image: url("res/menu-20.png");
+  min-width: 20px;
+  min-height: 14px; /* 20 for square button */
+  padding: 2px;
+  box-sizing: content-box;
+}
+
 
 
 /*

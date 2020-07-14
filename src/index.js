@@ -1289,11 +1289,29 @@ TaskListPanel.prototype.reload = function() {
 		if (!account)
 			continue;
 		
-		//Add a "grayed line" representing the account
-		let option = this.addItem(account.uiName());
+		//Add a line representing the account
+		let option = this.addItem();
 		option.classList.add('account');
 		option.extraValue = new TaskListHandle(account.id, undefined);
-		option.addEventListener('click', this.optionClicked.bind(this, option));
+		
+		let span = document.createElement('span');
+		span.textContent = account.uiName();
+		span.addEventListener('click', this.optionClicked.bind(this, option));
+		option.appendChild(span);
+		
+		let drop = dropdownInit();
+		drop.button.title = "Task list actions";
+		/*drop.add('accountSelectThisBtn', accountSelectThis.bind(null, account), "Open");
+		drop.add('accountEditThisBtn', accountEditThis.bind(null, account), "Edit");
+		drop.add('accountDeleteThisBtn', accountDeleteThis.bind(null, account), "Delete");*/
+		drop.add('accountResetThisBtn', accountReset.bind(null, account), "Reset");
+		option.appendChild(drop);
+		
+		/*drop.add('listOpenThisBtn', tasklistOpen, "Open list");
+		drop.add('listRenameThisBtn', tasklistRename, "Rename list...");
+		drop.add('listDeleteThisBtn', tasklistDelete, "Delete list");
+		*/
+
 		if (!this.selectAccounts)
 			option.classList.add('disabled');
 		this.dragMgr.addElement(option);
@@ -1340,7 +1358,7 @@ TaskListPanel.prototype.reload = function() {
 	}
 	
 	if (accounts.length <= 0) {
-		let option = this.addItem("No accounts");
+		let option = this.addAccount("No accounts");
 		option.classList.add('account');
 		option.classList.add('grayed');
 		option.extraValue = null;
@@ -1582,9 +1600,12 @@ function tasklistActionsUpdate() {
 //Update available account actions depending on the selected account/tasklist and its state and available functions
 function accountActionsUpdate() {
 	console.debug('accountActionsUpdate', backend);
-	let accountResetBtn = element("accountResetBtn");
+	let accountResetBtn = element('accountResetBtn');
 	if (accountResetBtn) //missing in non-debug
-		accountResetBtn.classList.toggle("hidden", !backend || !backend.reset);
+		accountResetBtn.classList.toggle('hidden', !backend || !backend.reset);
+	let accountResetThisBtn = element('accountResetThisBtn');
+	if (accountResetThisBtn)
+		accountResetThisBtn.classList.toggle('hidden', !backend || !backend.reset);
 }
 
 
