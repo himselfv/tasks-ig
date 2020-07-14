@@ -35,6 +35,7 @@ html, body {
 #listSplitter { width: 4px; }
 /* Title is the same color, same size as headline */
 #listPanelToolbar {
+  display: flex;
   background-color: #E3E9FF;
   min-height: 29px;
   margin: 0;
@@ -72,6 +73,7 @@ Main canvas toolbar:
 The <View> block lived basically anywhere at different points of time.
  */
 #listToolbar {
+  display: flex;
   background: linear-gradient(#FFFFFF, #DDDDDD);
   border-bottom: 1px solid #D5D5D5;
   padding: 2px; /* sic */
