@@ -620,23 +620,11 @@ AccountsPage.prototype.deleteClick = function() {
 	let index = this.content.selectedIndex;
 	if ((index < 0) || (index > this.content.options.length-1))
 		return;
-	
-	let account = accounts[index];
-	if (!confirm('Do you really want to sign out of the account '+account.uiName()+' and forget about it?'))
-		return;
-	
-	let doDelete = true;
-	account.signout()
-	.catch(error => {
-		if (!confirm('Cannot properly sign out of the account "'+account.uiName()+"\":\r\n\""+error+"\"\r\n\r\nForget it anyway?"))
-			doDelete = false;
-	})
-	.then(() => {
-		if (doDelete) {
-			Accounts.delete(account.id);
-			this.content.options[index].remove();
-			this.updateAccountActions(); //onchanged() won't get called automatically
-		}
+	accountDelete(accounts[index])
+	.then(beenDeleted => {
+		if (!beenDeleted) return;
+		this.content.options[index].remove();
+		this.updateAccountActions(); //onchanged() won't get called automatically
 		//If this had been our last account, close this dialog.
 		//The "new account setup" will probably automatically pop up once the UI learns about no accounts,
 		//and this dialog should not remain open underneath.
@@ -651,6 +639,39 @@ AccountsPage.prototype.resetClick = function() {
 	if ((index < 0) || (index > this.content.options.length-1))
 		return;
 	accountReset(accounts[index]);
+}
+
+
+//Opens new account creation UI. Returns the promise that's resolved with new account, or rejected on cancel.
+function StartNewAccountUi(params) {
+	params.prompt = "Access tasks in:";
+	let addBackendPage = new BackendSelectPage(params);
+	
+	addBackendPage.addEventListener('ok', (event) => {
+		//console.debug('addBackendPage.ok:', event);
+		addBackendPage.resolve(event.results);
+	});
+	return addBackendPage.waitResult();
+}
+function accountAdd() {
+	return StartNewAccountUi({ hasCancel: true })
+}
+//Returns a promise that resolves to False or True depending on whether the deletion has happened
+function accountDelete(account) {
+	if (!confirm('Do you really want to sign out of the account '+account.uiName()+' and forget about it?'))
+		return Promise.resolve(false);
+
+	let doDelete = true;
+	return account.signout()
+	.catch(error => {
+		if (!confirm('Cannot properly sign out of the account "'+account.uiName()+"\":\r\n\""+error+"\"\r\n\r\nForget it anyway?"))
+			doDelete = false; 
+	})
+	.then(() => {
+		if (doDelete)
+			Accounts.delete(account.id);
+		return doDelete;
+	});
 }
 //Used both from AccountsPage (for specific account) and from main menu (no param)
 function accountReset(account) {
@@ -668,6 +689,7 @@ function accountReset(account) {
 }
 //Opens the account settings page, lets the user edit, try to apply and then save the settings
 function accountEditSettings(account) {
+	if (!account) account = backend;
 	alert('At the moment, please delete and re-add the account to edit its settings');
 	//TODO: Implement.
 	//TODO: Return a Page prototype to wait on
@@ -774,26 +796,6 @@ BackendSelectPage.prototype.reenable = function() {
 	for (let i=0; i<this.page.children.length; i++)
 		this.page.children[i].disabled=false;
 }
-
-/*
-New account UI
-*/
-
-//Opens new account creation UI. Returns the promise that's resolved with new account, or rejected on cancel.
-function StartNewAccountUi(params) {
-	params.prompt = "Access tasks in:";
-	let addBackendPage = new BackendSelectPage(params);
-	
-	addBackendPage.addEventListener('ok', (event) => {
-		//console.debug('addBackendPage.ok:', event);
-		addBackendPage.resolve(event.results);
-	});
-	return addBackendPage.waitResult();
-}
-function accountAdd() {
-	return StartNewAccountUi({ hasCancel: true })
-}
-
 
 
 /*
@@ -1290,27 +1292,24 @@ TaskListPanel.prototype.reload = function() {
 			continue;
 		
 		//Add a line representing the account
-		let option = this.addItem();
+		let option = this.addItem(account.uiName());
 		option.classList.add('account');
-		option.extraValue = new TaskListHandle(account.id, undefined);
+		option.listHandle = new TaskListHandle(account.id, undefined);
+		option.body.addEventListener('click', this.optionClicked.bind(this, option));
 		
-		let span = document.createElement('span');
-		span.textContent = account.uiName();
-		span.addEventListener('click', this.optionClicked.bind(this, option));
-		option.appendChild(span);
-		
+		//Account actions
+		//Can't use IDs here because the buttons are going to be duplicated for every account/tasklist
 		let drop = dropdownInit();
-		drop.button.title = "Task list actions";
-		/*drop.add('accountSelectThisBtn', accountSelectThis.bind(null, account), "Open");
-		drop.add('accountEditThisBtn', accountEditThis.bind(null, account), "Edit");
-		drop.add('accountDeleteThisBtn', accountDeleteThis.bind(null, account), "Delete");*/
-		drop.add('accountResetThisBtn', accountReset.bind(null, account), "Reset");
+		drop.button.title = "Account actions";
+		drop.add('', setSelectedTaskList.bind(null, option.listHandle, false), "Open");
+		if (account.tasklistAdd)
+			drop.add('', tasklistAdd.bind(null, account), "Add list");
+		drop.addSeparator();
+		drop.add('', accountEditSettings.bind(null, account), "Edit...");
+		drop.add('', accountDelete.bind(null, account), "Delete");
+		if (options.debug && account.reset)
+			drop.add('', accountReset.bind(null, account), "Reset");
 		option.appendChild(drop);
-		
-		/*drop.add('listOpenThisBtn', tasklistOpen, "Open list");
-		drop.add('listRenameThisBtn', tasklistRename, "Rename list...");
-		drop.add('listDeleteThisBtn', tasklistDelete, "Delete list");
-		*/
 
 		if (!this.selectAccounts)
 			option.classList.add('disabled');
@@ -1324,14 +1323,14 @@ TaskListPanel.prototype.reload = function() {
 			if (this.selectFailedAccounts)
 				option.classList.remove('disabled');; //No task lists => make the account always selectable
 			if (account.error) {
-				option.textContent = option.textContent+' (error)';
+				option.body.textContent = option.body.textContent+' (error)';
 				option.classList.add('error');
 			}
 			else if (!account.isSignedIn()) {
 				option.classList.add('loading');
 			}
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists)) {
-				option.textContent = option.textContent+' (no lists)';
+				option.body.textContent = option.body.textContent+' (no lists)';
 				option.classList.add('empty');
 			}
 			option.classList.add("grayed");
@@ -1344,16 +1343,26 @@ TaskListPanel.prototype.reload = function() {
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
 			let option = this.addItem(tasklist.title);
-			option.extraValue = new TaskListHandle(account.id,  tasklist.id);
+			option.listHandle = new TaskListHandle(account.id,  tasklist.id);
 			option.classList.add('tasklist');
-			option.addEventListener('click', this.optionClicked.bind(this, option));
+			option.body.addEventListener('click', this.optionClicked.bind(this, option));
+			
+			//Task list actions
+			let drop = dropdownInit();
+			drop.button.title = "List actions";
+			drop.add('', setSelectedTaskList.bind(null, option.listHandle, false), "Open list");
+			if (account.tasklistUpdate)
+				drop.add('', tasklistRename.bind(null, option.listHandle), "Rename list...");
+			if (account.tasklistDelete)
+				drop.add('', tasklistDelete.bind(null, option.listHandle), "Delete list");
+			option.appendChild(drop);
 		}
 		
 		if (account.tasklistAdd) {
 			let option = this.addItem("＋"); /* Add list */
-			option.extraValue = new TaskListHandle(account.id, null);
+			option.listHandle = new TaskListHandle(account.id, null);
 			option.classList.add('tasklistAdd');
-			option.addEventListener('click', tasklistAdd.bind(null, account));
+			option.body.addEventListener('click', tasklistAdd.bind(null, account));
 		}
 	}
 	
@@ -1361,7 +1370,7 @@ TaskListPanel.prototype.reload = function() {
 		let option = this.addAccount("No accounts");
 		option.classList.add('account');
 		option.classList.add('grayed');
-		option.extraValue = null;
+		option.listHandle = null;
 	}
 	
 	let option = this.addItem("Add account")
@@ -1373,14 +1382,16 @@ TaskListPanel.prototype.reload = function() {
 }
 TaskListPanel.prototype.addItem = function(title) {
 	let option = document.createElement("li");
+	option.body = document.createElement('span');
 	if (title)
-		option.textContent = title;
+		option.body.textContent = title;
+	option.appendChild(option.body);
 	this.box.appendChild(option);
 	return option;
 }
 TaskListPanel.prototype.optionClicked = function(option) {
 	if (option.classList.contains('disabled')) return;
-	let value = option.extraValue;
+	let value = option.listHandle;
 	if (!value) return;
 	setSelectedTaskList(value);
 }
@@ -1393,7 +1404,7 @@ TaskListPanel.prototype.setSelected = function(tasklist, noNotify) {
 TaskListPanel.prototype.applySelected = function(tasklist) {
 	var children = this.box.children;
 	for (var i = 0; i < children.length; i++)
-		children[i].classList.toggle('selected', !!tasklist && (String(children[i].extraValue)==String(tasklist)));
+		children[i].classList.toggle('selected', !!tasklist && (String(children[i].listHandle)==String(tasklist)));
 }
 TaskListPanel.prototype.nodeFromViewportPoint = function(pt) {
 	var node = this.box.firstElementChild;
@@ -1550,11 +1561,11 @@ TaskListPanel.prototype.dragEnd = function(cancelDrag) {
 //Applies the changes made by dragging an account node to the application account list
 TaskListPanel.prototype.dragAccountApply = function(dragNode) {
 	//Find the account index
-	let accountId = dragNode.extraValue.account;
+	let accountId = dragNode.listHandle.account;
 	
 	//Find the next account in the panel
 	let nextAccount = this.findNextAccount(dragNode.nextSibling); //may be null
-	let nextAccountId = nextAccount ? nextAccount.extraValue.account : null;
+	let nextAccountId = nextAccount ? nextAccount.listHandle.account : null;
 	
 	//Move
 	Accounts.move(accountId, nextAccountId);
@@ -1603,9 +1614,6 @@ function accountActionsUpdate() {
 	let accountResetBtn = element('accountResetBtn');
 	if (accountResetBtn) //missing in non-debug
 		accountResetBtn.classList.toggle('hidden', !backend || !backend.reset);
-	let accountResetThisBtn = element('accountResetThisBtn');
-	if (accountResetThisBtn)
-		accountResetThisBtn.classList.toggle('hidden', !backend || !backend.reset);
 }
 
 
@@ -2636,37 +2644,57 @@ function tasklistAdd(account) {
 	pushJob(job);
 }
 
-function tasklistRename() {
-	if (!backend || !backend.tasklistUpdate) return;
-	var oldTitle = selectedTaskListTitle();
+function tasklistRename(tasklist) {
+	if (!tasklist) tasklist = selectedTaskList();
+	if (!tasklist || !tasklist.tasklist) return;
+	
+	let account = Accounts.find(tasklist.account);
+	if (!account || !account.tasklistUpdate) return;
+	
+	//Find the list among cached lists
+	let list = account.ui.tasklists.find(list => list.id == tasklist.tasklist);
+	if (!list) return;
+
+	var oldTitle = list.title;
 	var title = prompt("Enter new name for this task list:", oldTitle);
 	if (!title || (title == oldTitle))
 		return;
-	var tasklist = selectedTaskList();
-	if (!tasklist || !tasklist.tasklist) return;
+
 	var patch = {
 		'id': tasklist.tasklist,
 		'title': title,
 	};
-	var job = backend.tasklistPatch(patch)
-		.then(result => reloadAccountTaskLists(backend));
+	var job = account.tasklistPatch(patch)
+		.then(result => reloadAccountTaskLists(account));
 	pushJob(job);
 }
 
-function tasklistDelete() {
-	if (!backend || !backend.tasklistDelete) return;
+function tasklistDelete(tasklist) {
+	if (!tasklist) tasklist = selectedTaskList();
+	if (!tasklist || !tasklist.tasklist) return;
+
+	let account = Accounts.find(tasklist.account);
+	if (!account || !account.tasklistDelete) return;
+
+	if (account != backend) {
+		//TODO: The way this currently checks if the list is empty binds us to only selected list
+		window.alert("Cannot delete list which is not opened, atm");
+		return;
+	}
+
 	if (tasks.first() != null) {
 		window.alert("This task list is not empty. Please delete all tasks before deleting the task list.");
 		return;
 	}
 
-	var tasklist = selectedTaskList();
-	if (!tasklist || !tasklist.tasklist) return;
-	var title = selectedTaskListTitle();
+	let list = account.ui.tasklists.find(list => list.id == tasklist.tasklist);
+	if (!list) return;
+	var title = list.title;
 	if (!confirm('Are you SURE you want to delete task list "'+title+'"?'))
 		return;
-	var job = tasklist.account.tasklistDelete(tasklist.tasklist)
-	.then(result => reloadAccountTaskLists(tasklist.account));
+	
+	var job = account.tasklistDelete(tasklist.tasklist)
+	.then(result => reloadAccountTaskLists(account));
 	pushJob(job);
 }
 

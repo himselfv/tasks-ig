@@ -285,6 +285,12 @@ Task list panel
 }
 #listPanelToolbar { display: none; } /* hide in default design */
 #listPanelToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
+#listPanel li {
+  display: flex;
+}
+#listPanel li span {
+  flex-grow: 10;
+}
 #listPanel li,
 #listPanel li:after {
   font-size: 1.05em;
@@ -323,7 +329,7 @@ Task list panel
   color: gray;
   font-weight: normal;
 }
-#listPanel .account.loading:after { /* Spinning wheel while loading */
+#listPanel .account.loading > span:after { /* Spinning wheel while loading */
   content: url("res/loading5_16.gif");
   position: relative;
   top: 0.2em;
@@ -359,13 +365,26 @@ To replace "Add account" text:
   color: gray;
 }
 
-#listPanel .account .dropbtn {
+/* Account and task actions */
+#listPanel .dropbtn {
   background-image: url("res/menu-20.png");
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   padding: 2px;
   box-sizing: content-box;
 }
+#listPanel .dropdown-content {
+  font-weight: normal;
+}
+/* You can display the actions on the same row instead of in submenu:
+#listPanel .dropbtn {
+  display: none;
+}
+#listPanel .dropdown-content {
+  display: flex;
+  font-size: 0;
+}
+*/
 
 
 
