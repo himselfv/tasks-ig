@@ -1751,81 +1751,108 @@ function tasksActionsUpdate() {
 }
 
 
-  /*
-  Task entry / task list commands
-  */
-  function taskEntryEdit(entry) {
-    taskEntryTitleCommitNow(entry); //commit any pending changes
-    entry.whenHaveId().then(taskId => editor.open(taskId));
-  }
-  //Called when the editor button for the entry had been clicked
-  function taskEntryEditClicked(event) {
-    if (!event.entry) return;
-    taskEntryEdit(event.entry)
-  }
-  //Called when the edit button is clicked for the focused task
-  function taskEntryEditFocused() {
-    taskEntryEdit(tasks.getFocusedEntry());
-  }
+/*
+Task entry / task list commands
+*/
+function taskEntryEdit(entry) {
+	taskEntryTitleCommitNow(entry); //commit any pending changes
+	entry.whenHaveId().then(taskId => editor.open(taskId));
+}
+//Called when the editor button for the entry had been clicked
+function taskEntryEditClicked(event) {
+	if (!event.entry) return;
+	taskEntryEdit(event.entry)
+}
+//Called when the edit button is clicked for the focused task
+function taskEntryEditFocused() {
+	taskEntryEdit(tasks.getFocusedEntry());
+}
   
-  //Called when the task entry checkbox has been checked/unchecked
-  function taskEntryChecked(event) {
-    var patch = {};
-    taskResSetCompleted(patch, event.entry.getCompleted());
-    var job = taskEntryNeedIds([event.entry])
-    	.then(ids => {
-      		patch.id = ids[0];
-      		return backend.patch(patch);
-    	});
-    pushJob(job);
-  }
+//Called when the task entry checkbox has been checked/unchecked
+function taskEntryChecked(event) {
+	var patch = {};
+	taskResSetCompleted(patch, event.entry.getCompleted());
+	var job = taskEntryNeedIds([event.entry])
+		.then(ids => {
+			patch.id = ids[0];
+			return backend.patch(patch);
+		});
+	pushJob(job);
+}
 
-  function taskEntryAddClicked(event) {
-    taskEntryTitleCommitNow(); //commit any pending changes
-    var newEntry = taskNewInCurrentList({}, null, null);
-    newEntry.setCaret(0); //move focus to it
-  }
-  function taskEntryDeleteFocused(event) {
-    var focusedEntry = tasks.getFocusedEntry();
-    if (!focusedEntry)
-      return;
-    taskDelete(focusedEntry, false);
-  }
-  function taskEntryDeleteRecursiveFocused(event) {
-    var focusedEntry = tasks.getFocusedEntry();
-    if (!focusedEntry)
-      return;
-    taskDelete(focusedEntry, true);
-  }
-  function taskEntryExportToFile(event) {
-    var focusedEntry = tasks.getFocusedEntry();
-    if (!focusedEntry)
-      return;
-    var job = taskEntryNeedIds([focusedEntry])
-    	.then(ids => backend.get(ids[0]))
-    	.then(result => downloadAsJson(result, focusedEntry.getTitle()));
-    pushJob(job);
-  }
-  function taskEntryCopyJSON(event) {
-    var focusedEntry = tasks.getFocusedEntry();
-    if (!focusedEntry)
-      return;
-    //We can't query the data properly; clipboard access won't work in some browsers unless we call it immediately
-    //We can't even do taskEntryNeedIds()
-    var taskId = focusedEntry.getId();
-    if (Object.prototype.hasOwnProperty.call(taskId, "taskId"))
-      return; //can't query cache with promised IDs
-    let task = backend.cache.get(taskId);
-    copyToClipboard(JSON.stringify(task));
-  }
-  function taskEntryExportAllToFile() {
-    var entries = tasks.allEntries();
-    var job = taskEntryNeedIds(entries)
-    	.then(ids => backend.get(ids))
-    	.then(result => downloadAsJson(result, selectedTaskListTitle()));
-    pushJob(job);
-  }
-  
+function taskEntryAddClicked(event) {
+	taskEntryTitleCommitNow(); //commit any pending changes
+	var newEntry = taskNewInCurrentList({}, null, null);
+	newEntry.setCaret(0); //move focus to it
+}
+function taskEntryDeleteFocused(event) {
+	var focusedEntry = tasks.getFocusedEntry();
+	if (!focusedEntry)
+		return;
+	taskDelete(focusedEntry, false);
+}
+function taskEntryDeleteRecursiveFocused(event) {
+	var focusedEntry = tasks.getFocusedEntry();
+	if (!focusedEntry)
+		return;
+	taskDelete(focusedEntry, true);
+}
+function taskEntryExportToFile(event) {
+	var focusedEntry = tasks.getFocusedEntry();
+	if (!focusedEntry)
+		return;
+	var job = taskEntryNeedIds([focusedEntry])
+		.then(ids => backend.get(ids[0]))
+		.then(result => downloadAsJson(result, focusedEntry.getTitle()));
+	pushJob(job);
+}
+function taskEntryCopyJSON(event) {
+	var focusedEntry = tasks.getFocusedEntry();
+	if (!focusedEntry)
+		return;
+	//We can't query the data properly; clipboard access won't work in some browsers unless we call it immediately
+	//We can't even do taskEntryNeedIds()
+	var taskId = focusedEntry.getId();
+	if (Object.prototype.hasOwnProperty.call(taskId, "taskId"))
+		return; //can't query cache with promised IDs
+	let task = backend.cache.get(taskId);
+	copyToClipboard(JSON.stringify(task));
+}
+function taskEntryExportAllToFile() {
+	var entries = tasks.allEntries();
+	var job = taskEntryNeedIds(entries)
+		.then(ids => backend.get(ids))
+		.then(result => downloadAsJson(result, selectedTaskListTitle()));
+	pushJob(job);
+}
+
+function tasklistClearCompleted() {
+	if (!backend || !backend.delete)
+		return;
+	
+	//Collect the task entries for deletion
+	var entries = tasks.allEntries().filter(entry => entry.getCompleted());
+	if (entries.length <= 0)
+		return; //nothing to clear
+	if (!confirm('Delete '+String(entries.length)+' completed tasks from "'+String(selectedTaskListTitle())+'"?'))
+		return;
+	
+	//Delete the tasks
+	//The "completed" flag is independent for the children so don't delete recursively
+	//-- some of the children may even be in the list explicitly
+	
+	let job = taskEntryNeedIds(entries);
+	//delete() operations must be sequential
+	for (let entry of entries)
+		job = job.then(() => taskDelete(entry, false));
+	return pushJob(job);
+}
+
+function filterShowCompleted() {
+	//TODO
+}
+
+
   //Returns tasklist-relative Y offset of the last task in the list
   function tasklistLastTaskY(event) {
     var lastTask = tasks.last();
@@ -2622,12 +2649,6 @@ function tasklistDelete() {
 	pushJob(job);
 }
 
-function filterShowCompleted() {
-	//TODO
-}
-function tasklistClearCompleted() {
-	//TODO
-}
 
 
 
