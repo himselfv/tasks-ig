@@ -21,6 +21,9 @@ An icon by jxnblk, http://jxnblk.github.io/
 Licensed under MIT License, https://opensource.org/licenses/MIT
 https://www.iconfinder.com/icons/293685/list_icon
 
+loading5_*.gif:
+Generated with https://icons8.com/preloaders/, free.
+
 https://www.iconfinder.com/icons/352386/4871557
 https://www.iconfinder.com/icons/352386/4871564
 https://www.iconfinder.com/icons/5539635
