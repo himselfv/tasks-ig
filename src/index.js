@@ -1263,7 +1263,8 @@ function TaskListPanel(boxElement) {
 		boxElement = document.createElement('div');
 	boxElement.classList.add('tasklistPanel');
 	this.box = boxElement;
-	this.showAccounts = true; //Task list panel always shows account names - would look weird otherwise with "Add task list" buttons
+	this.showAccounts = true; //Task list panel always shows account names atm
+	this.showLists = true; //Disable to show only accounts
 	this.selectAccounts = options.accountsClickable;
 	this.selectFailedAccounts = false;
 	//Item dragging
@@ -1340,29 +1341,31 @@ TaskListPanel.prototype.reload = function() {
 			//No-lists accounts should be shown normally
 		}
 		
-		for (let j in account.ui.tasklists) {
-			let tasklist = account.ui.tasklists[j];
-			let option = this.addItem(tasklist.title);
-			option.listHandle = new TaskListHandle(account.id,  tasklist.id);
-			option.classList.add('tasklist');
-			option.body.addEventListener('click', this.optionClicked.bind(this, option));
+		if (this.showLists) {
+			for (let j in account.ui.tasklists) {
+				let tasklist = account.ui.tasklists[j];
+				let option = this.addItem(tasklist.title);
+				option.listHandle = new TaskListHandle(account.id,  tasklist.id);
+				option.classList.add('tasklist');
+				option.body.addEventListener('click', this.optionClicked.bind(this, option));
+				
+				//Task list actions
+				let drop = dropdownInit();
+				drop.button.title = "List actions";
+				drop.add('', setSelectedTaskList.bind(null, option.listHandle, false), "Open list");
+				if (account.tasklistUpdate)
+					drop.add('', tasklistRename.bind(null, option.listHandle), "Rename list...");
+				if (account.tasklistDelete)
+					drop.add('', tasklistDelete.bind(null, option.listHandle), "Delete list");
+				option.appendChild(drop);
+			}
 			
-			//Task list actions
-			let drop = dropdownInit();
-			drop.button.title = "List actions";
-			drop.add('', setSelectedTaskList.bind(null, option.listHandle, false), "Open list");
-			if (account.tasklistUpdate)
-				drop.add('', tasklistRename.bind(null, option.listHandle), "Rename list...");
-			if (account.tasklistDelete)
-				drop.add('', tasklistDelete.bind(null, option.listHandle), "Delete list");
-			option.appendChild(drop);
-		}
-		
-		if (account.tasklistAdd) {
-			let option = this.addItem("＋"); /* Add list */
-			option.listHandle = new TaskListHandle(account.id, null);
-			option.classList.add('tasklistAdd');
-			option.body.addEventListener('click', tasklistAdd.bind(null, account));
+			if (account.tasklistAdd) {
+				let option = this.addItem("＋"); /* Add list */
+				option.listHandle = new TaskListHandle(account.id, null);
+				option.classList.add('tasklistAdd');
+				option.body.addEventListener('click', tasklistAdd.bind(null, account));
+			}
 		}
 	}
 	
