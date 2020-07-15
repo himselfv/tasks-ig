@@ -256,11 +256,9 @@ Activity indicator
 }
 
 
+
 /*
-Task list panel
-  selected: Currently selected
-  disabled: Not selectable
-  grayed: Not fully functional but selectable
+Left panel
 */
 #listPanel {
   display: flex;
@@ -285,27 +283,40 @@ Task list panel
 }
 #listPanelToolbar { display: none; } /* hide in default design */
 #listPanelToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
-#listPanel li {
+#listPanelTitle { display: none; } /* hide in default design */
+
+
+/*
+Task list panel
+  selected: Currently selected
+  disabled: Not selectable
+  grayed: Not fully functional but selectable
+*/
+.taskListPanel li {
   display: flex;
   align-items: center;
 }
-#listPanel li span {
+.taskListPanel li span {
   flex-grow: 10;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
-#listPanel li,
-#listPanel li:after {
+.taskListPanel li,
+.taskListPanel li:after {
   font-size: 1.05em;
   list-style-type: none;
   margin: 0px;
   padding: 0.3em 0.5em;
   border: 1px solid white;
 }
-#listPanel li:not(.disabled),
-#listPanel li:not(.disabled):after {
+.taskListPanel li:not(.disabled),
+.taskListPanel li:not(.disabled):after {
   cursor: pointer;
 }
-#listPanel li:hover:not(.disabled),
-#listPanel li:hover:not(.disabled):after {
+.taskListPanel li:hover:not(.disabled),
+.taskListPanel li:hover:not(.disabled):after {
   /* Different highlight: */
   background-color: #E3E9FF;
   border: 1px solid DodgerBlue;
@@ -313,44 +324,42 @@ Task list panel
   background-color: LightSkyBlue; == #87CEFA
   border: 1px solid lightgray; */
 }
-#listPanel .selected {
+.taskListPanel .selected {
   /* Same as the focused task in the main list */
   border-top: 1px solid #F7E784;
   border-bottom: 1px solid #F7E784;
 }
-/* List panel title */
-#listPanel .title { display: none; } /* hide in default design */
-#listPanel .account,
-#listPanel .accountAdd {
+.taskListPanel .account,
+.taskListPanel .accountAdd {
   margin: 0px;
   margin-top: 0.5em;
   vertical-align: baseline;
 }
-#listPanel .accountAdd {
+.taskListPanel .accountAdd {
   color: gray;
   font-weight: normal;
 }
-#listPanel .account.loading > span:after { /* Spinning wheel while loading */
+.taskListPanel .account.loading > span:after { /* Spinning wheel while loading */
   content: url("res/loading5_16.gif");
   position: relative;
   top: 0.2em;
 }
-#listPanel .dragging {
-  opacity: 0.75;
+.taskListPanel .dragging {
+  opacity: 0.7;
 }
 /*
 To replace "Add account" text:
-#listPanel .accountAdd {
+.taskListPanel .accountAdd {
   visibility:hidden;
 }
-#listPanel .accountAdd:after {
+.taskListPanel .accountAdd:after {
   content: "＋"; -- to use a text
   content: url("res/plus2.png"); -- to use an image
   visibility: visible;
 }
 */
-#listPanel .tasklist,
-#listPanel .tasklistAdd {
+.taskListPanel .tasklist,
+.taskListPanel .tasklistAdd {
   list-style-type: none;
   /*color: DodgerBlue;*/
   /*color: #4D6C98;*/
@@ -358,30 +367,29 @@ To replace "Add account" text:
   padding-left: 1.0em;
   font-weight: bold;
 }
-#listPanel .tasklistAdd {
+.taskListPanel .tasklistAdd {
   color: gray;
   font-weight: normal;
 }
-#listPanel .grayed {
+.taskListPanel .grayed {
   color: gray;
 }
-
 /* Account and task actions */
-#listPanel .dropbtn {
+.taskListPanel .dropbtn {
   background-image: url("res/menu-20.png");
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   padding: 2px;
   box-sizing: content-box;
 }
-#listPanel .dropdown-content {
+.taskListPanel .dropdown-content {
   font-weight: normal;
 }
 /* You can display the actions on the same row instead of in submenu:
-#listPanel .dropbtn {
+.taskListPanel .dropbtn {
   display: none;
 }
-#listPanel .dropdown-content {
+.taskListPanel .dropdown-content {
   display: flex;
   font-size: 0;
 }
@@ -654,6 +662,17 @@ Account list page
 #accountListPage select {
   flex-grow: 1; /* stretch */
   margin-right: 0.2em;
+}
+#accountList .account {
+  margin: 0;
+}
+#accountList .account.selected {
+  border: 2px solid blue;
+}
+#accountList .accountAdd,
+#accountList .tasklist
+#accountList .tasklistAdd {
+  display: none; /* hide unrelated things */
 }
 #accountListControls {
   display: flex;

@@ -9,8 +9,9 @@
 </head>
 <body>
   <div id="listPage" class="page hidden" style="z-index: 0;">
-    <div id="listPanel">
+    <div id="listPanel" class="taskListPanel">
       <div id="listPanelToolbar" class="toolbar"></div>
+      <p id="listPanelTitle">Task lists:</p>
       <div id="listPanelContent"></div>
     </div>
     <div id="listSplitter"></div>
@@ -50,7 +51,7 @@
   </div>
 
   <div id="accountListPage" class="page hidden" style="z-index: 12;">
-    <select id="accountList" size="200"></select>
+  	<div id="accountList" class="taskListPanel"></div>
     <div id="accountListControls">
       <button type="button" id="accountListAdd">Add</button>
       <button type="button" id="accountListEditSettings">Edit</button>

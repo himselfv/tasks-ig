@@ -533,8 +533,9 @@ Allows to add, remove, reorder accounts, in the future perhaps reorder/hide task
 function AccountsPage() {
 	CustomPage.call(this, document.getElementById('accountListPage'));
 	
-	this.content = document.getElementById('accountList');
-	this.content.onchange = this.updateAccountActions.bind(this);
+	this.content = new TaskListPanel(document.getElementById('accountList'));
+	this.content.showLists = false;
+	this.content.onchange = this.updateAccountActions.bind(this); //TODO
 	
 	document.getElementById('accountListClose').onclick = this.cancelClick.bind(this);
 	document.getElementById('accountListAdd').onclick = this.addClick.bind(this);
@@ -558,9 +559,10 @@ AccountsPage.prototype.close = function() {
 	this.page.classList.add("hidden");
 }
 AccountsPage.prototype.reload = function() {
-	nodeRemoveAllChildren(this.content);
+	/*nodeRemoveAllChildren(this.content);
 	for (let i in accounts)
-		this.content.appendChild(this.entryFromAccount(accounts[i]));
+		this.content.appendChild(this.entryFromAccount(accounts[i]));*/
+	this.content.reload();
 	//We could try to restore the selection but we atm don't do reloads while open
 	this.updateAccountActions();
 }
@@ -1279,30 +1281,21 @@ TaskListPanel.prototype.reload = function() {
 	console.debug('tasklistPanelReload');
 	nodeRemoveAllChildren(this.box);
 	
-	//Add a dummy entry as a title
-	{
-		let option = document.createElement('p');
-		option.textContent = 'Task lists:';
-		option.classList.add('title');
-		this.box.appendChild(option);
-	}
-	
 	for (let i in accounts) {
 		let account = accounts[i];
-		if (!account)
-			continue;
+		if (!account) continue;
 		
 		//Add a line representing the account
-		let option = this.addItem(account.uiName());
-		option.classList.add('account');
-		option.listHandle = new TaskListHandle(account.id, undefined);
-		option.body.addEventListener('click', this.optionClicked.bind(this, option));
+		let item = this.addItem(account.uiName());
+		item.classList.add('account');
+		item.listHandle = new TaskListHandle(account.id, undefined);
+		item.body.addEventListener('click', this.itemClicked.bind(this, item));
 		
 		//Account actions
 		//Can't use IDs here because the buttons are going to be duplicated for every account/tasklist
 		let drop = dropdownInit();
 		drop.button.title = "Account actions";
-		drop.add('', setSelectedTaskList.bind(null, option.listHandle, false), "Open");
+		drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open");
 		if (account.tasklistAdd)
 			drop.add('', tasklistAdd.bind(null, account), "Add list");
 		drop.addSeparator();
@@ -1310,31 +1303,31 @@ TaskListPanel.prototype.reload = function() {
 		drop.add('', accountDelete.bind(null, account), "Delete");
 		if (options.debug && account.reset)
 			drop.add('', accountReset.bind(null, account), "Reset");
-		option.appendChild(drop);
+		item.appendChild(drop);
 
 		if (!this.selectAccounts)
-			option.classList.add('disabled');
-		this.dragMgr.addElement(option);
+			item.classList.add('disabled');
+		this.dragMgr.addElement(item);
 		
 		//Note: TaskListPanel looks weird when not showing accounts
 		if (!this.showAccounts)
-			option.style.display = "none";
+			item.style.display = "none";
 		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists) {
 			if (this.selectFailedAccounts)
-				option.classList.remove('disabled');; //No task lists => make the account always selectable
+				item.classList.remove('disabled');; //No task lists => make the account always selectable
 			if (account.error) {
-				option.body.textContent = option.body.textContent+' (error)';
-				option.classList.add('error');
+				item.body.textContent = item.body.textContent+' (error)';
+				item.classList.add('error');
 			}
 			else if (!account.isSignedIn()) {
-				option.classList.add('loading');
+				item.classList.add('loading');
 			}
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists)) {
-				option.body.textContent = option.body.textContent+' (no lists)';
-				option.classList.add('empty');
+				item.body.textContent = item.body.textContent+' (no lists)';
+				item.classList.add('empty');
 			}
-			option.classList.add("grayed");
+			item.classList.add("grayed");
 			continue;
 		} else
 		if (isArrayEmpty(account.ui.tasklists)) {
@@ -1344,59 +1337,59 @@ TaskListPanel.prototype.reload = function() {
 		if (this.showLists) {
 			for (let j in account.ui.tasklists) {
 				let tasklist = account.ui.tasklists[j];
-				let option = this.addItem(tasklist.title);
-				option.listHandle = new TaskListHandle(account.id,  tasklist.id);
-				option.classList.add('tasklist');
-				option.body.addEventListener('click', this.optionClicked.bind(this, option));
+				let item = this.addItem(tasklist.title);
+				item.listHandle = new TaskListHandle(account.id,  tasklist.id);
+				item.classList.add('tasklist');
+				item.body.addEventListener('click', this.itemClicked.bind(this, item));
 				
 				//Task list actions
 				let drop = dropdownInit();
 				drop.button.title = "List actions";
-				drop.add('', setSelectedTaskList.bind(null, option.listHandle, false), "Open list");
+				drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open list");
 				if (account.tasklistUpdate)
-					drop.add('', tasklistRename.bind(null, option.listHandle), "Rename list...");
+					drop.add('', tasklistRename.bind(null, item.listHandle), "Rename list...");
 				if (account.tasklistDelete)
-					drop.add('', tasklistDelete.bind(null, option.listHandle), "Delete list");
-				option.appendChild(drop);
+					drop.add('', tasklistDelete.bind(null, item.listHandle), "Delete list");
+				item.appendChild(drop);
 			}
 			
 			if (account.tasklistAdd) {
-				let option = this.addItem("＋"); /* Add list */
-				option.listHandle = new TaskListHandle(account.id, null);
-				option.classList.add('tasklistAdd');
-				option.body.addEventListener('click', tasklistAdd.bind(null, account));
+				let item = this.addItem("＋"); /* Add list */
+				item.listHandle = new TaskListHandle(account.id, null);
+				item.classList.add('tasklistAdd');
+				item.body.addEventListener('click', tasklistAdd.bind(null, account));
 			}
 		}
 	}
 	
 	if (accounts.length <= 0) {
-		let option = this.addAccount("No accounts");
-		option.classList.add('account');
-		option.classList.add('grayed');
-		option.listHandle = null;
+		let item = this.addAccount("No accounts");
+		item.classList.add('account');
+		item.classList.add('grayed');
+		item.listHandle = null;
 	}
 	
-	let option = this.addItem("Add account")
-	option.classList.add('accountAdd');
-	option.addEventListener('click', StartNewAccountUi.bind(null, { hasCancel:true, }));
+	let item = this.addItem("Add account")
+	item.classList.add('accountAdd');
+	item.addEventListener('click', StartNewAccountUi.bind(null, { hasCancel:true, }));
 	
 	//Reapply selection
 	this.applySelected(this.selected);
 }
 TaskListPanel.prototype.addItem = function(title) {
-	let option = document.createElement("li");
-	option.body = document.createElement('span');
+	let item = document.createElement("li");
+	item.body = document.createElement('span');
 	if (title)
-		option.body.textContent = title;
-	option.appendChild(option.body);
-	this.box.appendChild(option);
-	return option;
+		item.body.textContent = title;
+	item.appendChild(item.body);
+	this.box.appendChild(item);
+	return item;
 }
-TaskListPanel.prototype.optionClicked = function(option) {
-	if (option.classList.contains('disabled')) return;
-	let value = option.listHandle;
-	if (!value) return;
-	setSelectedTaskList(value);
+TaskListPanel.prototype.itemClicked = function(item) {
+	if (item.classList.contains('disabled')) return;
+	let value = item.listHandle;
+	if (value)
+		this.setSelected(value);
 }
 TaskListPanel.prototype.setSelected = function(tasklist, noNotify) {
 	console.debug('TaskListPanel.setSelected', arguments);
@@ -1573,7 +1566,19 @@ TaskListPanel.prototype.dragAccountApply = function(dragNode) {
 	//Move
 	Accounts.move(accountId, nextAccountId);
 }
-var leftPanel = new TaskListPanel(document.getElementById('listPanelContent'));
+
+function MainTaskListPanel(element) {
+	TaskListPanel.call(this, element);
+}
+inherit(TaskListPanel, MainTaskListPanel);
+MainTaskListPanel.prototype.itemClicked = function(item) {
+	if (item.classList.contains('disabled')) return;
+	//Instead of directly selecting the element, pass it to common setSelectedTaskList()
+	let value = item.listHandle;
+	if (value)
+		setSelectedTaskList(value);
+}
+var leftPanel = new MainTaskListPanel(document.getElementById('listPanelContent'));
 
 Splitter.ID_BASE = "tasksIg_";
 var leftSplitter = new Splitter(document.getElementById('listSplitter'));
