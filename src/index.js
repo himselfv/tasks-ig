@@ -310,6 +310,7 @@ function Accounts() {
 	});
 }
 AddCustomEventTarget(Accounts);
+Accounts.prototype[Symbol.iterator] = function() { return this.list[Symbol.iterator](); } //implements for..of
 //Loads the current list of accounts and tries to activate each
 Accounts.prototype.load = function() {
 	console.log('accountsLoad');
@@ -948,10 +949,8 @@ Task list boxes reload by these caches.
 //Starts the task list reload process for all accounts. The UI will be updated dynamically
 function reloadAllAccountsTaskLists() {
 	console.debug('reloadAllAccountsTaskLists');
-	for (let i in accounts.list) {
-		console.log(i, accounts.list[i]);
-		reloadAccountTaskLists(accounts.list[i]);
-	}
+	for (let account of accounts)
+		reloadAccountTaskLists(account);
 	if (accounts.length <= 0) {
 		console.debug('reloadAllAccontsTaskLists: No accounts, tasklistBox.reload() to empty');
 		tasklistBox.reload(); //no accounts => no one will trigger visuals
@@ -1024,7 +1023,7 @@ TaskListBox.prototype.reload = function() {
 
 	nodeRemoveAllChildren(this.box); //clear the list
 	
-	for (let account of accounts.list) {
+	for (let account of accounts) {
 		console.debug('tasklistBoxReload: account=', account, 'signedIn=', account.isSignedIn(), 'ui=', account.ui);
 		
 		//Add a "grayed line" representing the account
@@ -1259,7 +1258,7 @@ TaskListPanel.prototype.reload = function() {
 	console.debug('tasklistPanelReload');
 	nodeRemoveAllChildren(this.box);
 	
-	for (let account of accounts.list) {
+	for (let account of accounts) {
 		//Add a line representing the account
 		let item = this.addItem(account.uiName());
 		item.classList.add('account');
