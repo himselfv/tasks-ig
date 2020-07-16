@@ -393,8 +393,10 @@ To replace "Add account" text:
 .taskListPanel .dropdown-content {
   display: flex;
   font-size: 0;
+}*/
+.taskListPanel .disabled .accountSelectBtn {
+  display: none;
 }
-*/
 
 
 

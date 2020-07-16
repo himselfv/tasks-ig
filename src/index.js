@@ -388,7 +388,7 @@ Accounts.prototype.add = function(account, params) {
 	//Add to runtime list
 	this.list.push(account); //signin() should already be initiated
 	//The account might already have tasklists cached -- don't requery
-	//E.g. it notified of signinChanged(true) from init() and we already did reloadTaskLists() to it.
+	//E.g. it notified of signinChanged(true) from init() and we already did reloadTasklists() to it.
 	if (!Array.isArray(account.ui.tasklists))
 		this.reloadTasklists(account);
 	this.changed();
@@ -491,7 +491,7 @@ Accounts.prototype.signinStatusChanged = function(account, isSignedIn) {
 	this.stateChanged(account);
 }
 /*
-Each account has a cached ui.tasklists[] that's populated by reloadTaskLists().
+Each account has a cached ui.tasklists[] that's populated by reloadTasklists().
 Most clients use these cached lists.
 */
 //Starts the task list reload process for all accounts. The UI will be updated dynamically
@@ -709,7 +709,7 @@ function accountReset(account) {
 	if (!confirm('Are you SURE you want to delete ALL your task lists and tasks in account "'+account.uiName()+'"?'))
 	return;
 	var job = account.reset()
-		.then(() => accounts.reloadTaskLists(account));
+		.then(() => accounts.reloadTasklists(account));
 	pushJob(job);
 }
 //Opens the account settings page, lets the user edit, try to apply and then save the settings
@@ -1274,7 +1274,8 @@ TaskListPanel.prototype.reload = function() {
 		//Can't have uniuqe IDs! Duplicated for every account/tasklist. Using classes
 		let drop = dropdownInit();
 		drop.button.title = "Account actions";
-		drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open").classList.add('accountSelectBtn');
+		if (this.selectAccounts)
+			drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open").classList.add('accountSelectBtn');
 		if (account.tasklistAdd)
 			drop.add('', tasklistAdd.bind(null, account), "Add list").classList.add('tasklistAddBtn');
 		drop.addSeparator();
@@ -2624,7 +2625,7 @@ function tasklistAdd(account) {
 	var job = account.tasklistAdd(title)
 	.then(result => {
 		newTasklistId = result.id;
-		return accounts.reloadTaskLists(account)
+		return accounts.reloadTasklists(account)
 	})
 	.then(response => {
 		setSelectedTaskList(new TaskListHandle(account, newTasklistId));
@@ -2653,7 +2654,7 @@ function tasklistRename(tasklist) {
 		'title': title,
 	};
 	var job = account.tasklistPatch(patch)
-		.then(result => accounts.reloadTaskLists(account));
+		.then(result => accounts.reloadTasklists(account));
 	pushJob(job);
 }
 
@@ -2682,7 +2683,7 @@ function tasklistDelete(tasklist) {
 		return;
 	
 	var job = account.tasklistDelete(tasklist.tasklist)
-	.then(result => accounts.reloadTaskLists(account));
+	.then(result => accounts.reloadTasklists(account));
 	pushJob(job);
 }
 
