@@ -1141,8 +1141,9 @@ AddCustomEventTarget.removeEventListener = function() {
 AddCustomEventTarget.dispatchEvent = function(event, args) {
 	if (typeof name == 'string')
 		event = new CustomEvent(event);
-	for (let key in args)
-		event[key] = args[key];
+	if (args)
+		for (let key in args)
+			event[key] = args[key];
 	this.eventTarget.dispatchEvent(event);
 }
 

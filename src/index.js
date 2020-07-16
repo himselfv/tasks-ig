@@ -15,8 +15,6 @@ Security considerations in some contexts require:
  * No inline JS in HTML
  * No inline onclick= handlers.
 */
-var accounts = [];
-
 var listPage = document.getElementById('listPage');
 
 var mainmenu = null;
@@ -84,7 +82,7 @@ function initUi() {
 	taskmenu.add("", tasklistReloadSelected, "Refresh");
 	
     tasklistInit();
-    accountsLoad();
+    accounts.load();
 }
 
 
@@ -302,11 +300,20 @@ Account list
 Possible backends self-register in backends.js/backends.
 Account configuration is stored in localstorage; we try to load all accounts automatically.
 */
-function Accounts() {}
+function Accounts() {
+	this.setupEventTarget();
+	this.list = [];
+	Object.defineProperty(this, 'length', {
+		enumerable: false,
+		get: () => this.list.length,
+		set: (value) => { this.list.length = value; },
+	});
+}
+AddCustomEventTarget(Accounts);
 //Loads the current list of accounts and tries to activate each
-function accountsLoad() {
+Accounts.prototype.load = function() {
 	console.log('accountsLoad');
-	accounts = [];
+	this.list = [];
 	
 	//Each entry is a backend with a few additional properties:
 	//  id = Unique ID of this backend instance
@@ -335,7 +342,7 @@ function accountsLoad() {
 		if (!account)
 			account = backendCreateDummy(accountData.backendName, error);
 		account.id = accountList[i]; //copy the id
-		accounts.push(account);
+		this.list.push(account);
 		account.init()
 		.then(() => {
 			return account.signin(accountData.params);
@@ -350,11 +357,11 @@ function accountsLoad() {
 	//Trigger full task lists request
 	reloadAllAccountsTaskLists();
 	//Also react right now to provide at least some ui (the accounts in "loading" stage/"no accounts found")
-	accountListChanged();
+	this.dispatchEvent('change');
 }
 //Permanently adds a new account based on its Backend() object and signin() params.
 //Assign it an .id
-Accounts.add = function(account, params) {
+Accounts.prototype.add = function(account, params) {
 	console.log('Accounts.add', arguments);
 	if (!account || !account.constructor || !account.constructor.name) {
 		console.error('accountAdd: invalid account object: ', account);
@@ -378,15 +385,15 @@ Accounts.add = function(account, params) {
 	//console.debug('accountAdd: accountList=', accountList);
 
 	//Add to runtime list
-	accounts.push(account); //signin() should already be initiated
+	this.list.push(account); //signin() should already be initiated
 	//The account might already have tasklists cached -- don't requery
 	//E.g. it notified of signinChanged(true) from init() and we already did reloadAccountTaskLists() to it.
 	if (!Array.isArray(account.ui.tasklists))
 		reloadAccountTaskLists(account);
-	accountListChanged();
+	this.dispatchEvent('change');
 }
 //Deletes the account by its id.
-Accounts.delete = function(id) {
+Accounts.prototype.delete = function(id) {
 	//NB: account.signout() if you can before passing it here, to close any session cookies
 	console.log('Accounts.delete:', id);
 	
@@ -400,25 +407,24 @@ Accounts.delete = function(id) {
 	setLocalStorageItem("tasksIg_accounts", accountList);
 	
 	//Delete from runtime list
-	i = accounts.findIndex(item => (item.id==id));
+	i = this.findIndex(item);
 	if (i >= 0) {
-		accounts.splice(i, 1);
-		accountListChanged();
+		this.list.splice(i, 1);
+		this.dispatchEvent('change');
 	}
 }
 //Accepts account objects, IDs (strings) and indices (integers). Returns index or -1.
-Accounts.findIndex = function(account) {
+Accounts.prototype.findIndex = function(account) {
 	if (Number.isInteger(account))
 		return account;
-	return accounts.findIndex(item => (item==account) || (item.id==account));
+	return this.list.findIndex(item => (item==account) || (item.id==account));
 }
 //Same but returns a runtime account object or null
-Accounts.find = function(account) {
+Accounts.prototype.find = function(account) {
 	let i = this.findIndex(account);
-	return ((i >= 0) && (i < accounts.length)) ? accounts[i] : null;
+	return ((i >= 0) && (i < this.list.length)) ? this.list[i] : null;
 }
-function accountFind(id) { return Accounts.find(id); } //compatibility
-Accounts.move = function(account, insertBefore) {
+Accounts.prototype.move = function(account, insertBefore) {
 	console.debug('Accounts.move', account, insertBefore);
 	account = this.findIndex(account);
 	if (account < 0) {
@@ -433,40 +439,41 @@ Accounts.move = function(account, insertBefore) {
 			return;
 		}
 	} else
-		insertBefore = accounts.length;
+		insertBefore = this.list.length;
 	
 	if (insertBefore==account) return;
 	if (insertBefore>account) insertBefore--;
 
 	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
 	let tmp1=accountList[account];
-	let tmp2=accounts[account];
+	let tmp2=this.list[account];
 	while (account<insertBefore) {
 		accountList[account] = accountList[account+1];
-		accounts[account] = accounts[account+1];
+		this.list[account] = this.list[account+1];
 		account++;
 	}
 	while (account>insertBefore) {
 		accountList[account] = accountList[account-1];
-		accounts[account] = accounts[account-1];
+		this.list[account] = this.list[account-1];
 		account--;
 	}
 	accountList[account] = tmp1;
-	accounts[account] = tmp2;
+	this.list[account] = tmp2;
 	setLocalStorageItem("tasksIg_accounts", accountList);
 	
-	accountListChanged(); //the order has changed
+	this.dispatchEvent('change'); //the order has changed
 }
 //Switches places for accounts #i and #j in the ordered account list
-Accounts.swap = function(i, j) { return (i>j) ? Accounts.move(i, j) : Accounts.move(j, i); }
+Accounts.prototype.swap = function(i, j) { return (i>j) ? this.move(i, j) : this.move(j, i); }
+
 //Called when the _runtime_ account list changes either due to initial loading, or addition/deletion/reordering
 function accountListChanged() {
 	console.debug('accountsListChanged; accounts=', accounts);
 	//Hide task list while we have no accounts at all - looks cleaner
-	listPage.classList.toggle("hidden", (Object.keys(accounts).length <= 0));
+	listPage.classList.toggle("hidden", (accounts.length <= 0));
 	//If we have no accounts at all, show account addition page,
 	//otherwise do nothing and wait for backends to initialize
-	if (Object.keys(accounts).length <= 0) {
+	if (accounts.length <= 0) {
 		editor.cancel();
 		tasks.clear();
 		//Start the "add account" sequence
@@ -521,6 +528,9 @@ function accountStateChanged(account) {
 			accountActionsUpdate();
 }
 
+var accounts = new Accounts();
+accounts.addEventListener('change', accountListChanged);
+
 
 
 /*
@@ -557,14 +567,14 @@ AccountsPage.prototype.reload = function() {
 	this.content.reload();
 	this.updateAccountActions();
 }
-AccountsPage.prototype.selectedIndex = function() { return this.content.selected ? Accounts.findIndex(this.content.selected.account) : undefined };
+AccountsPage.prototype.selectedIndex = function() { return this.content.selected ? accounts.findIndex(this.content.selected.account) : undefined };
 AccountsPage.prototype.updateAccountActions = function() {
 	let selectedId = this.content.selected;
-	let selectedIndex = selectedId ? Accounts.findIndex(selectedId.account) : undefined;
+	let selectedIndex = selectedId ? accounts.findIndex(selectedId.account) : undefined;
 	console.debug('AccountsPage.updateAccountActions', selectedId);
 	document.getElementById('accountListEditSettings').disabled = (!selectedId);
 	document.getElementById('accountListDelete').disabled = (!selectedId);
-	document.getElementById('accountListReset').disabled = (!selectedId || !options.debug || !accounts[selectedIndex].reset);
+	document.getElementById('accountListReset').disabled = (!selectedId || !options.debug || !accounts.list[selectedIndex].reset);
 	document.getElementById('accountListMoveUp').disabled = (!selectedId || (selectedIndex <= 0));
 	document.getElementById('accountListMoveDown').disabled = (!selectedId || (selectedIndex >= accounts.length-1));
 }
@@ -572,14 +582,14 @@ AccountsPage.prototype.moveUpClick = function() {
 	let index = this.selectedIndex();
 	if ((index <= 0) || (index > accounts.length-1))
 		return;
-	Accounts.swap(index, index-1);
+	accounts.swap(index, index-1);
 	this.reload();
 }
 AccountsPage.prototype.moveDownClick = function() {
 	let index = this.selectedIndex();
 	if ((index < 0) || (index >= accounts.length-1))
 		return;
-	Accounts.swap(index+1, index);
+	accounts.swap(index+1, index);
 	this.reload();
 }
 AccountsPage.prototype.addClick = function() {
@@ -589,7 +599,7 @@ AccountsPage.prototype.editSettingsClick = function() {
 	accountEditSettings().then(() => this.reload() );
 }
 AccountsPage.prototype.deleteClick = function() {
-	let account = Accounts.find(this.content.selected.account);
+	let account = accounts.find(this.content.selected.account);
 	if (!account) return;
 	accountDelete(account)
 	.then(beenDeleted => {
@@ -638,7 +648,7 @@ function accountDelete(account) {
 	})
 	.then(() => {
 		if (doDelete)
-			Accounts.delete(account.id);
+			accounts.delete(account.id);
 		return doDelete;
 	});
 }
@@ -741,7 +751,7 @@ BackendSelectPage.prototype.backendClicked = function(btn) {
 	})
 	.then(setupResults => {
 		//console.debug('Backend.setup() success; params:', setupResults);
-		Accounts.add(backend, setupResults);
+		accounts.add(backend, setupResults);
 		this.okClick(backend); //for now just run the default completion routine
 		//TODO: maybe split this into a "backend selection" which will run okClicked() over the selected backend
 		//  + "add backend process" which will handle that to open settings etc and conditionally resolve()?
@@ -938,8 +948,10 @@ Task list boxes reload by these caches.
 //Starts the task list reload process for all accounts. The UI will be updated dynamically
 function reloadAllAccountsTaskLists() {
 	console.debug('reloadAllAccountsTaskLists');
-	for (let i in accounts)
-		reloadAccountTaskLists(accounts[i]);
+	for (let i in accounts.list) {
+		console.log(i, accounts.list[i]);
+		reloadAccountTaskLists(accounts.list[i]);
+	}
 	if (accounts.length <= 0) {
 		console.debug('reloadAllAccontsTaskLists: No accounts, tasklistBox.reload() to empty');
 		tasklistBox.reload(); //no accounts => no one will trigger visuals
@@ -993,7 +1005,7 @@ TaskListHandle.fromString = function(value) {
 	value = JSON.parse(value);
 	//Convert account ID to account object
 	if (value.account)
-		value.account = accountFind(value.account);
+		value.account = accounts.find(value.account);
 	return new TaskListHandle(value.account, value.tasklist);
 }
 //The box itself
@@ -1012,10 +1024,7 @@ TaskListBox.prototype.reload = function() {
 
 	nodeRemoveAllChildren(this.box); //clear the list
 	
-	for (let i in accounts) {
-		let account = accounts[i];
-		if (!account)
-			continue;
+	for (let account of accounts.list) {
 		console.debug('tasklistBoxReload: account=', account, 'signedIn=', account.isSignedIn(), 'ui=', account.ui);
 		
 		//Add a "grayed line" representing the account
@@ -1218,7 +1227,7 @@ function urlReadState() {
 	let data = urlRead();
 	if (!data || !('a' in data))
 		return null; //nothing useful
-	let account = accountFind(data['a']) || data['a']; //resolve account if possible
+	let account = accounts.find(data['a']) || data['a']; //resolve account if possible
 	let selected = new TaskListHandle(account, data['l']);
 	return selected;
 }
@@ -1250,10 +1259,7 @@ TaskListPanel.prototype.reload = function() {
 	console.debug('tasklistPanelReload');
 	nodeRemoveAllChildren(this.box);
 	
-	for (let i in accounts) {
-		let account = accounts[i];
-		if (!account) continue;
-		
+	for (let account of accounts.list) {
 		//Add a line representing the account
 		let item = this.addItem(account.uiName());
 		item.classList.add('account');
@@ -1534,7 +1540,7 @@ TaskListPanel.prototype.dragAccountApply = function(dragNode) {
 	let nextAccountId = nextAccount ? nextAccount.listHandle.account : null;
 	
 	//Move
-	Accounts.move(accountId, nextAccountId);
+	accounts.move(accountId, nextAccountId);
 }
 
 function MainTaskListPanel(element) {
@@ -2626,7 +2632,7 @@ function tasklistRename(tasklist) {
 	if (!tasklist) tasklist = selectedTaskList();
 	if (!tasklist || !tasklist.tasklist) return;
 	
-	let account = Accounts.find(tasklist.account);
+	let account = accounts.find(tasklist.account);
 	if (!account || !account.tasklistUpdate) return;
 	
 	//Find the list among cached lists
@@ -2651,7 +2657,7 @@ function tasklistDelete(tasklist) {
 	if (!tasklist) tasklist = selectedTaskList();
 	if (!tasklist || !tasklist.tasklist) return;
 
-	let account = Accounts.find(tasklist.account);
+	let account = accounts.find(tasklist.account);
 	if (!account || !account.tasklistDelete) return;
 
 	if (account != backend) {
