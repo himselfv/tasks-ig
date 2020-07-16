@@ -836,8 +836,9 @@ function DragMgr(element) {
 	this.autoShield = false;
 	//Start dragging only after this delay. If >0, passes the initial click through.
 	this.dragDelay = 0;
-	//Start dragging immediately on mouse click. Otherwise waits for mouse move and passes the initial click through.
-	this.immediateDrag = false;
+	//Starts dragging after the mouse moves for the specified number of pixels. 0 = immediately, otherwise passes the initial click through.
+	this.dragTolerance = 0;
+	//If you have BOTH delay and tolerance set, both work independently
 }
 utils.export(DragMgr);
 //Registers another element to be managed by this drag manager
@@ -857,6 +858,7 @@ DragMgr.prototype.addElement = function(element) {
 DragMgr.prototype.dragConfigure = function(entry, event) {
 	this.dragStartTimerAbort();
 	this.dragEntry = entry; //element to which the event have bubbled
+	this.dragStartPos = { x: event.pageX, y: event.pageY };
 
 	//calculate true offset relative to taskEntry
 	var trueOffset = (event.touches) ? 
@@ -882,7 +884,7 @@ DragMgr.prototype.onDragMouseDown = function(event) {
 		this.dragStartTimer = setTimeout(this.startDrag.bind(this), this.dragDelay);
 		return;
 	}
-	if (!this.immediateDrag)
+	if (this.dragTolerance > 0)
 		return;
 	this.startDrag(); //immediately
 	event.stopPropagation(); //prevent selection and drag handling on lower levels
@@ -901,13 +903,15 @@ DragMgr.prototype.onDragMouseMove = function(event) {
 	if ((this.dragDelay > 0) && !this.dragging)
 		this.dragStartTimerAbort();
 	//Dragging, ignore mouse move events for the node itself
-	if (this.dragging || (!this.immediateDrag && this.dragEntry))
+	if (this.dragging || ((this.dragTolerance > 0) && this.dragEntry))
 		event.preventDefault();
 }
 DragMgr.prototype.onDocumentDragMouseMove = function(event) {
 	//Start non-immediate drag on mouse move
-	if (!this.immediateDrag && this.dragEntry && !this.dragging)
-		this.startDrag();
+	if (!this.dragging && (this.dragTolerance > 0) && this.dragEntry) {
+		if (event.pageX - this.dragStartPos.x + event.pageY - this.dragStartPos.y > this.dragTolerance)
+			this.startDrag();
+	}
 	if (this.dragging) {
 		if (event.touches)
 			this.dragMove({x:event.touches[0].clientX, y:event.touches[0].clientY});
@@ -1005,7 +1009,7 @@ function Splitter(element, id) {
 	//Dragging and resizing
 	this.dragMgr = new DragMgr(this.box);
 	this.dragMgr.autoShield = true;
-	this.dragMgr.immediateDrag = true;
+	this.dragMgr.dragTolerance = 0;
 	this.dragMgr.dragStart = this.dragStart.bind(this);
 	this.dragMgr.dragEnd = this.dragEnd.bind(this);
 	this.dragMgr.dragMove = this.dragMove.bind(this);

@@ -1253,7 +1253,8 @@ function TaskListPanel(boxElement) {
 	//Item dragging
 	this.dragMgr = new DragMgr();
 	this.dragMgr.autoShield = true;
-	this.dragMgr.waitForMove = true;
+	this.dragMgr.dragTolerance = 10;
+	this.dragMgr.dragDelay = 500;
 	this.dragMgr.dragStart = this.dragStart.bind(this);
 	this.dragMgr.dragMove = this.dragMove.bind(this);
 	this.dragMgr.dragEnd = this.dragEnd.bind(this);
