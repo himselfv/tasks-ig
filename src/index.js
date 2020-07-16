@@ -550,7 +550,6 @@ function accountListChanged() {
 }
 accounts.addEventListener('change', accountListChanged);
 
-
 function accountStateChanged(account) {
 	let oldSelected = selectedTaskList();
 	
@@ -586,6 +585,8 @@ function AccountsPage() {
 	CustomPage.call(this, document.getElementById('accountsPage'));
 	
 	this.content = new TaskListPanel(document.getElementById('accountList'));
+	this.content.showAccounts = true;
+	this.content.selectAccounts = true;
 	this.content.showLists = false;
 	this.content.addEventListener('change', this.updateAccountActions.bind(this));
 	
