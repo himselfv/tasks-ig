@@ -408,7 +408,7 @@ Accounts.prototype.delete = function(id) {
 	setLocalStorageItem("tasksIg_accounts", accountList);
 	
 	//Delete from runtime list
-	i = this.findIndex(item);
+	i = this.findIndex(id);
 	if (i >= 0) {
 		this.list.splice(i, 1);
 		this.changed();
@@ -1342,7 +1342,7 @@ TaskListPanel.prototype.reload = function() {
 	}
 	
 	if (accounts.length <= 0) {
-		let item = this.addAccount("No accounts");
+		let item = this.addItem("No accounts");
 		item.classList.add('account');
 		item.classList.add('grayed');
 		item.listHandle = null;
