@@ -808,7 +808,7 @@ function createDragShield() {
     shield.style.right = "0px";
     shield.style.top = "0px";
     shield.style.bottom = "0px";
-    shield.style.zIndex = 10;
+    shield.style.zIndex = 99999;
     document.body.appendChild(shield);
     return shield;
 }
@@ -941,6 +941,7 @@ DragMgr.prototype.startDrag = function() {
     //To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
     //we need to shield the page while dragging
     if (this.autoShield) {
+    	console.log('shield added');
     	this.shield = createDragShield();
     	if (this.autoShieldCursorStyle)
     		this.shield.style.cursor = this.autoShieldCursorStyle;
