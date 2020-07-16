@@ -31,7 +31,7 @@ function initUi() {
 
 	mainmenu = dropdownInit('mainmenu');
 	mainmenu.button.title = "Task list action";
-	mainmenu.add('menuReloadBtn', reloadAllAccountsTaskLists, "Reload");
+	mainmenu.add('menuReloadBtn', accounts.reloadAllTasklists.bind(accounts), "Reload");
 	mainmenu.add('listAddBtn', tasklistAdd.bind(null, null), "Add list...");
 	mainmenu.add('listRenameBtn', tasklistRename, "Rename list...");
 	mainmenu.add('listDeleteBtn', tasklistDelete, "Delete list");
@@ -242,7 +242,7 @@ var reportedChanges = {
 function processReportedChanges() {
 	var prom = Promise.resolve();
 	if (reportedChanges.tasklists)
-		prom = prom.then(results => reloadAccountTaskLists(backend));
+		prom = prom.then(results => accounts.reloadTasklists(backend));
 	let selectedList = selectedTaskList();
 	if (!selectedList)
 		reportedChanges.tasks = []; //no list active, we don't care
@@ -283,7 +283,7 @@ function backendCreate(backendCtor) {
 	//We store a few additional runtime properties with each account,
 	//under account.ui.
 	backend.ui = {};
-	backend.onSignInStatus.push(accountSigninStateChanged);
+	backend.onSignInStatus.push(accounts.signinStatusChanged.bind(accounts));
 	registerChangeNotifications(backend);
 	return backend;
 }
@@ -350,15 +350,15 @@ Accounts.prototype.load = function() {
 		})
 		.catch(error => {
 			account.error = error;
-			accountSigninStateChanged(account, false);
+			this.signinStatusChanged(account, false);
 		});
 		
 	}
 	
 	//Trigger full task lists request
-	reloadAllAccountsTaskLists();
+	this.reloadAllTasklists();
 	//Also react right now to provide at least some ui (the accounts in "loading" stage/"no accounts found")
-	this.dispatchEvent('change');
+	this.changed();
 }
 //Permanently adds a new account based on its Backend() object and signin() params.
 //Assign it an .id
@@ -388,10 +388,10 @@ Accounts.prototype.add = function(account, params) {
 	//Add to runtime list
 	this.list.push(account); //signin() should already be initiated
 	//The account might already have tasklists cached -- don't requery
-	//E.g. it notified of signinChanged(true) from init() and we already did reloadAccountTaskLists() to it.
+	//E.g. it notified of signinChanged(true) from init() and we already did reloadTaskLists() to it.
 	if (!Array.isArray(account.ui.tasklists))
-		reloadAccountTaskLists(account);
-	this.dispatchEvent('change');
+		this.reloadTasklists(account);
+	this.changed();
 }
 //Deletes the account by its id.
 Accounts.prototype.delete = function(id) {
@@ -411,7 +411,7 @@ Accounts.prototype.delete = function(id) {
 	i = this.findIndex(item);
 	if (i >= 0) {
 		this.list.splice(i, 1);
-		this.dispatchEvent('change');
+		this.changed();
 	}
 }
 //Accepts account objects, IDs (strings) and indices (integers). Returns index or -1.
@@ -461,15 +461,80 @@ Accounts.prototype.move = function(account, insertBefore) {
 	accountList[account] = tmp1;
 	this.list[account] = tmp2;
 	setLocalStorageItem("tasksIg_accounts", accountList);
-	
-	this.dispatchEvent('change'); //the order has changed
+	this.changed(); //the order has changed
 }
 //Switches places for accounts #i and #j in the ordered account list
 Accounts.prototype.swap = function(i, j) { return (i>j) ? this.move(i, j) : this.move(j, i); }
+//Called when the *runtime* account list changes either due to initial loading, or addition/deletion/reordering
+Accounts.prototype.changed = function() {
+	console.debug('accountsListChanged; accounts=', this.list);
+	//Don't reloadAllTasklists() here: most accounts are fine.
+	//Whoever is adding/changing individual accounts must trigger their reloadAccountTaskList() if needed.
+	this.dispatchEvent('change');
+}
+//Called when the account init/signin status or the *cached* tasklist registry changes
+Accounts.prototype.stateChanged = function(account) {
+	console.debug('account.stateChanged:', account);
+	this.dispatchEvent('stateChange', { account: account });
+}
+//Called when the signed in status changes, whether after a button click or automatically
+Accounts.prototype.signinStatusChanged = function(account, isSignedIn) {
+	console.log('account.signinStatusChanged:', isSignedIn, account);
+	//Request new task lists (null, if !signedIn)
+	this.reloadTasklists(account);
 
-//Called when the _runtime_ account list changes either due to initial loading, or addition/deletion/reordering
+	//When signing off:
+	//  If we're on the list from this account, switch away -- will happen automatically from reloadTasklists()
+
+	//Do the accountStateChanged right now because the sign-in state changed
+	//Once we get the tasklist registry we're going to do this another time
+	this.stateChanged(account);
+}
+/*
+Each account has a cached ui.tasklists[] that's populated by reloadTaskLists().
+Most clients use these cached lists.
+*/
+//Starts the task list reload process for all accounts. The UI will be updated dynamically
+Accounts.prototype.reloadAllTasklists = function() {
+	console.debug('reloadAllTasklists');
+	for (let account of this)
+		this.reloadTasklists(account);
+	/* TODO: Do I really need this? Disabling for now
+	if (this.length <= 0) {
+		console.debug('reloadAllTasklists: No accounts, tasklistBox.reload() to empty');
+		tasklistBox.reload(); //no accounts => no one will trigger visuals
+		leftPanel.reload();
+	}*/
+}
+//Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
+Accounts.prototype.reloadTasklists = function(account) {
+	console.debug('account.reloadTasklists:', account);
+	let prom = null;
+	if (!account.isSignedIn()) {
+		console.debug('Not initialized/not signed in, no lists');
+		prom = Promise.resolve(null); //Not empty []; "not yet loaded".
+		//Note: we load tasklits, account signs out, signs in again -
+		// we want tasklists to be null until we load them for the first time again
+	} else
+		prom = account.tasklistList();
+	
+	prom.then(tasklists => {
+		//Optimize away some obvious cases of nothing changed
+		if (!account.ui.tasklits && !tasklists)
+			return; //but if it's "null -> []" or "[] -> null", we should transition
+		if (Array.isArray(account.ui.tasklists) && isEmpty(account.ui.tasklists) && Array.isArray(tasklists) && isEmpty(tasklists))
+			return;
+		account.ui.tasklists = tasklists;
+		console.log('account.reloadTasklists: new lists available for account', account);
+		accountStateChanged(account);
+	});
+	return prom;
+}
+
+var accounts = new Accounts();
+
+//Main page reaction to task list changes
 function accountListChanged() {
-	console.debug('accountsListChanged; accounts=', accounts);
 	//Hide task list while we have no accounts at all - looks cleaner
 	listPage.classList.toggle("hidden", (accounts.length <= 0));
 	//If we have no accounts at all, show account addition page,
@@ -482,30 +547,11 @@ function accountListChanged() {
 		//Since new accounts can't arrive except from its completion, there's no need to manually abort it in "else"
 		console.debug('accountListChanged: no accounts, tasklistBoxReload() to empty');
 	}
-	//Don't reloadAllAccountsTaskLists() here: most accounts are fine.
-	//Whoever is adding/changing individual accounts must trigger their reloadAccountTaskList() if needed.
-	//Reload the combo though -- the order of the lists could've changed
-	tasklistBox.reload();
-	leftPanel.reload();
 }
-// Called when the signed in status changes, whether after a button click or automatically
-function accountSigninStateChanged(account, isSignedIn) {
-	console.log('accountSigninStateChanged:', isSignedIn, account);
-	
-	//Request new task lists (null, if !signedIn)
-	reloadAccountTaskLists(account);
+accounts.addEventListener('change', accountListChanged);
 
-	//When signing off:
-	//  If we're on the list from this account, switch away -- will happen automatically from reloadAccountTaskLists()
-	//  TODO:	If we're editing a task from this account, cancel
 
-	//Do the accountStateChanged right now because the sign in state changed
-	//Once we get the tasklist registry we're going to do this another time
-	accountStateChanged(account);
-}
-//Called when the account init/signin status or the _cached_ tasklist registry changes
 function accountStateChanged(account) {
-	console.debug('accountStateChanged:', account);
 	let oldSelected = selectedTaskList();
 	
 	//Things to update:
@@ -528,9 +574,7 @@ function accountStateChanged(account) {
 			//But the available actions might have changed
 			accountActionsUpdate();
 }
-
-var accounts = new Accounts();
-accounts.addEventListener('change', accountListChanged);
+accounts.addEventListener('stateChange', accountStateChanged);
 
 
 
@@ -664,7 +708,7 @@ function accountReset(account) {
 	if (!confirm('Are you SURE you want to delete ALL your task lists and tasks in account "'+account.uiName()+'"?'))
 	return;
 	var job = account.reset()
-		.then(() => reloadAccountTaskLists(account));
+		.then(() => accounts.reloadTaskLists(account));
 	pushJob(job);
 }
 //Opens the account settings page, lets the user edit, try to apply and then save the settings
@@ -942,48 +986,6 @@ inherit(SettingsPage, BackendSettingsPage);
 
 
 /*
-Task lists reloading
-Each account has a cached ui.tasklists[] that's filled by reloadAccountTaskLists().
-Task list boxes reload by these caches.
-*/
-//Starts the task list reload process for all accounts. The UI will be updated dynamically
-function reloadAllAccountsTaskLists() {
-	console.debug('reloadAllAccountsTaskLists');
-	for (let account of accounts)
-		reloadAccountTaskLists(account);
-	if (accounts.length <= 0) {
-		console.debug('reloadAllAccontsTaskLists: No accounts, tasklistBox.reload() to empty');
-		tasklistBox.reload(); //no accounts => no one will trigger visuals
-		leftPanel.reload();
-	}
-}
-//Reloads the task lists for the specified account and updates the UI (the rest of the lists are not reloaded)
-function reloadAccountTaskLists(account) {
-	console.debug('reloadAccountTaskLists:', account);
-	let prom = null;
-	if (!account.isSignedIn()) {
-		console.debug('Not initialized/not signed in, no lists');
-		prom = Promise.resolve(null); //Not empty []; "not yet loaded".
-		//Note: we load tasklits, account signs out, signs in again -
-		// we want tasklists to be null until we load them for the first time again
-	} else
-		prom = account.tasklistList();
-	
-	prom.then(tasklists => {
-		//Optimize away some obvious cases of nothing changed
-		if (!account.ui.tasklits && !tasklists)
-			return; //but if it's "null -> []" or "[] -> null", we should transition
-		if (Array.isArray(account.ui.tasklists) && isEmpty(account.ui.tasklists) && Array.isArray(tasklists) && isEmpty(tasklists))
-			return;
-		account.ui.tasklists = tasklists;
-		console.log('reloadAccountTaskLists: new lists available for account', account);
-		accountStateChanged(account);
-	});
-	return prom;
-}
-
-
-/*
 Task list selection box
 Each entry's .value is a JSON.stringify({ account: accountId, tasklist: tasklistId }).
 */
@@ -1016,6 +1018,7 @@ function TaskListBox(boxElement) {
 	this.showAccounts = options.showAccountsInCombo;
 	this.selectAccounts = options.accountsClickable;
 	this.selectFailedAccounts = false;
+	accounts.addEventListener('change', () => this.reload());
 }
 TaskListBox.prototype.reload = function() {
 	console.debug('tasklistBoxReload');
@@ -1245,6 +1248,7 @@ function TaskListPanel(boxElement) {
 	this.showLists = true; //Disable to show only accounts
 	this.selectAccounts = options.accountsClickable;
 	this.selectFailedAccounts = false;
+	accounts.addEventListener('change', () => this.reload());
 	//Item dragging
 	this.dragMgr = new DragMgr();
 	this.dragMgr.autoShield = true;
@@ -2619,7 +2623,7 @@ function tasklistAdd(account) {
 	var job = account.tasklistAdd(title)
 	.then(result => {
 		newTasklistId = result.id;
-		return reloadAccountTaskLists(account)
+		return accounts.reloadTaskLists(account)
 	})
 	.then(response => {
 		setSelectedTaskList(new TaskListHandle(account, newTasklistId));
@@ -2648,7 +2652,7 @@ function tasklistRename(tasklist) {
 		'title': title,
 	};
 	var job = account.tasklistPatch(patch)
-		.then(result => reloadAccountTaskLists(account));
+		.then(result => accounts.reloadTaskLists(account));
 	pushJob(job);
 }
 
@@ -2677,7 +2681,7 @@ function tasklistDelete(tasklist) {
 		return;
 	
 	var job = account.tasklistDelete(tasklist.tasklist)
-	.then(result => reloadAccountTaskLists(account));
+	.then(result => accounts.reloadTaskLists(account));
 	pushJob(job);
 }
 
