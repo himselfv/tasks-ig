@@ -71,7 +71,7 @@ function initUi() {
 	
 	taskmenu = dropdownInit('taskmenu');
 	taskmenu.button.title = "Task actions";
-	taskmenu.button.classList.add("button");
+	taskmenu.button.classList.toggle("button", true);
 	taskmenu.add("taskTabBtn", taskEntryTabFocused, "—> Tab");
 	taskmenu.add("taskShiftTabBtn", taskEntryShiftTabFocused, "<— Shift-Tab");
 	taskmenu.addSeparator();
@@ -155,7 +155,7 @@ function printError(msg) {
 	if (popupText != '') popupText = popupText + '\r\n';
 	popup.innerText = (popupText+msg);
 	popup.classList.remove("hidden");
-	document.getElementById('activityIndicator').classList.add('error');
+	document.getElementById('activityIndicator').classList.toggle('error', true);
 	hadErrors = true;
 }
 function handleError(reason) {
@@ -172,10 +172,7 @@ function handleError(reason) {
 //Pass any promises to track their execution + catch errors.
 var jobs = new JobQueue();
 jobs.onChanged.subscribe(() => {
-	if (jobs.count > 0)
-		document.getElementById('activityIndicator').classList.add('working');
-	else
-		document.getElementById('activityIndicator').classList.remove('working');
+	document.getElementById('activityIndicator').classList.toggle('working', (jobs.count > 0));
 });
 jobs.onError.subscribe(handleError);
 function pushJob(job) { return jobs.push(job); } //Backward compatibility
@@ -461,7 +458,7 @@ Accounts.move = function(account, insertBefore) {
 	accountListChanged(); //the order has changed
 }
 //Switches places for accounts #i and #j in the ordered account list
-Accounts.swap = function(i, j) { return (i>j) ? Accounts.move(j, i) : Accounts.move(i, j); }
+Accounts.swap = function(i, j) { return (i>j) ? Accounts.move(i, j) : Accounts.move(j, i); }
 //Called when the _runtime_ account list changes either due to initial loading, or addition/deletion/reordering
 function accountListChanged() {
 	console.debug('accountsListChanged; accounts=', accounts);
@@ -531,11 +528,11 @@ Account list page
 Allows to add, remove, reorder accounts, in the future perhaps reorder/hide task lists inside accounts.
 */
 function AccountsPage() {
-	CustomPage.call(this, document.getElementById('accountListPage'));
+	CustomPage.call(this, document.getElementById('accountsPage'));
 	
 	this.content = new TaskListPanel(document.getElementById('accountList'));
 	this.content.showLists = false;
-	this.content.onchange = this.updateAccountActions.bind(this); //TODO
+	this.content.addEventListener('change', this.updateAccountActions.bind(this));
 	
 	document.getElementById('accountListClose').onclick = this.cancelClick.bind(this);
 	document.getElementById('accountListAdd').onclick = this.addClick.bind(this);
@@ -551,82 +548,53 @@ function AccountsPage() {
 	this.reload();
 }
 inherit(CustomPage, AccountsPage);
-AccountsPage.new = function() {
-	return new AccountsPage();
-}
+AccountsPage.new = function() { return new AccountsPage(); }
 AccountsPage.prototype.close = function() {
 	console.debug('AccountsPage.close');
-	this.page.classList.add("hidden");
+	this.page.classList.toggle("hidden", true);
 }
 AccountsPage.prototype.reload = function() {
-	/*nodeRemoveAllChildren(this.content);
-	for (let i in accounts)
-		this.content.appendChild(this.entryFromAccount(accounts[i]));*/
 	this.content.reload();
-	//We could try to restore the selection but we atm don't do reloads while open
 	this.updateAccountActions();
 }
-AccountsPage.prototype.entryFromAccount = function(account) {
-	let item = document.createElement('option');
-	item.value = account.id;
-	item.textContent = account.uiName();
-	return item;
-}
+AccountsPage.prototype.selectedIndex = function() { return this.content.selected ? Accounts.findIndex(this.content.selected.account) : undefined };
 AccountsPage.prototype.updateAccountActions = function() {
-	let selectedId = this.content.value;
+	let selectedId = this.content.selected;
+	let selectedIndex = selectedId ? Accounts.findIndex(selectedId.account) : undefined;
 	console.debug('AccountsPage.updateAccountActions', selectedId);
 	document.getElementById('accountListEditSettings').disabled = (!selectedId);
 	document.getElementById('accountListDelete').disabled = (!selectedId);
-	document.getElementById('accountListReset').disabled = (!selectedId || !options.debug || !accounts[this.content.selectedIndex].reset);
-	document.getElementById('accountListMoveUp').disabled = (!selectedId || (this.content.selectedIndex <= 0));
-	document.getElementById('accountListMoveDown').disabled = (!selectedId || (this.content.selectedIndex >= this.content.options.length-1));
+	document.getElementById('accountListReset').disabled = (!selectedId || !options.debug || !accounts[selectedIndex].reset);
+	document.getElementById('accountListMoveUp').disabled = (!selectedId || (selectedIndex <= 0));
+	document.getElementById('accountListMoveDown').disabled = (!selectedId || (selectedIndex >= accounts.length-1));
 }
 AccountsPage.prototype.moveUpClick = function() {
-	let index = this.content.selectedIndex;
-	if ((index <= 0) || (index > this.content.options.length-1))
+	let index = this.selectedIndex();
+	if ((index <= 0) || (index > accounts.length-1))
 		return;
-	//First move the visuals
-	this.content.insertBefore(this.content.options[index], this.content.options[index-1]);
-	//Now the accounts
 	Accounts.swap(index, index-1);
-	this.updateAccountActions(); //Positions have changed
+	this.reload();
 }
 AccountsPage.prototype.moveDownClick = function() {
-	let index = this.content.selectedIndex;
-	if ((index < 0) || (index >= this.content.options.length-1))
+	let index = this.selectedIndex();
+	if ((index < 0) || (index >= accounts.length-1))
 		return;
-	//First move the visuals
-	this.content.insertBefore(this.content.options[index+1], this.content.options[index]);
-	//Now the accounts
 	Accounts.swap(index+1, index);
-	this.updateAccountActions(); //Positions have changed
+	this.reload();
 }
 AccountsPage.prototype.addClick = function() {
-	StartNewAccountUi({ hasCancel:true, })
-	.then(account => {
-		let item = this.entryFromAccount(account);
-		//Currently new accounts always go to the end of the list:
-		this.content.appendChild(item);
-		this.updateAccountActions(); //The one above may now moveDown
-	});
+	StartNewAccountUi({ hasCancel:true, }).then(account => this.reload());
 }
 AccountsPage.prototype.editSettingsClick = function() {
-	accountEditSettings()
-	.then(() => {
-		//Editing the account must not change it's place in the list, but may change available actions
-		//If we ever support editing account ui names, we'll have to do reload/restore the selection here
-		this.updateAccountActions();
-	});
+	accountEditSettings().then(() => this.reload() );
 }
 AccountsPage.prototype.deleteClick = function() {
-	let index = this.content.selectedIndex;
-	if ((index < 0) || (index > this.content.options.length-1))
-		return;
-	accountDelete(accounts[index])
+	let account = Accounts.find(this.content.selected.account);
+	if (!account) return;
+	accountDelete(account)
 	.then(beenDeleted => {
 		if (!beenDeleted) return;
-		this.content.options[index].remove();
-		this.updateAccountActions(); //onchanged() won't get called automatically
+		this.reload();
 		//If this had been our last account, close this dialog.
 		//The "new account setup" will probably automatically pop up once the UI learns about no accounts,
 		//and this dialog should not remain open underneath.
@@ -637,10 +605,9 @@ AccountsPage.prototype.deleteClick = function() {
 	});
 }
 AccountsPage.prototype.resetClick = function() {
-	let index = this.content.selectedIndex;
-	if ((index < 0) || (index > this.content.options.length-1))
-		return;
-	accountReset(accounts[index]);
+	let account = this.content.selected.account;
+	if (!account) return;
+	accountReset(account);
 }
 
 
@@ -730,7 +697,7 @@ BackendSelectPage.prototype.reload = function() {
 	
 	if (this.hasCancel) {
 		let sep = document.createElement("p");
-		sep.classList.add("backendSelectSeparator");
+		sep.classList.toggle('backendSelectSeparator', true);
 		this.page.appendChild(sep);
 		let btn = document.createElement("button");
 		btn.textContent = 'Cancel';
@@ -739,7 +706,7 @@ BackendSelectPage.prototype.reload = function() {
 	}
 }
 BackendSelectPage.prototype.close = function() {
-	this.page.classList.add("hidden");
+	this.page.classList.toggle("hidden", true);
 }
 BackendSelectPage.prototype.backendClicked = function(btn) {
 	let backendClass = btn.associatedBackend;
@@ -837,7 +804,7 @@ SettingsPage.prototype.reenable = function() {
 SettingsPage.prototype.close = function() {
 	//console.debug('SettingsPage.close()');
 	this.reload({});
-	this.page.classList.add("hidden");
+	this.page.classList.toggle("hidden", true);
 }
 //Reloads settings list for the page
 SettingsPage.prototype.reload = function(settings) {
@@ -846,7 +813,7 @@ SettingsPage.prototype.reload = function(settings) {
 	for (let key in settings) {
 		let param = settings[key];
 		let row = document.createElement("div");
-		row.classList.add("settingsRow");
+		row.classList.toggle("settingsRow", true);
 		this.content.appendChild(row);
 		
 		let paramName = document.createElement("label");
@@ -1033,7 +1000,7 @@ TaskListHandle.fromString = function(value) {
 function TaskListBox(boxElement) {
 	if (!boxElement)
 		boxElement = document.createElement('select');
-	boxElement.classList.add('taskListBox');
+	boxElement.classList.toggle('taskListBox', true);
 	this.box = boxElement;
 	this.showAccounts = options.showAccountsInCombo;
 	this.selectAccounts = options.accountsClickable;
@@ -1054,7 +1021,7 @@ TaskListBox.prototype.reload = function() {
 		//Add a "grayed line" representing the account
 		let option = document.createElement("option");
 		option.text = account.uiName();
-		option.classList.add("optionAccount");
+		option.classList.toggle("optionAccount", true);
 		option.value = String(new TaskListHandle(account.id, undefined));
 		if (!this.selectAccounts)
 			option.disabled = true; //Normally can't select this
@@ -1068,7 +1035,7 @@ TaskListBox.prototype.reload = function() {
 				option.text = option.text+' (signing in)';
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists))
 				option.text = option.text+' (no lists)';
-			option.classList.add("grayed");
+			option.classList.toggle("grayed", true);
 			this.box.add(option);
 			continue;
 		} else
@@ -1082,7 +1049,7 @@ TaskListBox.prototype.reload = function() {
 			option.value = String(new TaskListHandle(account.id,  tasklist.id));
 			option.text = tasklist.title;
 			if (this.showAccounts)
-				option.classList.add('offset');
+				option.classList.toggle('offset', true);
 			this.box.add(option);
 		}
 	}
@@ -1093,9 +1060,9 @@ TaskListBox.prototype.reload = function() {
 		option.text = "No accounts";
 		option.value = "";
 		this.box.add(option);
-		this.box.classList.add("grayed");
+		this.box.classList.toggle("grayed", true);
 	} else {
-		this.box.classList.remove("grayed");
+		this.box.classList.toggle("grayed", false);
 	}
 	
 	//Select the same item as before, if possible -- but do not trigger changed()
@@ -1263,7 +1230,8 @@ Task list panel
 function TaskListPanel(boxElement) {
 	if (!boxElement)
 		boxElement = document.createElement('div');
-	boxElement.classList.add('tasklistPanel');
+	boxElement.classList.toggle('tasklistPanel', true);
+	this.setupEventTarget();
 	this.box = boxElement;
 	this.showAccounts = true; //Task list panel always shows account names atm
 	this.showLists = true; //Disable to show only accounts
@@ -1277,6 +1245,7 @@ function TaskListPanel(boxElement) {
 	this.dragMgr.dragMove = this.dragMove.bind(this);
 	this.dragMgr.dragEnd = this.dragEnd.bind(this);
 }
+AddCustomEventTarget(TaskListPanel);
 TaskListPanel.prototype.reload = function() {
 	console.debug('tasklistPanelReload');
 	nodeRemoveAllChildren(this.box);
@@ -1315,7 +1284,7 @@ TaskListPanel.prototype.reload = function() {
 		
 		if (!account.isSignedIn() || !account.ui || !account.ui.tasklists) {
 			if (this.selectFailedAccounts)
-				item.classList.remove('disabled');; //No task lists => make the account always selectable
+				item.classList.remove('disabled'); //No task lists => make the account always selectable
 			if (account.error) {
 				item.body.textContent = item.body.textContent+' (error)';
 				item.classList.add('error');
@@ -1395,6 +1364,7 @@ TaskListPanel.prototype.setSelected = function(tasklist, noNotify) {
 	console.debug('TaskListPanel.setSelected', arguments);
 	if (String(this.selected)==String(tasklist)) return;
 	this.selected = tasklist;
+	this.dispatchEvent('change', { selected: tasklist });
 	this.applySelected(this.selected);
 }
 TaskListPanel.prototype.applySelected = function(tasklist) {
@@ -1455,7 +1425,7 @@ TaskListPanel.prototype.dragStart = function(entry) {
 	
 	//Configure node for dragging
     var dragNode = entry;
-    dragNode.classList.add("dragging");
+    dragNode.classList.toggle("dragging", true);
     
 	//Create drag context
 	this.dragContext = {};
@@ -1708,7 +1678,7 @@ function accountPageReload(selected) {
 
 	//If what's selected is not an "account-wide page", we're not concerned
 	if (!selected || !selected.account || !!selected.tasklist) {
-		messages.classList.add('hidden');
+		messages.classList.toggle('hidden', true);
 		return;
 	}
 	messages.classList.remove('hidden');
@@ -2089,7 +2059,7 @@ var dragContext = {}; //stores some things temporarily while dragging
     //Configure node for dragging
     var dragEntry = event.entry;
     var dragNode = event.entry.node;
-    dragNode.classList.add("dragging");
+    dragNode.classList.toggle("dragging", true);
     
     
     //Remember existing place for simple restoration
@@ -2777,7 +2747,7 @@ Editor.prototype.open = function(taskId) {
 //Close the editor
 Editor.prototype.cancel = function() {
 	console.log("Closing the editor");
-	this.page.classList.add("hidden");
+	this.page.classList.toggle("hidden", true);
 	listPage.style.display = this.listPageBackup.display;
 	this.taskId = null;
 	window.removeEventListener("beforeunload", this.beforeUnloadWrapper);

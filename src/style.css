@@ -655,45 +655,58 @@ Editor
 
 /*
 Account list page
+There's too little info for the 100% width so center everything
 */
-#accountListPage {
+#accountsPage {
   flex-direction: row;
   padding: 0.4em;
 }
-#accountListPage select {
-  flex-grow: 1; /* stretch */
-  margin-right: 0.2em;
+#accountList {
+  flex-grow: 1;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: 4px;
 }
+#accountListControls {
+  margin-right: auto;
+}
+/* Trim tasklistPanel for the purpose */
 #accountList .account {
   margin: 0;
 }
 #accountList .account.selected {
-  border: 2px solid blue;
+  border: 1px solid black;
 }
 #accountList .accountAdd,
 #accountList .tasklist
 #accountList .tasklistAdd {
   display: none; /* hide unrelated things */
 }
+/* Hide all account actions except for approved ones */
+#accountsPage .tasklistPanel .dropdown-content * { display: none; }
+#accountsPage .tasklistPanel .accountEditBtn,
+#accountsPage .tasklistPanel .accountDeleteBtn,
+#accountsPage .tasklistPanel .accountResetBtn { display: block; }
+/* Controls */
 #accountListControls {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
-#accountListClose {
-  margin-top: auto; /* v to the bottom */
+#accountListControls button {
+  min-height: 2em;
 }
+/* Make [Close] stick to the bottom:
+#accountListClose {
+  margin-top: auto; 
+}*/
 #accountListReset {
   color: red;
 }
 #accountListReset:disabled {
   color: gray;
 }
-/* Hide all account actions except for approved ones */
-#accountList .dropdown-content * { display: none; }
-#accountList .accountEditBtn,
-#accountList .accountDeleteBtn,
-#accountList .accountResetBtn { display: block; }
+
 
 
 /*

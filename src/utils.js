@@ -638,7 +638,7 @@ function dropdownInit(root) {
 		root = document.getElementById(root);
 	else if (!root)
 		root = document.createElement("div");
-	root.classList.add("dropdown");
+	root.classList.toggle("dropdown", true);
 	
 	var item = document.createElement("span");
 	item.className = "dropbtn";
@@ -701,7 +701,7 @@ Buttons
 */
 function buttonNew(id, onclick, title, options) {
 	var button = document.createElement("a");
-	button.classList.add("button");
+	button.classList.toggle("button", true);
 	button.id = id;
 	button.title = title;
 	button.textContent = title;
@@ -802,7 +802,7 @@ Splitters and dragging
 
 function createDragShield() {
 	let shield = document.createElement("div");
-    shield.classList.add("dragging");
+    shield.classList.toggle("dragging", true);
     shield.style.position = "fixed";
     shield.style.left = "0px";
     shield.style.right = "0px";
@@ -1110,6 +1110,45 @@ Splitter.prototype.dragEnd = function(cancelDrag) {
 
 
 /*
+Custom event target
+Call this on a class to add addEventListener/removeEventListener/dispatchEvent.
+Call this.setupEventTarget() on creation
+*/
+function AddCustomEventTarget(func) {
+	func.prototype.setupEventTarget = AddCustomEventTarget.setupEventTarget;
+	func.prototype.addEventListener = AddCustomEventTarget.addEventListener;
+	func.prototype.removeEventListener = AddCustomEventTarget.removeEventListener;
+	func.prototype.dispatchEvent = AddCustomEventTarget.dispatchEvent;
+}
+utils.export(AddCustomEventTarget);
+AddCustomEventTarget.setupEventTarget = function(element) {
+	//Pass an element to steal its event target
+	this.eventTarget = element;
+	//Dummy element to use its EventTarget.
+	//We don't want to use this.page's event target as this.page might be permanent
+	//and handlers attached to this CustomPage() will remain after CustomPage() destructs.
+	if (!this.eventTarget)
+		this.eventTarget = document.createElement('div');
+}
+AddCustomEventTarget.addEventListener = function() {
+	this.eventTarget.addEventListener.apply(this.eventTarget, arguments);
+}
+AddCustomEventTarget.removeEventListener = function() {
+	this.eventTarget.removeEventListener.apply(this.eventTarget, arguments);
+}
+//Clients can subscribe to events which the descendants can raise
+//Pass Event object or a name for a custom event
+AddCustomEventTarget.dispatchEvent = function(event, args) {
+	if (typeof name == 'string')
+		event = new CustomEvent(event);
+	for (let key in args)
+		event[key] = args[key];
+	this.eventTarget.dispatchEvent(event);
+}
+
+
+
+/*
 Custom page object.
 Provides a promise which will be resolved (with collected results) or rejected (on cancel).
 Clients have to override 'ok' event and page.resolve() if they are satisfied.
@@ -1122,11 +1161,7 @@ utils.export(FormCancelError);
 function CustomPage(pageElement) {
 	//The HTML base element can be created from scratch or reused
 	this.page = pageElement;
-	
-	//Dummy element to use its EventTarget.
-	//We don't want to use this.page's event target as this.page might be permanent
-	//and handlers attached to this CustomPage() will remain after CustomPage() destructs.
-	this.eventTarget = document.createElement('div');
+	this.setupEventTarget();
 	
 	//Calling either of these closes the page
 	this.promise = new Promise((_resolve, _reject) => {
@@ -1145,23 +1180,11 @@ function CustomPage(pageElement) {
 	});
 }
 utils.export(CustomPage);
+AddCustomEventTarget(CustomPage);
 //Clients can wait for the page to be either OK'd or Cancelled
 CustomPage.prototype.waitResult = function() {
 	return this.promise;
 };
-CustomPage.prototype.addEventListener = function() {
-	this.eventTarget.addEventListener.apply(this.eventTarget, arguments);
-}
-CustomPage.prototype.removeEventListener = function() {
-	this.eventTarget.removeEventListener.apply(this.eventTarget, arguments);
-}
-//Clients can subscribe to events which the descendants can raise
-CustomPage.prototype.dispatchEvent = function(name, args) {
-	let event = new CustomEvent(name);
-	for (let key in args)
-		event[key] = args[key];
-	this.eventTarget.dispatchEvent(event);
-}
 //Two predefined events are OK and Cancel, you only have to raise these as handlers
 CustomPage.prototype.okClick = function(results) {
 	//Either pass the results or override the collection proc
