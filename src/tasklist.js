@@ -189,7 +189,7 @@ function TaskEntry(task) {
 	var item = null;
 
 	item = document.createElement("div");
-	item.className = "taskGrip";
+	item.className = "dragGrip";
 	this.node.appendChild(item);
 	this.gripCtl = item;
 

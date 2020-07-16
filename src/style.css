@@ -55,6 +55,26 @@ Error message popup
 .splitterH { cursor: ns-resize; }
 
 
+/* Dragging */
+.dragging { /* Set while dragging things, incl. on the mouse shield */
+  cursor: move;
+}
+.dragGrip { /* Explicit drag grip which appears when you hover over things like tasks */
+  background-image: url("res/grip.png");
+  cursor: move;
+  min-width: 10px;
+  position: relative;
+  visibility: hidden;
+}
+:hover > .dragGrip {
+  visibility: visible;
+}
+.dragging > .dragGrip {
+  visibility: visible;
+  cursor: move;
+}
+
+
 /*
 Toolbar basics (overrideable)
 By default captions are hidden, to show: set font-size.
@@ -295,6 +315,34 @@ Task list panel
 .taskListPanel li {
   display: flex;
   align-items: center;
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid white;
+  font-size: 1.05em;
+}
+.taskListPanel span,
+.taskListPanel .dropdown {
+  padding: 0.3em 0;
+}
+.taskListPanel .dropdown {
+  padding-right: 0.3em;
+}
+.taskListPanel .dragging { /* Dragging */
+  opacity: 0.7;
+  background-color: rgba(225,225,225,0.5);
+}
+.taskListPanel .dragGrip {
+  align-self: stretch;
+  min-width: 0.5em;
+}
+.taskListPanel .accountAdd .dragGrip {
+  visibility: hidden; /* not even appropriate */
+}
+.taskListPanel .tasklist .dragGrip,
+.taskListPanel .tasklistAdd .dragGrip {
+  min-width: 0.75em; /* bigger grip for left-padded items */
+  visibility: hidden; /* currently undraggable */
 }
 .taskListPanel li span {
   flex-grow: 10;
@@ -303,20 +351,10 @@ Task list panel
   -ms-user-select: none;
   user-select: none;
 }
-.taskListPanel li,
-.taskListPanel li:after {
-  font-size: 1.05em;
-  list-style-type: none;
-  margin: 0px;
-  padding: 0.3em 0.5em;
-  border: 1px solid white;
-}
-.taskListPanel li:not(.disabled),
-.taskListPanel li:not(.disabled):after {
+.taskListPanel li:not(.disabled) {
   cursor: pointer;
 }
-.taskListPanel li:hover:not(.disabled),
-.taskListPanel li:hover:not(.disabled):after {
+.taskListPanel li:hover:not(.disabled) {
   /* Different highlight: */
   background-color: #E3E9FF;
   border: 1px solid DodgerBlue;
@@ -329,6 +367,10 @@ Task list panel
   border-top: 1px solid #F7E784;
   border-bottom: 1px solid #F7E784;
 }
+.taskListPanel .grayed {
+  color: gray;
+}
+/* Accounts */
 .taskListPanel .account,
 .taskListPanel .accountAdd {
   margin: 0px;
@@ -343,13 +385,21 @@ Task list panel
   content: url("res/loading5_16.gif");
   position: relative;
   top: 0.2em;
+  margin-left: 0.5em;
 }
-.taskListPanel .dragging {
-  opacity: 0.7;
-  background-color: rgba(196,196,196,0.5);
+/* Tasklists */
+.taskListPanel .tasklist,
+.taskListPanel .tasklistAdd {
+  list-style-type: none;
+  color: #4E6D9A;
+  padding-left: 0.25em;
+  font-weight: bold;
 }
-/*
-To replace "Add account" text:
+.taskListPanel .tasklistAdd {
+  color: gray;
+  font-weight: normal;
+}
+/* Replace "Add account"/"Add tasklist" text:
 .taskListPanel .accountAdd {
   visibility:hidden;
 }
@@ -357,25 +407,8 @@ To replace "Add account" text:
   content: "＋"; -- to use a text
   content: url("res/plus2.png"); -- to use an image
   visibility: visible;
-}
-*/
-.taskListPanel .tasklist,
-.taskListPanel .tasklistAdd {
-  list-style-type: none;
-  /*color: DodgerBlue;*/
-  /*color: #4D6C98;*/
-  color: #4E6D9A;
-  padding-left: 1.0em;
-  font-weight: bold;
-}
-.taskListPanel .tasklistAdd {
-  color: gray;
-  font-weight: normal;
-}
-.taskListPanel .grayed {
-  color: gray;
-}
-/* Account and task actions */
+}*/
+/* Account and tasklist actions */
 .taskListPanel .dropbtn {
   background-image: url("res/menu-20.png");
   min-width: 20px;
@@ -386,7 +419,7 @@ To replace "Add account" text:
 .taskListPanel .dropdown-content {
   font-weight: normal;
 }
-/* You can display the actions on the same row instead of in submenu:
+/* Display the actions on the same row instead of in submenu:
 .taskListPanel .dropbtn {
   display: none;
 }
@@ -394,10 +427,6 @@ To replace "Add account" text:
   display: flex;
   font-size: 0;
 }*/
-.taskListPanel .disabled .accountSelectBtn {
-  display: none;
-}
-
 
 
 /*
@@ -469,14 +498,8 @@ Focus and mouseover
   border-bottom: 1px solid #F7E784;
 }
 .task:hover {}
-/*
-Dragging
-*/
 .task.dragging { /* Set while dragging the node */
   opacity: 0.75;
-}
-.dragging { /* Applied to the mouse shield */
-  cursor: move;
 }
 
 /*
@@ -487,25 +510,12 @@ Everything inside is packed unless overriden
   padding: 0;
   margin: 0;
 }
-
-.taskGrip {
-  background-image: url("res/grip.png");
-  cursor: move;
+.task .dragGrip {
   min-width: 10px;
-  position: relative;
-  visibility: hidden;
 }
-.childlvl-0 .taskGrip {
+.childlvl-0 .dragGrip {
   min-width: 8px; /* slightly narrower for root nodes */
 }
-.task:hover .taskGrip {
-  visibility: visible;
-}
-.task.dragging .taskGrip {
-  visibility: visible;
-  cursor: move;
-}
-
 .taskCheck {
   height: auto;
   /* Height margins must be coordinated with taskWrap */

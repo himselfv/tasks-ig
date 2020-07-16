@@ -1357,8 +1357,11 @@ TaskListPanel.prototype.reload = function() {
 	//Reapply selection
 	this.applySelected(this.selected);
 }
-TaskListPanel.prototype.addItem = function(title) {
+TaskListPanel.prototype.addItem = function(title, flags) {
 	let item = document.createElement("li");
+	item.grip = document.createElement("div");
+	item.grip.classList.add('dragGrip');
+	item.appendChild(item.grip);
 	item.body = document.createElement('span');
 	if (title)
 		item.body.textContent = title;
