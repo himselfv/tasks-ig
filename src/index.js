@@ -1292,17 +1292,17 @@ TaskListPanel.prototype.reload = function() {
 		item.body.addEventListener('click', this.itemClicked.bind(this, item));
 		
 		//Account actions
-		//Can't use IDs here because the buttons are going to be duplicated for every account/tasklist
+		//Can't have uniuqe IDs! Duplicated for every account/tasklist. Using classes
 		let drop = dropdownInit();
 		drop.button.title = "Account actions";
-		drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open");
+		drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open").classList.add('accountSelectBtn');
 		if (account.tasklistAdd)
-			drop.add('', tasklistAdd.bind(null, account), "Add list");
+			drop.add('', tasklistAdd.bind(null, account), "Add list").classList.add('tasklistAddBtn');
 		drop.addSeparator();
-		drop.add('', accountEditSettings.bind(null, account), "Edit...");
-		drop.add('', accountDelete.bind(null, account), "Delete");
+		drop.add('', accountEditSettings.bind(null, account), "Edit...").classList.add('accountEditBtn');
+		drop.add('', accountDelete.bind(null, account), "Delete").classList.add('accountDeleteBtn');
 		if (options.debug && account.reset)
-			drop.add('', accountReset.bind(null, account), "Reset");
+			drop.add('', accountReset.bind(null, account), "Reset").classList.add('accountResetBtn');
 		item.appendChild(drop);
 
 		if (!this.selectAccounts)
@@ -1345,11 +1345,11 @@ TaskListPanel.prototype.reload = function() {
 				//Task list actions
 				let drop = dropdownInit();
 				drop.button.title = "List actions";
-				drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open list");
+				drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open list").classList.add('listSelectBtn');
 				if (account.tasklistUpdate)
-					drop.add('', tasklistRename.bind(null, item.listHandle), "Rename list...");
+					drop.add('', tasklistRename.bind(null, item.listHandle), "Rename list...").classList.add('listRenameBtn');
 				if (account.tasklistDelete)
-					drop.add('', tasklistDelete.bind(null, item.listHandle), "Delete list");
+					drop.add('', tasklistDelete.bind(null, item.listHandle), "Delete list").classList.add('listDeleteBtn');
 				item.appendChild(drop);
 			}
 			

@@ -662,7 +662,7 @@ function dropdownClear() {
 }
 function dropdownAdd(id, onclick, text) {
 	var item = document.createElement('a');
-	item.id = id;
+	if (id) item.id = id;
 	item.textContent = text;
 	item.addEventListener("click", onclick);
 	this.menu.appendChild(item);
@@ -670,7 +670,7 @@ function dropdownAdd(id, onclick, text) {
 }
 function dropdownAddSeparator(id) {
 	var item = document.createElement('span');
-	item.id = id;
+	if (id) item.id = id;
 	item.className = "menu-separator";
 	this.menu.appendChild(item);
 	return item;
