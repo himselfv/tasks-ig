@@ -2105,38 +2105,37 @@ function taskEntryDragEnd(event) {
 	}
 }
 
-  //Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
-  function taskEntryDragMove(event) {
-  	if (!backend || !backend.move) return;
-  	
-    //Move the node to a new place in the same parent list, tentatively
-    var pos = event.pos;
-    var dragEntry = event.entry;
-    
-    //We can't use elementFromPoint as that would just give us the shield,
-    //and hiding the shield temporarily is too slow and makes the cursor flicker.
-    var targetEntry = tasks.entryFromViewportPoint(pos);
-    //console.log('taskDragMove:', pos, 'item=', dragEntry, 'target=', targetEntry);
-    if (!targetEntry || (targetEntry == dragEntry))
-      return; //leave the dragged node where it is
-    
-    //We don't have spaces between items and entryFromViewportPoint() always returns us something,
-    //so we don't have to handle the "between items" case:
-    let beforeEntry = ItemDragger.dragMoveObj(dragEntry.node, pos, [targetEntry.node, targetEntry.node.nextElementSibling]);
-    //console.log('taskDragMove: beforeEntry original=', beforeEntry);
-    if (beforeEntry)
-    	beforeEntry = beforeEntry.taskEntry;
-    
-    let afterEntry = (beforeEntry) ? beforeEntry.getPrev() : tasks.last();
-    //console.log('taskDragMove: beforeEntry=', beforeEntry, 'afterEntry=', afterEntry);
-    if ((typeof beforeEntry != 'undefined') && (beforeEntry != dragEntry)) {
-    	tasks.insertEntryBefore(dragEntry, beforeEntry);
-	    //Which parent to put this under? Always the same level as the node after us, or before us
-	    var newLevel = beforeEntry ? beforeEntry.getLevel() : afterEntry ? afterEntry.getLevel() : 0;
-	    dragEntry.setLevel(newLevel);
-	}
-  }
+//Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
+function taskEntryDragMove(event) {
+	if (!backend || !backend.move) return;
 
+	//Move the node to a new place in the same parent list, tentatively
+	var pos = event.pos;
+	var dragEntry = event.entry;
+
+	//We can't use elementFromPoint as that would just give us the shield,
+	//and hiding the shield temporarily is too slow and makes the cursor flicker.
+	var targetEntry = tasks.entryFromViewportPoint(pos);
+	//console.log('taskDragMove:', pos, 'item=', dragEntry, 'target=', targetEntry);
+	if (!targetEntry || (targetEntry == dragEntry))
+		return; //leave the dragged node where it is
+
+	//We don't have spaces between items and entryFromViewportPoint() always returns us something,
+	//so we don't have to handle the "between items" case:
+	let beforeEntry = ItemDragger.dragMoveObj(dragEntry.node, pos, [targetEntry.node, targetEntry.node.nextElementSibling]);
+	//console.log('taskDragMove: beforeEntry original=', beforeEntry);
+	if (beforeEntry)
+		beforeEntry = beforeEntry.taskEntry;
+
+	let afterEntry = (beforeEntry) ? beforeEntry.getPrev() : tasks.last();
+	//console.log('taskDragMove: beforeEntry=', beforeEntry, 'afterEntry=', afterEntry);
+	if ((typeof beforeEntry != 'undefined') && (beforeEntry != dragEntry)) {
+		tasks.insertEntryBefore(dragEntry, beforeEntry);
+		//Which parent to put this under? Always the same level as the node after us, or before us
+		var newLevel = beforeEntry ? beforeEntry.getLevel() : afterEntry ? afterEntry.getLevel() : 0;
+		dragEntry.setLevel(newLevel);
+	}
+}
 
   /*
   Tab:
