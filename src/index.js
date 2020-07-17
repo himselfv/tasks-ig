@@ -1438,25 +1438,25 @@ TaskListPanel.prototype.dragStart = function(entry) {
 	document.activeElement.blur();
 	resetSelection();
 	
+	if (!entry.classList.contains('account'))
+		return false; //only accounts can be dragged atm
+	
 	//Configure node for dragging
-    var dragNode = entry;
-    dragNode.classList.toggle("dragging", true);
-    
+	var dragNode = entry;
+	dragNode.classList.toggle("dragging", true);
+	
 	//Create drag context
 	this.dragContext = {};
 	this.dragContext.node = dragNode;
-	this.dragContext.nodeRect = dragNode.getBoundingClientRect();
 	
 	//Remember existing place for simple restoration
 	this.dragContext.oldPrev = dragNode.previousElementSibling;
 	
-	if (dragNode.classList.contains('account')) {
-		//Hide all children
-	    this.dragContext.oldChildren = document.createElement("div");
-	    this.dragContext.oldChildren.style.display = "none";
-	    for (let child of this.getAccountChildren(dragNode))
-	    	this.dragContext.oldChildren.insertBefore(child, null);
-	}
+	//Hide all children
+	this.dragContext.oldChildren = document.createElement("div");
+	this.dragContext.oldChildren.style.display = "none";
+	for (let child of this.getAccountChildren(dragNode))
+		this.dragContext.oldChildren.insertBefore(child, null);
 	return true;
 }
 TaskListPanel.prototype.dragMove = function(pos) {
@@ -1465,8 +1465,8 @@ TaskListPanel.prototype.dragMove = function(pos) {
 	
 	//Move the node to a new place in the same parent list, tentatively
 	let targetNode = this.nodeFromViewportPoint(pos);
-    if (!targetNode || (targetNode == dragNode))
-      return; //leave the dragged node where it is
+	if (!targetNode || (targetNode == dragNode))
+		return; //leave the dragged node where it is
 	
 	//Find the closest account nodes above and below the mouse pointer
 	let prevAccount = this.findPreviousAccount(targetNode); //can be the same node
@@ -1488,10 +1488,10 @@ TaskListPanel.prototype.dragMove = function(pos) {
 	if (nextAccount) pts.push(nextAccount);
 	let insertBefore = ItemDragger.dragMoveObj(dragNode, pos, pts);
 	//console.log('listDragMove: insertBefore(', pts, ') = ', insertBefore);
-    
-    if ((typeof insertBefore != 'undefined') //null is okay
-    	&& (insertBefore != dragNode.nextSibling))
-    	this.box.insertBefore(dragNode, insertBefore);
+	
+	if ((typeof insertBefore != 'undefined') //null is okay
+		&& (insertBefore != dragNode.nextSibling))
+		this.box.insertBefore(dragNode, insertBefore);
 }
 
 TaskListPanel.prototype.dragEnd = function(cancelDrag) {
@@ -2043,71 +2043,68 @@ Drag handling
 */
 var dragContext = {}; //stores some things temporarily while dragging
 
-  //Starts the drag
-  function taskEntryDragStart(event) {
-  	if (!backend || !backend.move) return;
-	
-    //Cancel any text selection that might be going on due to not capturing that initial mouse click
-    document.activeElement.blur();
-    resetSelection();
-    
-    //Configure node for dragging
-    var dragEntry = event.entry;
-    var dragNode = event.entry.node;
-    dragNode.classList.toggle("dragging", true);
-    
-    
-    //Remember existing place for simple restoration
-    //We need previous sibling because next sibling might well be our child
-    dragContext.oldPrev = dragEntry.getPrev();
-    dragContext.oldLevel = dragEntry.getLevel();
-    
-    //Hide all children
-    dragContext.oldChildren = document.createElement("div");
-    dragContext.oldChildren.style.display = "none";
-    var childEntries = dragEntry.getAllChildren();
-    childEntries.forEach(entry => { //move to offsite in the same order
-      dragContext.oldChildren.insertBefore(entry.node, null);
-    });
-  }
-  
-  //Ends the drag and commits the move
-  function taskEntryDragEnd(event) {
-  	if (!backend || !backend.move) return;
-  	
-    var dragEntry = event.entry;
-    var dragNode = event.entry.node;
-    var cancelDrag = event.cancelDrag;
-    
-    if (event.cancelDrag)
-      //Move the node back to where it were
-      dragEntry.move(dragContext.oldPrev, dragContext.oldLevel);
-    
-    var newLevel = cancelDrag ? dragContext.oldLevel : dragEntry.getLevel();
-    
-    //Unhide all children + move to where the parent is + adjust level
-    let nextNode = dragNode.nextElementSibling;
-    for (let i=0; i < dragContext.oldChildren.children.length;) { //don't increment, stay at 0
-      let node = dragContext.oldChildren.children[i];
-      dragNode.parentNode.insertBefore(node, nextNode);
-      if (newLevel != dragContext.oldLevel)
-        node.taskEntry.setLevel(node.taskEntry.getLevel() - dragContext.oldLevel + newLevel); //warning, likes to add as strings
-    }
-    
-    //restore backed up properties
-    dragNode.classList.remove("dragging");
-    
-    //find where we have moved
-    if (!cancelDrag && (dragContext.oldPrev != dragEntry.getPrev())) {
-      //Move the nodes on the backend! We only need to move the parent, but we have to properly select where
-      var newParent = dragEntry.getParent();
-      var newPrev = dragEntry.getPreviousSibling();
-      var job = taskEntryNeedIds([dragEntry, newParent, newPrev])
-      	.then(ids => backend.move(ids[0], ids[1], ids[2]));
-      pushJob(job);
-    }
-  }
-  
+//Starts drag
+function taskEntryDragStart(event) {
+	if (!backend || !backend.move) return;
+
+	//Cancel any text selection that might be going on due to not capturing that initial mouse click
+	document.activeElement.blur();
+	resetSelection();
+
+	//Configure node for dragging
+	var dragEntry = event.entry;
+	var dragNode = event.entry.node;
+	dragNode.classList.toggle("dragging", true);
+
+	//Remember existing place for simple restoration
+	//We need previous sibling because next sibling might well be our child
+	dragContext.oldPrev = dragEntry.getPrev();
+	dragContext.oldLevel = dragEntry.getLevel();
+
+	//Hide all children
+	dragContext.oldChildren = document.createElement("div");
+	dragContext.oldChildren.style.display = "none";
+	for (let child of dragEntry.getAllChildren()) //move to offsite in the same order
+		dragContext.oldChildren.insertBefore(child.node, null);
+}
+
+//Ends the drag and commits the move
+function taskEntryDragEnd(event) {
+	if (!backend || !backend.move) return;
+
+	var dragEntry = event.entry;
+	var dragNode = event.entry.node;
+	var cancelDrag = event.cancelDrag;
+
+	if (event.cancelDrag)
+		//Move the node back to where it were
+		dragEntry.move(dragContext.oldPrev, dragContext.oldLevel);
+
+	var newLevel = cancelDrag ? dragContext.oldLevel : dragEntry.getLevel();
+
+	//Unhide all children + move to where the parent is + adjust level
+	let nextNode = dragNode.nextElementSibling;
+	for (let i=0; i < dragContext.oldChildren.children.length;) { //don't increment, stay at 0
+		let node = dragContext.oldChildren.children[i];
+		dragNode.parentNode.insertBefore(node, nextNode);
+		if (newLevel != dragContext.oldLevel)
+			node.taskEntry.setLevel(node.taskEntry.getLevel() - dragContext.oldLevel + newLevel); //warning, likes to add as strings
+	}
+
+	//restore backed up properties
+	dragNode.classList.remove("dragging");
+
+	//find where we have moved
+	if (!cancelDrag && (dragContext.oldPrev != dragEntry.getPrev())) {
+		//Move the nodes on the backend! We only need to move the parent, but we have to properly select where
+		var newParent = dragEntry.getParent();
+		var newPrev = dragEntry.getPreviousSibling();
+		var job = taskEntryNeedIds([dragEntry, newParent, newPrev])
+			.then(ids => backend.move(ids[0], ids[1], ids[2]));
+		pushJob(job);
+	}
+}
+
   //Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
   function taskEntryDragMove(event) {
   	if (!backend || !backend.move) return;
