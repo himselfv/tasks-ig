@@ -983,6 +983,106 @@ DragMgr.prototype.dragEnd = function(cancelDrag) {}
 DragMgr.prototype.dragMove = function(pos) {}
 
 
+
+//Math for item drag operations
+function ItemDragger() {}
+utils.export(ItemDragger);
+
+/*
+Receives:
+  - the item being dragged (clientBoundingBox)
+  - mouse pos
+  - closest insertion point above the mouse (pt1)
+  - closest insertion point below the mouse (pt2)
+
+Chooses a new position so that the item stays as close as possible to being under the cursor.
+Takes current item location and possible shifts into account.
+
+Returns:
+  0 = no move needed
+  1 = insert at pt1
+  2 = insert at pt2
+*/
+ItemDragger.dragMove = function(item, pos, pt1, pt2) {
+	/*
+	The important thing is that our decision is consistent:
+	   i     ----  ---- 
+	  ----    i         
+	                i   
+	  ----   ----  ---- 
+	No matter where the item is in relation to the insertion points,
+	its final location must depend only on mouse position.
+	
+	Easy case: item.height <<< span.height:
+	  inner_span := the distance between "item.bottom when at pt1" and "item.top when at pt2"
+	Divide inner_span in half, choose whichever is closest.
+		(There's an alternative approach where we stick to where we are unless the mouse
+		is in the opposite [item.height] of the span, but let's set this aside for now)
+	
+	Harder case: span.height <= item.height
+	Intuitively this means that as the item is docked at the top and we move the mouse down,
+	there are points where it can be docked either way and still be under mouse.
+	
+	The distance above is going to be negative. However we can define:
+	  outer_span := the distance between "item.top when at pt1" and "item.bottom when at pt2"
+	This gives the same midway point as inner_span and works here too.
+	
+	However! The "jump threshold" may now land inside the item itself, and the jump will
+	happen as the mouse is still over the item.
+	
+	This may or may not be desirable. To prevent, add a general rule:
+	  "So long as the mouse is over the item, leave it where it is".
+	*/
+
+	/* Uncomment to never move the item unless the mouse is outside of it:
+	if ((pos.y > item.y) && (pos.y < item.y+item.h))
+		return 0;
+	*/
+	let pt1_a = (item.y >= pt1) ? pt1 : pt1 - item.height;
+	let pt2_a = (item.y >= pt2) ? pt2 + item.height : pt2;
+	let ret = (pos.y > (pt1_a + pt2_a) / 2) ? 2 : 1;
+	//console.log('dragMove: item=', item, 'pos=', pos, 'pt1=', pt1, 'pt2=', pt2, 'pt1a=', pt1_a, 'pt2a=', pt2_a, 'mid=', (pt1_a+pt2_a)/2, 'ret=', ret);
+	if (((ret==2) && (item.y==pt2))||((ret==1)&&(item.y==pt1)))
+		return 0;
+	return ret;
+}
+
+/*
+Same but pass HTML elements as item and pts (targets for insertBefore).
+Accepts:
+  pts			== [array] of insertion points. Null = at the end of item's parent.
+Returns:
+  undefined 	== do not move
+  HTML element	== insert before this element
+  null			== insert at bottom
+*/
+ItemDragger.dragMoveObj = function(item, pos, pts) {
+	//console.log('dragMoveObj: item=', item, 'pos=', pos, 'pts=', pts);
+	let itemRect = item.getBoundingClientRect();
+	if (!pts || !pts.length || (pts.length <= 0))
+		return undefined;
+	
+	let parentRect = item.parent ? item.parent.getBoundingClientRect() : { bottom: 0, right: 0 };
+	//console.log('dragMoveObj: itemRect=', itemRect, 'parentRect=', parentRect);
+	let prevRect = null;
+	for (let i=0; i<pts.length; i++) {
+		let nextRect = pts[i] ? pts[i].getBoundingClientRect() : { top: parentRect.bottom, left: parentRect.right };
+		//console.log('dragMoveObj: trying pt['+String(i)+']', pts[i], 'rect=', nextRect);
+		if (pos.y < nextRect.y) {
+			if (!prevRect) {
+				//console.log('dragMoveObj: before first point, returning first');
+				return pts[i];
+			}
+			let ret = ItemDragger.dragMove(itemRect, pos, prevRect.y, nextRect.y);
+			return (ret==2) ? pts[i] : (ret==1) ? pts[i-1] : undefined;
+		}
+		prevRect = nextRect;
+	}
+	//console.log('dragMoveObj: after last point, returning last');
+	return pts[pts.length-1];
+}
+
+
 /*
 Splitter element.
  * Vertical or horizontal

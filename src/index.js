@@ -1445,6 +1445,7 @@ TaskListPanel.prototype.dragStart = function(entry) {
 	//Create drag context
 	this.dragContext = {};
 	this.dragContext.node = dragNode;
+	this.dragContext.nodeRect = dragNode.getBoundingClientRect();
 	
 	//Remember existing place for simple restoration
 	this.dragContext.oldPrev = dragNode.previousElementSibling;
@@ -1470,47 +1471,26 @@ TaskListPanel.prototype.dragMove = function(pos) {
 	//Find the closest account nodes above and below the mouse pointer
 	let prevAccount = this.findPreviousAccount(targetNode); //can be the same node
 	let nextAccount = this.findNextAccount(targetNode.nextSibling);
-	//console.log('prev=', prevAccount, 'next=', nextAccount);
 	
-	//Find the dimensions of both accounts with their children
-	let prevAccountRect = null;
-	let prevAccountNodes = null;
+	//Find the last node related to the previous account
+	let prevAccountLast = prevAccount;
 	if (prevAccount) {
-		prevAccountRect = prevAccount.getBoundingClientRect();
-		prevAccountRect = { top: prevAccountRect.top, bottom: prevAccountRect.bottom };
-		prevAccountNodes = this.getAccountChildren(prevAccount);
+		let prevAccountNodes = this.getAccountChildren(prevAccount);
 		if (prevAccountNodes.length > 0)
-			prevAccountRect.bottom = prevAccountNodes[prevAccountNodes.length-1].getBoundingClientRect().bottom;
-		prevAccountNodes.unshift(prevAccount); //for simplicity
+			prevAccountLast = prevAccountNodes[prevAccountNodes.length-1];
 	}
-	//console.log('pos=',pos,'rect=',prevAccountRect);
-
-	//For nextAccount we only care about the top
-	let nextAccountRect = nextAccount ? nextAccount.getBoundingClientRect() : null;
+	//console.log('dragMove: prev=', prevAccount, 'prevLast=', prevAccountLast, 'next=', nextAccount);
 	
-	let insertBefore = null;
-	
-	//If our pointer is inside the prevAccount then what matters is in which half it is
-	if (!!prevAccount && (pos.y > prevAccountRect.top) && (pos.y < prevAccountRect.bottom)) {
-		if (pos.y >= (prevAccountRect.top + prevAccountRect.bottom)/2.0)
-			insertBefore = prevAccountNodes[prevAccountNodes.length-1].nextSibling;
-		else
-			insertBefore = prevAccountNodes[0];
-	}
-	//Otherwise if both accounts are available then we stick to the closest of them
-	else if (!!prevAccount && !!nextAccount) {
-		if (pos.y - prevAccountRect.bottom > nextAccountRect.top - pos.y)
-			insertBefore = nextAccount;
-		else
-			insertBefore = prevAccountNodes[prevAccountNodes.length-1].nextSibling;
-	}
-	//Otherwise stick to whichever is available
-	else if (prevAccount)
-		insertBefore = prevAccountNodes[prevAccountNodes.length-1].nextSibling;
-	else
-		insertBefore = nextAccount; //even if nullptr
+	//Can be both over the previous account and between previous and the next
+	let pts = [];
+	if (prevAccount) pts.push(prevAccount);
+	if (prevAccountLast) pts.push(prevAccountLast.nextElementSibling);
+	if (nextAccount) pts.push(nextAccount);
+	let insertBefore = ItemDragger.dragMoveObj(dragNode, pos, pts);
+	//console.log('dragMove: insertBefore(', pts, ') = ', insertBefore);
     
-    if (insertBefore)
+    if ((typeof insertBefore != 'undefined') //null is okay
+    	&& (insertBefore != dragNode.nextSibling))
     	this.box.insertBefore(dragNode, insertBefore);
 }
 
@@ -2138,33 +2118,21 @@ var dragContext = {}; //stores some things temporarily while dragging
     
     //We can't use elementFromPoint as that would just give us the shield,
     //and hiding the shield temporarily is too slow and makes the cursor flicker.
-    var targetEntry = tasks.entryFromViewportPoint(pos, nodeRect);
+    var targetEntry = tasks.entryFromViewportPoint(pos);
+    //console.log('taskDragMove:', pos, 'item=', dragEntry, 'target=', targetEntry);
     if (!targetEntry || (targetEntry == dragEntry))
       return; //leave the dragged node where it is
-    var nodeRect = targetEntry.node.getBoundingClientRect();
     
-    //Whether we move it above or before the node depends on where the node is now
-    var dragNodeRect = dragEntry.node.getBoundingClientRect();
-    var insertAfter = (dragNodeRect.top < nodeRect.top);
+    //We don't have spaces between items and entryFromViewportPoint() always returns us something,
+    //so we don't have to handle the "between items" case:
+    let beforeEntry = ItemDragger.dragMoveObj(dragEntry.node, pos, [targetEntry.node, targetEntry.node.nextElementSibling]);
+    //console.log('taskDragMove: beforeEntry original=', beforeEntry);
+    if (beforeEntry)
+    	beforeEntry = beforeEntry.taskEntry;
     
-    /*
-    Nodes may be of different heights so we risk causing infinite switch sequence:
-       D    N    D
-       N -> N -> N -> ...
-       N    D    N
-    Only move if the pointer is in the top (bottom) dragNodeHeight of the target node.
-    */
-    if (insertAfter) {
-      if (pos.y < nodeRect.bottom - dragNodeRect.height)
-        return;
-    } else {
-      if (pos.y > nodeRect.top + dragNodeRect.height)
-        return;
-    }
-    
-    var beforeEntry = (insertAfter) ? targetEntry.getNext() : targetEntry;
-    var afterEntry = (insertAfter) ? targetEntry : targetEntry.getPrev();
-    tasks.insertEntryBefore(dragEntry, beforeEntry); //though all nodes have the same parent HTML element!
+    let afterEntry = (beforeEntry) ? beforeEntry.getPrev() : tasks.last();
+    //console.log('taskDragMove: beforeEntry=', beforeEntry, 'afterEntry=', afterEntry);
+    tasks.insertEntryBefore(dragEntry, beforeEntry);
       
     //Which parent to put this under? Always the same level as the node after us, or before us
     var newLevel = beforeEntry ? beforeEntry.getLevel() : afterEntry ? afterEntry.getLevel() : 0;
