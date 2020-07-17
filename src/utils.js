@@ -945,7 +945,6 @@ DragMgr.prototype.startDrag = function() {
     //To prevent mouse cursor from changing over unrelated elements + to avoid interaction with them,
     //we need to shield the page while dragging
     if (this.autoShield) {
-    	console.log('shield added');
     	this.shield = createDragShield();
     	if (this.autoShieldCursorStyle)
     		this.shield.style.cursor = this.autoShieldCursorStyle;
@@ -1041,10 +1040,42 @@ ItemDragger.dragMove = function(item, pos, pt1, pt2) {
 	let pt1_a = (item.y >= pt1) ? pt1 : pt1 - item.height;
 	let pt2_a = (item.y >= pt2) ? pt2 + item.height : pt2;
 	let ret = (pos.y > (pt1_a + pt2_a) / 2) ? 2 : 1;
-	//console.log('dragMove: item=', item, 'pos=', pos, 'pt1=', pt1, 'pt2=', pt2, 'pt1a=', pt1_a, 'pt2a=', pt2_a, 'mid=', (pt1_a+pt2_a)/2, 'ret=', ret);
+	//	console.log('dragMove: item=', item, 'pos=', pos, 'pt1=', pt1, 'pt2=', pt2, 'pt1a=', pt1_a, 'pt2a=', pt2_a, 'mid=', (pt1_a+pt2_a)/2, 'ret=', ret);
 	if (((ret==2) && (item.y==pt2))||((ret==1)&&(item.y==pt1)))
 		return 0;
 	return ret;
+}
+
+/*
+Insertion points may be hidden => getBoundingClientRect() won't work; or may be null.
+In both cases their rects must be calculated from the preceding items.
+This is currently a vertical function that assumes that all items go one after another.
+*/
+ItemDragger.getInsertionPointRect = function(parent, pt, precedingPt, precedingRect) {
+	if (pt) {
+		let rect = pt.getBoundingClientRect();
+		if ((rect.x!=0) || (rect.y!=0) || (rect.width!=0) || (rect.height!=0))
+			return rect;
+		pt = pt.previousElementSibling;
+	} else {
+		//"null" means after all items, but that's not "parent.bottom" --
+		//it's "just after parent.lastElementChild"! there can be empty space
+		pt = parent.lastElementChild;
+	}
+	
+	while (pt) {
+		//Preceding rect could've also been weirdly calculated, save on recursion by reusing it directly
+		let rect = (!!precedingPt && (pt==precedingPt)) ? precedingRect : pt.getBoundingClientRect();
+		if ((rect.x!=0) || (rect.y!=0) || (rect.width!=0) || (rect.height!=0))
+			return new DOMRect(rect.right, rect.bottom, 0, 0);
+	}
+	
+	 //If we have arrived at the top, use parent's top/left
+	 if (parent) {
+	 	 let parentRect = parent.getBoundingClientRect();
+	 	 return new DOMRect(parentRect.left, parentRect.top, 0, 0);
+	 }
+	 return new DOMRect(0,0,0,0); //really can't
 }
 
 /*
@@ -1055,6 +1086,8 @@ Returns:
   undefined 	== do not move
   HTML element	== insert before this element
   null			== insert at bottom
+Assumes that:
+  all insertion points are in the same parent, in the given order
 */
 ItemDragger.dragMoveObj = function(item, pos, pts) {
 	//console.log('dragMoveObj: item=', item, 'pos=', pos, 'pts=', pts);
@@ -1062,20 +1095,22 @@ ItemDragger.dragMoveObj = function(item, pos, pts) {
 	if (!pts || !pts.length || (pts.length <= 0))
 		return undefined;
 	
-	let parentRect = item.parent ? item.parent.getBoundingClientRect() : { bottom: 0, right: 0 };
 	//console.log('dragMoveObj: itemRect=', itemRect, 'parentRect=', parentRect);
 	let prevRect = null;
 	for (let i=0; i<pts.length; i++) {
-		let nextRect = pts[i] ? pts[i].getBoundingClientRect() : { top: parentRect.bottom, left: parentRect.right };
+		//Calculate the insertion point position
+		let nextRect = this.getInsertionPointRect(item.parent, pts[i], (i>0) ? pts[i-1] : null, prevRect);
+
 		//console.log('dragMoveObj: trying pt['+String(i)+']', pts[i], 'rect=', nextRect);
 		if (pos.y < nextRect.y) {
 			if (!prevRect) {
 				//console.log('dragMoveObj: before first point, returning first');
 				return pts[i];
 			}
-			let ret = ItemDragger.dragMove(itemRect, pos, prevRect.y, nextRect.y);
+			let ret = this.dragMove(itemRect, pos, prevRect.y, nextRect.y);
 			return (ret==2) ? pts[i] : (ret==1) ? pts[i-1] : undefined;
 		}
+		
 		prevRect = nextRect;
 	}
 	//console.log('dragMoveObj: after last point, returning last');

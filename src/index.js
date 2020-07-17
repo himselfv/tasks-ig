@@ -1479,7 +1479,7 @@ TaskListPanel.prototype.dragMove = function(pos) {
 		if (prevAccountNodes.length > 0)
 			prevAccountLast = prevAccountNodes[prevAccountNodes.length-1];
 	}
-	//console.log('dragMove: prev=', prevAccount, 'prevLast=', prevAccountLast, 'next=', nextAccount);
+	//console.log('listDragMove: prev=', prevAccount, 'prevLast=', prevAccountLast, 'next=', nextAccount);
 	
 	//Can be both over the previous account and between previous and the next
 	let pts = [];
@@ -1487,7 +1487,7 @@ TaskListPanel.prototype.dragMove = function(pos) {
 	if (prevAccountLast) pts.push(prevAccountLast.nextElementSibling);
 	if (nextAccount) pts.push(nextAccount);
 	let insertBefore = ItemDragger.dragMoveObj(dragNode, pos, pts);
-	//console.log('dragMove: insertBefore(', pts, ') = ', insertBefore);
+	//console.log('listDragMove: insertBefore(', pts, ') = ', insertBefore);
     
     if ((typeof insertBefore != 'undefined') //null is okay
     	&& (insertBefore != dragNode.nextSibling))
@@ -1513,7 +1513,8 @@ TaskListPanel.prototype.dragEnd = function(cancelDrag) {
 	
 	dragNode.classList.remove("dragging");
 	
-	if (!cancelDrag && (this.dragContext.oldPrev != dragNode.previousElement)) {
+	console.log('dragEnd', cancelDrag, this.dragContext, dragNode);
+	if (!cancelDrag && (this.dragContext.oldPrev != dragNode.previousElementSibling)) {
 		if (dragNode.classList.contains('account'))
 			this.dragAccountApply(dragNode)
 	}
@@ -1521,6 +1522,7 @@ TaskListPanel.prototype.dragEnd = function(cancelDrag) {
 }
 //Applies the changes made by dragging an account node to the application account list
 TaskListPanel.prototype.dragAccountApply = function(dragNode) {
+	console.log('dragAccountApply');
 	//Find the account index
 	let accountId = dragNode.listHandle.account;
 	
@@ -1529,6 +1531,7 @@ TaskListPanel.prototype.dragAccountApply = function(dragNode) {
 	let nextAccountId = nextAccount ? nextAccount.listHandle.account : null;
 	
 	//Move
+	console.log('--> accounts.move');
 	accounts.move(accountId, nextAccountId);
 }
 
