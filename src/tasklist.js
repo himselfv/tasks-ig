@@ -29,50 +29,21 @@ var unit = new Unit((typeof exports != 'undefined') && exports);
 //Creates a task tree object in a given base element
 function TaskList(where) {
 	this.root = where;
-	this.initCustomEvents();
 	this.dragMgr = new DragMgr();
 	this.dragMgr.autoShield = true;
 	this.dragMgr.dragDelay = 500;
 	this.dragMgr.dragStart = this.dragStart.bind(this);
 	this.dragMgr.dragMove = this.dragMove.bind(this);
 	this.dragMgr.dragEnd = this.dragEnd.bind(this);
+	//Most events are rerouted from the underlying HTMLElement. Some are extended/replaced with custom ones.
+	//Rewired events (don't follow the standard ES drag model):
+  	//  dragstart/dragmove/dragend
+	this.setupEventTarget(this.root);
 }
 unit.export(TaskList);
+AddCustomEventTarget(TaskList);
 TaskList.prototype.toString = function() {
 	return "TaskList " + this.root.toString();
-}
-
-/*
-Event dispatching.
-Most events are rerouted from the underlying HTMLElement. Some are extended/replaced with custom ones.
-Rewired events:
-  dragstart/dragmove/dragend
-All do not follow the standard ES drag model.
-*/
-TaskList.prototype.initCustomEvents = function() {
-	//We have to fire rewired events separately so as not to break the underlying control
-	//this.eventTarget = new EventTarget();
-	//this.customEventNames = ["dragstart", "dragmove", "dragend"];
-}
-TaskList.prototype.addEventListener = function(event, listener, param1, param2) {
-	//Some events we reroute to us, hiding the underlying ones
-	//if (this.customEventNames.includes(event))
-	//	this.eventTarget.addEventListener(event, listener, param1, param2)
-	//else
-		//By default route to standard events of the underlying HTML element
-		return this.root.addEventListener(event, listener, param1, param2);
-}
-TaskList.prototype.removeEventListener = function(event, listener, param1) {
-	//if (this.customEventNames.includes(event))
-	//	this.eventTarget.addEventListener(event, listener, param1, param2)
-	//else
-		return this.root.removeEventListener(event, listener, param1);
-}
-TaskList.prototype.dispatchEvent = function(event) {
-	//if (this.customEventNames.includes(event))
-	//	return this.eventTarget.dispatchEvent(event);
-	//else
-		return this.root.dispatchEvent(event);
 }
 
 
@@ -186,6 +157,9 @@ function TaskEntry(task) {
 	this.node.taskEntry = this; //reverse link
 	this.node.addEventListener("click", this.onNodeClicked.bind(this));
 
+	//Task entries forward to and extend node's event dispatcher
+	this.setupEventTarget(this.node);
+
 	var item = null;
 
 	item = document.createElement("div");
@@ -241,16 +215,7 @@ unit.export(TaskEntry);
 TaskEntry.prototype.toString = function() {
 	return this.node.toString();
 }
-//Task entries forward to and extend node's event dispatcher
-TaskEntry.prototype.addEventListener = function(event, listener, param1, param2) {
-	return this.node.addEventListener(event, listener, param1, param2);
-}
-TaskEntry.prototype.removeEventListener = function(event, listener, param1) {
-	return this.node.removeEventListener(event, listener, param1);
-}
-TaskEntry.prototype.dispatchEvent = function(event) {
-	return this.node.dispatchEvent(event);
-}
+AddCustomEventTarget(TaskEntry);
 
 //Updates visual representation of a given task with given changes
 //Only some changes are reflected. Deletions, moves and nesting changes in general aren't

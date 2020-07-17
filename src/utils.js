@@ -1279,14 +1279,13 @@ AddCustomEventTarget.removeEventListener = function() {
 //Clients can subscribe to events which the descendants can raise
 //Pass Event object or a name for a custom event
 AddCustomEventTarget.dispatchEvent = function(event, args) {
-	if (typeof name == 'string')
+	if (typeof event == 'string')
 		event = new CustomEvent(event);
 	if (args)
 		for (let key in args)
 			event[key] = args[key];
 	this.eventTarget.dispatchEvent(event);
 }
-
 
 
 /*
