@@ -29,12 +29,9 @@ var unit = new Unit((typeof exports != 'undefined') && exports);
 //Creates a task tree object in a given base element
 function TaskList(where) {
 	this.root = where;
-	this.dragMgr = new DragMgr();
+	this.dragMgr = new TaskEntryDragMgr(this);
 	this.dragMgr.autoShield = true;
 	this.dragMgr.dragDelay = 500;
-	this.dragMgr.dragStart = this.dragStart.bind(this);
-	this.dragMgr.dragMove = this.dragMove.bind(this);
-	this.dragMgr.dragEnd = this.dragEnd.bind(this);
 	//Most events are rerouted from the underlying HTMLElement. Some are extended/replaced with custom ones.
 	//Rewired events (don't follow the standard ES drag model):
   	//  dragstart/dragmove/dragend
@@ -119,7 +116,7 @@ TaskList.prototype.appendTasksWithChildren = function(tasks, level, taskRecords)
 		this.appendTask(tasks[i], level);
 		//prevent some dumb endless recursions
 		if (!tasks[i].id || (tasks[i].id==tasks[i].parent)) {
-			console.log('TaskList: task ID is weird, preventing recursion');
+			//console.log('TaskList: task ID is weird, preventing recursion');
 			continue;
 		}
 		this.appendTaskChildren(tasks[i].id, level+1, taskRecords); //Add children
@@ -647,15 +644,13 @@ TaskList.prototype.onEntryTitleFocusOut = function(oldEvent) {
 
 /*
 Dragging:
-The list should fire three events:
+The list fires three events:
   dragStart(entry)  --- only called when the dragging has actually commenced
   dragMove
   dragEnd
 
-The following fields are implicitly added on drag:
-  dragStartTimer = null;
-  dragging = false; //actually dragging
-  dragOffsetPos = { x: null, y: null }; //Mouse offset from the TL of the element at the start of the drag
+The default drag manager also handles these automatically and drags items,
+so you can only handle the 'dragcommit' event if the default drag satisfies you.
 */
 //Drag on a grip
 TaskList.prototype.onEntryDragGripMouseDown = function(event) {
@@ -664,30 +659,84 @@ TaskList.prototype.onEntryDragGripMouseDown = function(event) {
 	event.stopPropagation(); //handled here, don't start the timer
 	event.preventDefault();
 }
-//Drag started
-TaskList.prototype.dragStart = function() {
-	//Notify the subscribers
-	//We leave most of the drag handling outside for now
-	var event = new CustomEvent("dragstart");
-	event.entry = this.dragMgr.dragEntry ? this.dragMgr.dragEntry.taskEntry : null;
-	this.dispatchEvent(event);
-	return true;
+function TaskEntryDragMgr(parent) {
+	ItemDragMgr.call(this);
+	this.parent = parent;
 }
-//Drag cancelled/commited
-TaskList.prototype.dragEnd = function(cancelDrag) {
+inherit(ItemDragMgr, TaskEntryDragMgr);
+TaskEntryDragMgr.prototype.getNodeChildren = function(node) {
+	return node.taskEntry.getAllChildren().map(entry => entry.node);
+}
+TaskEntryDragMgr.prototype.dragStart = function(node) {
+	//console.log('TaskEntryDragMgr::dragStart');
+	//Notify the subscribers
+	var event = new CustomEvent("dragstart");
+	event.entry = this.dragNode ? this.dragNode.taskEntry : null;
+	if (!this.parent.dispatchEvent(event)) {
+		//console.log('TaskEntryDragMgr: not approved, aborting drag');
+		return false;
+	}
+	//Default handling
+	return ItemDragMgr.prototype.dragStart.call(this, node);
+}
+TaskEntryDragMgr.prototype.dragEnd = function(cancelDrag) {
+	//console.log('TaskEntryDragMgr::dragEnd');
 	//Notify the subscribers
 	var event = new CustomEvent("dragend");
-	event.entry = this.dragMgr.dragEntry ? this.dragMgr.dragEntry.taskEntry : null;
+	event.entry = this.dragNode ? this.dragNode.taskEntry : null;
 	event.cancelDrag = cancelDrag;
-	this.dispatchEvent(event);
+	this.parent.dispatchEvent(event);
+	
+	//Default handling
+	if (!this.context) return;
+	//We're going to unpack children at a new place so adjust their levels
+	var newLevel = cancelDrag ? this.context.oldLevel : this.dragNode.taskEntry.getLevel();
+	if (newLevel != this.context.oldLevel) //right now this check looks weird but we might start dragging with children unpacked
+		for (let node of this.context.oldChildren.children)
+			node.taskEntry.setLevel(node.taskEntry.getLevel() - this.context.oldLevel + newLevel);
+	return ItemDragMgr.prototype.dragEnd.call(this, cancelDrag);
 }
-//Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
-TaskList.prototype.dragMove = function(pos) {
+TaskEntryDragMgr.prototype.dragMove = function(pos) {
 	//Notify the subscribers
 	var event = new CustomEvent("dragmove");
-	event.entry = this.dragMgr.dragEntry ? this.dragMgr.dragEntry.taskEntry : null;
+	event.entry = this.dragNode ? this.dragNode.taskEntry : null;
 	event.pos = pos;
-	this.dispatchEvent(event);
+	this.parent.dispatchEvent(event);
+	//Default handling
+	return ItemDragMgr.prototype.dragMove.call(this, pos);
+}
+TaskEntryDragMgr.prototype.getInsertPoints = function(targetNode) {
+	//We don't have spaces between items and entryFromViewportPoint() always returns us something,
+	//so we don't have to handle the "between items" case:
+	return [targetNode, targetNode.nextElementSibling];
+}
+TaskEntryDragMgr.prototype.dragMoveBefore = function(node, insertBefore) {
+	//Moves the node before the given node or null
+	node.parentNode.insertBefore(node, insertBefore);
+	let beforeEntry = insertBefore ? insertBefore.taskEntry : null;
+	let afterEntry = beforeEntry ? beforeEntry.getPrev() : tasks.last(); //TODO: "tasks"? maybe "parent"
+	//Which parent to put this under? Always the same level as the node after us, or before us
+	var newLevel = beforeEntry ? beforeEntry.getLevel() : afterEntry ? afterEntry.getLevel() : 0;
+	node.taskEntry.setLevel(newLevel);
+}
+TaskEntryDragMgr.prototype.saveContext = function() {
+	var dragEntry = this.dragNode.taskEntry;
+	//Remember existing place for simple restoration
+	this.context.oldPrev = dragEntry.getPrev();
+	this.context.oldLevel = dragEntry.getLevel();
+}
+TaskEntryDragMgr.prototype.restoreContext = function() {
+	var dragEntry = this.dragNode.taskEntry;
+	dragEntry.move(this.context.oldPrev, this.context.oldLevel);
+}
+TaskEntryDragMgr.prototype.dragCommit = function() {
+	if (!backend || !backend.move) return;
+	let dragEntry = this.dragNode.taskEntry;
+	if (this.context.oldPrev == dragEntry.getPrev())
+		return;
+
+	//Move the nodes on the backend! We only need to move the parent, but we have to properly select where
+	this.parent.dispatchEvent("dragcommit", { entry: dragEntry });
 }
 
 

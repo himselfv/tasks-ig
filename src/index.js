@@ -1251,13 +1251,10 @@ function TaskListPanel(boxElement) {
 	this.selectFailedAccounts = true;
 	accounts.addEventListener('change', () => this.reload());
 	//Item dragging
-	this.dragMgr = new DragMgr();
+	this.dragMgr = new TaskListPanelDragMgr(this);
 	this.dragMgr.autoShield = true;
 	this.dragMgr.dragTolerance = 10;
 	this.dragMgr.dragDelay = 500;
-	this.dragMgr.dragStart = this.dragStart.bind(this);
-	this.dragMgr.dragMove = this.dragMove.bind(this);
-	this.dragMgr.dragEnd = this.dragEnd.bind(this);
 }
 AddCustomEventTarget(TaskListPanel);
 TaskListPanel.prototype.reload = function() {
@@ -1387,18 +1384,6 @@ TaskListPanel.prototype.applySelected = function(tasklist) {
 	for (var i = 0; i < children.length; i++)
 		children[i].classList.toggle('selected', !!tasklist && (String(children[i].listHandle)==String(tasklist)));
 }
-TaskListPanel.prototype.nodeFromViewportPoint = function(pt) {
-	var node = this.box.firstElementChild;
-	var nodeRect = null;
-	while (node) {
-		nodeRect = node.getBoundingClientRect();
-		//Entries are full-width so only check the Y
-		if ((pt.y >= nodeRect.top) && (pt.y < nodeRect.bottom))
-  			break;
-		node = node.nextElementSibling;
-	}
-	return node;
-}
 //Locates the parent account node for the given node
 TaskListPanel.prototype.findParentAccount = function(node) {
 	if (!node.nodeType==Node.ELEMENT_NODE)
@@ -1433,49 +1418,40 @@ TaskListPanel.prototype.getAccountChildren = function(accountNode) {
     }
     return results;
 }
-TaskListPanel.prototype.dragStart = function(entry) {
-	//Cancel any text selection that might be going on due to not capturing that initial mouse click
-	document.activeElement.blur();
-	resetSelection();
-	
-	if (!entry.classList.contains('account'))
-		return false; //only accounts can be dragged atm
-	
-	//Configure node for dragging
-	var dragNode = entry;
-	dragNode.classList.toggle("dragging", true);
-	
-	//Create drag context
-	this.dragContext = {};
-	this.dragContext.node = dragNode;
-	
-	//Remember existing place for simple restoration
-	this.dragContext.oldPrev = dragNode.previousElementSibling;
-	
-	//Hide all children
-	this.dragContext.oldChildren = document.createElement("div");
-	this.dragContext.oldChildren.style.display = "none";
-	for (let child of this.getAccountChildren(dragNode))
-		this.dragContext.oldChildren.insertBefore(child, null);
-	return true;
+function TaskListPanelDragMgr(parent) {
+	ItemDragMgr.call(this);
+	this.parent = parent;
 }
-TaskListPanel.prototype.dragMove = function(pos) {
-	if (!this.dragContext) return;
-	var dragNode = this.dragContext.node;
-	
-	//Move the node to a new place in the same parent list, tentatively
-	let targetNode = this.nodeFromViewportPoint(pos);
-	if (!targetNode || (targetNode == dragNode))
-		return; //leave the dragged node where it is
-	
+inherit(ItemDragMgr, TaskListPanelDragMgr);
+TaskListPanelDragMgr.prototype.dragStart = function(node) {
+	if (!node.classList.contains('account'))
+		return false;
+	return ItemDragMgr.prototype.dragStart.call(this, node);
+}
+TaskListPanelDragMgr.prototype.dragCommit = function() {
+	let dragNode = this.dragNode;
+	if (this.context.oldPrev == dragNode.previousElementSibling)
+		return;
+	//Applies the changes made by dragging an account node
+	if (dragNode.classList.contains('account')) {
+		let accountId = dragNode.listHandle.account;
+		let nextAccount = this.parent.findNextAccount(dragNode.nextSibling); //may be null
+		let nextAccountId = nextAccount ? nextAccount.listHandle.account : null;
+		accounts.move(accountId, nextAccountId);
+	}
+}
+TaskListPanelDragMgr.prototype.getNodeChildren = function(node) {
+	return this.parent.getAccountChildren(node);
+}
+TaskListPanelDragMgr.prototype.getInsertPoints = function(targetNode) {
 	//Find the closest account nodes above and below the mouse pointer
-	let prevAccount = this.findPreviousAccount(targetNode); //can be the same node
-	let nextAccount = this.findNextAccount(targetNode.nextSibling);
+	let prevAccount = this.parent.findPreviousAccount(targetNode); //can be the same node
+	let nextAccount = this.parent.findNextAccount(targetNode.nextSibling);
 	
 	//Find the last node related to the previous account
 	let prevAccountLast = prevAccount;
 	if (prevAccount) {
-		let prevAccountNodes = this.getAccountChildren(prevAccount);
+		let prevAccountNodes = this.parent.getAccountChildren(prevAccount);
 		if (prevAccountNodes.length > 0)
 			prevAccountLast = prevAccountNodes[prevAccountNodes.length-1];
 	}
@@ -1486,51 +1462,9 @@ TaskListPanel.prototype.dragMove = function(pos) {
 	if (prevAccount) pts.push(prevAccount);
 	if (prevAccountLast) pts.push(prevAccountLast.nextElementSibling);
 	if (nextAccount) pts.push(nextAccount);
-	let insertBefore = ItemDragger.dragMoveObj(dragNode, pos, pts);
-	//console.log('listDragMove: insertBefore(', pts, ') = ', insertBefore);
-	
-	if ((typeof insertBefore != 'undefined') //null is okay
-		&& (insertBefore != dragNode.nextSibling))
-		this.box.insertBefore(dragNode, insertBefore);
+	return pts;
 }
 
-TaskListPanel.prototype.dragEnd = function(cancelDrag) {
-	if (!this.dragContext) return;
-	var dragNode = this.dragContext.node;
-
-	if (cancelDrag) {
-		//Move the node back to where it was
-		let oldPrev = this.dragContext.oldPrev;
-		oldPrev.parentNode.insertBefore(dragNode, oldPrev.nextElement);
-	}
-
-	//Unhide all children + move to where the parent is
-	let nextNode = dragNode.nextElementSibling;
-	for (let i=0; i < this.dragContext.oldChildren.children.length;) { //don't increment, stay at 0
-		let node = this.dragContext.oldChildren.children[i];
-		dragNode.parentNode.insertBefore(node, nextNode);
-	}
-	
-	dragNode.classList.remove("dragging");
-	
-	if (!cancelDrag && (this.dragContext.oldPrev != dragNode.previousElementSibling)) {
-		if (dragNode.classList.contains('account'))
-			this.dragAccountApply(dragNode)
-	}
-	delete this.dragContext;
-}
-//Applies the changes made by dragging an account node to the application account list
-TaskListPanel.prototype.dragAccountApply = function(dragNode) {
-	//Find the account index
-	let accountId = dragNode.listHandle.account;
-	
-	//Find the next account in the panel
-	let nextAccount = this.findNextAccount(dragNode.nextSibling); //may be null
-	let nextAccountId = nextAccount ? nextAccount.listHandle.account : null;
-	
-	//Move
-	accounts.move(accountId, nextAccountId);
-}
 
 function MainTaskListPanel(element) {
 	TaskListPanel.call(this, element);
@@ -1613,8 +1547,7 @@ function tasklistInit() {
 	tasks = new TaskList(document.getElementById('listContent'));
 	tasks.addEventListener("focuschanged", tasksFocusChanged);
 	tasks.addEventListener("dragstart", taskEntryDragStart);
-	tasks.addEventListener("dragend", taskEntryDragEnd);
-	tasks.addEventListener("dragmove", taskEntryDragMove);
+	tasks.addEventListener("dragcommit", taskEntryDragCommit);
 	tasks.addEventListener("titlechanged", taskEntryTitleChanged);
 	tasks.addEventListener("titlefocusout", taskEntryTitleFocusOut);
 	tasks.addEventListener("editclicked", taskEntryEditClicked);
@@ -2037,105 +1970,21 @@ function filterShowCompleted() {
     }
   }
 
-
-/*
-Drag handling
-*/
-var dragContext = {}; //stores some things temporarily while dragging
-
-//Starts drag
+//Dragging
 function taskEntryDragStart(event) {
-	if (!backend || !backend.move) return;
-
-	//Cancel any text selection that might be going on due to not capturing that initial mouse click
-	document.activeElement.blur();
-	resetSelection();
-
-	//Configure node for dragging
-	var dragEntry = event.entry;
-	var dragNode = event.entry.node;
-	dragNode.classList.toggle("dragging", true);
-
-	//Remember existing place for simple restoration
-	//We need previous sibling because next sibling might well be our child
-	dragContext.oldPrev = dragEntry.getPrev();
-	dragContext.oldLevel = dragEntry.getLevel();
-
-	//Hide all children
-	dragContext.oldChildren = document.createElement("div");
-	dragContext.oldChildren.style.display = "none";
-	for (let child of dragEntry.getAllChildren()) //move to offsite in the same order
-		dragContext.oldChildren.insertBefore(child.node, null);
+	if (!backend || !backend.move) 
+		event.preventDefault();
+}
+//Permanently commits the results of a sucessful task entry drag
+function taskEntryDragCommit(event) {
+	var newParent = event.entry.getParent();
+	var newPrev = event.entry.getPreviousSibling();
+	var job = taskEntryNeedIds([event.entry, newParent, newPrev])
+		.then(ids => backend.move(ids[0], ids[1], ids[2]));
+	pushJob(job);
 }
 
-//Ends the drag and commits the move
-function taskEntryDragEnd(event) {
-	if (!backend || !backend.move) return;
 
-	var dragEntry = event.entry;
-	var dragNode = event.entry.node;
-	var cancelDrag = event.cancelDrag;
-
-	if (event.cancelDrag)
-		//Move the node back to where it were
-		dragEntry.move(dragContext.oldPrev, dragContext.oldLevel);
-
-	var newLevel = cancelDrag ? dragContext.oldLevel : dragEntry.getLevel();
-
-	//Unhide all children + move to where the parent is + adjust level
-	let nextNode = dragNode.nextElementSibling;
-	for (let i=0; i < dragContext.oldChildren.children.length;) { //don't increment, stay at 0
-		let node = dragContext.oldChildren.children[i];
-		dragNode.parentNode.insertBefore(node, nextNode);
-		if (newLevel != dragContext.oldLevel)
-			node.taskEntry.setLevel(node.taskEntry.getLevel() - dragContext.oldLevel + newLevel); //warning, likes to add as strings
-	}
-
-	//restore backed up properties
-	dragNode.classList.remove("dragging");
-
-	//find where we have moved
-	if (!cancelDrag && (dragContext.oldPrev != dragEntry.getPrev())) {
-		//Move the nodes on the backend! We only need to move the parent, but we have to properly select where
-		var newParent = dragEntry.getParent();
-		var newPrev = dragEntry.getPreviousSibling();
-		var job = taskEntryNeedIds([dragEntry, newParent, newPrev])
-			.then(ids => backend.move(ids[0], ids[1], ids[2]));
-		pushJob(job);
-	}
-}
-
-//Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
-function taskEntryDragMove(event) {
-	if (!backend || !backend.move) return;
-
-	//Move the node to a new place in the same parent list, tentatively
-	var pos = event.pos;
-	var dragEntry = event.entry;
-
-	//We can't use elementFromPoint as that would just give us the shield,
-	//and hiding the shield temporarily is too slow and makes the cursor flicker.
-	var targetEntry = tasks.entryFromViewportPoint(pos);
-	//console.log('taskDragMove:', pos, 'item=', dragEntry, 'target=', targetEntry);
-	if (!targetEntry || (targetEntry == dragEntry))
-		return; //leave the dragged node where it is
-
-	//We don't have spaces between items and entryFromViewportPoint() always returns us something,
-	//so we don't have to handle the "between items" case:
-	let beforeEntry = ItemDragger.dragMoveObj(dragEntry.node, pos, [targetEntry.node, targetEntry.node.nextElementSibling]);
-	//console.log('taskDragMove: beforeEntry original=', beforeEntry);
-	if (beforeEntry)
-		beforeEntry = beforeEntry.taskEntry;
-
-	let afterEntry = (beforeEntry) ? beforeEntry.getPrev() : tasks.last();
-	//console.log('taskDragMove: beforeEntry=', beforeEntry, 'afterEntry=', afterEntry);
-	if ((typeof beforeEntry != 'undefined') && (beforeEntry != dragEntry)) {
-		tasks.insertEntryBefore(dragEntry, beforeEntry);
-		//Which parent to put this under? Always the same level as the node after us, or before us
-		var newLevel = beforeEntry ? beforeEntry.getLevel() : afterEntry ? afterEntry.getLevel() : 0;
-		dragEntry.setLevel(newLevel);
-	}
-}
 
   /*
   Tab:

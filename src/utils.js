@@ -779,7 +779,7 @@ function getInnerClientRect(element) {
 	let width = rect.width;
 	let height = rect.height;
 	var cs = getComputedStyle(element);
-	console.log('clw, clh:', width, height, 'cs', cs);
+	//console.log('clw, clh:', width, height, 'cs', cs);
 	height -= parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth)
 	width -= parseFloat(cs.borderLeftWidth) + parseFloat(cs.borderRightWidth)
 	return { width: width, height: height };
@@ -855,9 +855,9 @@ DragMgr.prototype.addElement = function(element) {
 //Prepares the context for drag but does not start it right away.
 //Call taskEntryDragStart to proceed with dragging.
 //Event: The click event that caused the drag preparations.
-DragMgr.prototype.dragConfigure = function(entry, event) {
+DragMgr.prototype.dragConfigure = function(node, event) {
 	this.dragStartTimerAbort();
-	this.dragEntry = entry; //element to which the event have bubbled
+	this.dragNode = node; //element to which the event have bubbled
 	this.dragStartPos = { x: event.pageX, y: event.pageY };
 
 	//calculate true offset relative to taskEntry
@@ -865,7 +865,7 @@ DragMgr.prototype.dragConfigure = function(entry, event) {
 		{ x: event.touches[0].offsetX, y: event.touches[0].offsetY } :
 		{ x: event.offsetX, y: event.offsetY };
 	var target = event.target;
-	while (target && (target!=this.dragEntry)) {
+	while (target && (target!=this.dragNode)) {
 		trueOffset.x += target.offsetLeft;
 		trueOffset.y += target.offsetTop;
 		target = target.offsetParent;
@@ -903,12 +903,12 @@ DragMgr.prototype.onDragMouseMove = function(event) {
 	if ((this.dragDelay > 0) && !this.dragging)
 		this.dragStartTimerAbort();
 	//Dragging, ignore mouse move events for the node itself
-	if (this.dragging || ((this.dragTolerance > 0) && this.dragEntry))
+	if (this.dragging || ((this.dragTolerance > 0) && this.dragNode))
 		event.preventDefault();
 }
 DragMgr.prototype.onDocumentDragMouseMove = function(event) {
 	//Start non-immediate drag on mouse move
-	if (!this.dragging && (this.dragTolerance > 0) && this.dragEntry) {
+	if (!this.dragging && (this.dragTolerance > 0) && this.dragNode) {
 		if (Math.abs(event.pageX - this.dragStartPos.x + event.pageY - this.dragStartPos.y) > this.dragTolerance)
 			this.startDrag();
 	}
@@ -924,11 +924,11 @@ DragMgr.prototype.onDocumentDragMouseUp = function(event) {
 	//Mouseup is not required to fire, and does not fire under some conditions,
 	//when the mouse is released outside the dragged element's borders.
 	//This is a fallback:
-	if (this.dragging || this.dragEntry)
+	if (this.dragging || this.dragNode)
 		this.onDragMouseUp(event);
 }
 DragMgr.prototype.onDocumentDragTouchCancel = function(event) {
-	if (this.dragging || this.dragEntry)
+	if (this.dragging || this.dragNode)
 		this.onDragTouchCancel(event);
 }
 //Starts the drag
@@ -937,7 +937,7 @@ DragMgr.prototype.startDrag = function() {
 	
 	//From now on we're dragging
 	this.dragging = true;
-	if (!this.dragStart(this.dragEntry)) {
+	if (!this.dragStart(this.dragNode)) {
 		this.dragging = false;
 		return;
 	}
@@ -951,7 +951,7 @@ DragMgr.prototype.startDrag = function() {
     }
 
 	//Move first time now that it's in position:absolute
-	let r = this.dragEntry.getBoundingClientRect();
+	let r = this.dragNode.getBoundingClientRect();
 	this.dragMove({
 		x: r.left + this.dragOffsetPos.x,
 		y: r.top + this.dragOffsetPos.y,
@@ -960,7 +960,7 @@ DragMgr.prototype.startDrag = function() {
 //Ends the drag and commits the move
 DragMgr.prototype.endDrag = function(cancelDrag) {
 	if (!this.dragging) { //not yet dragging => nothing to restore
-		this.dragEntry = null;
+		this.dragNode = null;
 		return;
 	}
 
@@ -970,22 +970,155 @@ DragMgr.prototype.endDrag = function(cancelDrag) {
     	document.body.removeChild(this.shield);
     	delete this.shield;
     }
-	if (!this.dragEntry) return;
+	if (!this.dragNode) return;
 
 	this.dragEnd(cancelDrag);
-	this.dragEntry = null;
+	this.dragNode = null;
 }
 //The following functions are meant to be overriden by clients.
-DragMgr.prototype.dragStart = function(entry) { return true; }
+DragMgr.prototype.dragStart = function(node) { return true; }
 DragMgr.prototype.dragEnd = function(cancelDrag) {}
 //Called each time the mouse moves while dragging. Receives the mouse windowX/windowY coordinates.
 DragMgr.prototype.dragMove = function(pos) {}
 
 
+/*
+Manages dragging of HTML elements.
+Build on the following assumptions:
+ - Nodes are arranged vertically one after another
+ - All nodes belong to the same parent
+*/
+function ItemDragMgr() {
+	DragMgr.call(this);
+}
+inherit(DragMgr, ItemDragMgr);
+utils.export(ItemDragMgr);
+ItemDragMgr.prototype.dragStart = function(node) {
+	//console.log('ItemDragMgr::dragStart:', node);
+	//Cancel any text selection that might be going on due to not capturing the initial mouse click
+	document.activeElement.blur();
+	resetSelection();
+	
+	//DragMgr normally stores dragNode here but if we're being used with a foreign dragMgr, store manually
+	if (!this.dragNode) this.dragNode = node;
+	
+	//Save drag context
+	this.context = {};
+	this.saveContext();
+	
+	//Configure node for dragging
+	this.dragNode.classList.toggle("dragging", true);
+	
+	//Hide all children
+	this.context.oldChildren = document.createElement("div");
+	this.context.oldChildren.style.display = "none";
+	for (let child of this.getNodeChildren(this.dragNode)) //move to offsite in the same order
+		this.context.oldChildren.insertBefore(child, null);
+	return true;
+}
+ItemDragMgr.prototype.dragEnd = function(cancelDrag) {
+	if (!this.context) return;
+	//console.log('ItemDragMgr::dragEnd: cancel=', cancelDrag);
+	var dragNode = this.dragNode;
+	
+	dragNode.classList.remove("dragging");
+	if (cancelDrag)
+		this.restoreContext();
+	
+	//Unhide all children + move to where the parent is
+	let nextNode = dragNode.nextElementSibling;
+	for (let i=0; i < this.context.oldChildren.children.length;) { //don't increment, stay at 0
+		let node = this.context.oldChildren.children[i];
+		dragNode.parentNode.insertBefore(node, nextNode);
+	}
+	
+	//actual effect processing
+	if (!cancelDrag)
+		this.dragCommit();
+	
+	delete this.context;
+}
+ItemDragMgr.prototype.dragMove = function(pos) {
+	if (!this.context) return;
+	var dragNode = this.dragNode;
+	
+	//Move the node to a new place in the same parent list, tentatively
+
+	//We can't use elementFromPoint as that would just give us the shield,
+	//and hiding the shield temporarily is too slow and makes the cursor flicker.
+	let targetNode = this.nodeFromViewportPoint(pos);
+	//console.log('dragMove: targetNode=', targetNode);
+	if (!targetNode || (targetNode == dragNode))
+		return; //leave the dragged node where it is
+	
+	let pts = this.getInsertPoints(targetNode);
+	//console.log('dragMove: insertPoints=', pts);
+
+	let insertBefore = ItemDragMgr.dragMoveObj(dragNode, pos, pts);
+	//console.log('listDragMove: insertBefore(', pts, ') = ', insertBefore);
+	
+	if ((typeof insertBefore != 'undefined') //null is okay
+		&& (insertBefore != dragNode)
+		&& (insertBefore != dragNode.nextSibling))
+	{
+		this.dragMoveBefore(dragNode, insertBefore);
+	}
+}
+ItemDragMgr.prototype.dragMoveBefore = function(node, insertBefore) {
+	//Moves the node before the given node or null
+	node.parentNode.insertBefore(node, insertBefore);
+}
+//The following functions are meant to be overriden by clients.
+ItemDragMgr.prototype.getNodeChildren = function(node) {
+	//Retrieves all "same-level children" nodes for the given node.
+	//Used both to select the children to hide when "hide-children" dragging a node,
+	//and to join together inseparable blocks of items when dragging.
+	//The node itself is not included.
+	return [];
+}
+ItemDragMgr.prototype.getInsertPoints = function(targetNode) {
+	//Returns a number of suggestions (nodes for insertBefore) for placing the node around targetNode
+	//The caller will then select the most appropriate location
+	return [];
+}
+ItemDragMgr.prototype.saveContext = function() {
+	//Saves the initial state to the dragContext
+	
+	//Remember existing place for simple restoration
+	//Store previous sibling because next sibling might well be our child
+	this.context.oldPrev = this.dragNode.previousElementSibling;
+}
+ItemDragMgr.prototype.restoreContext = function() {
+	//Restores the initial state from the dragContext if the drag has been cancelled
+	
+	//Move the node back to where it was
+	let oldPrev = this.context.oldPrev;
+	oldPrev.parentNode.insertBefore(dragNode, oldPrev.nextElement);
+}
+ItemDragMgr.prototype.dragCommit = function() {
+	//Commits changes permanently if the drag operation finishes successfully.
+	//Won't get called:
+	// - If the drag has been cancelled
+	// - If there have been no changes from the drag
+	//DragContext is still available. Temporary UI changes are already cleaned up.
+}
+//Returns the task entry at a given viewport point { x: int, y: int }
+ItemDragMgr.prototype.nodeFromViewportPoint = function(pt) {
+	if (!this.dragNode) return null; //need a parent
+	
+	var node = this.dragNode.parentNode.firstElementChild;
+	var nodeRect = null;
+	while (node) {
+		nodeRect = node.getBoundingClientRect();
+		//Entries are full-width so only check the Y
+		if ((pt.y >= nodeRect.top) && (pt.y < nodeRect.bottom))
+  			break;
+		node = node.nextElementSibling;
+	}
+	return node;
+}
 
 //Math for item drag operations
-function ItemDragger() {}
-utils.export(ItemDragger);
 
 /*
 Receives:
@@ -1002,7 +1135,7 @@ Returns:
   1 = insert at pt1
   2 = insert at pt2
 */
-ItemDragger.dragMove = function(item, pos, pt1, pt2) {
+ItemDragMgr.dragMove = function(item, pos, pt1, pt2) {
 	/*
 	The important thing is that our decision is consistent:
 	   i     ----  ---- 
@@ -1045,13 +1178,12 @@ ItemDragger.dragMove = function(item, pos, pt1, pt2) {
 		return 0;
 	return ret;
 }
-
 /*
 Insertion points may be hidden => getBoundingClientRect() won't work; or may be null.
 In both cases their rects must be calculated from the preceding items.
 This is currently a vertical function that assumes that all items go one after another.
 */
-ItemDragger.getInsertionPointRect = function(parent, pt, precedingPt, precedingRect) {
+ItemDragMgr.getInsertionPointRect = function(parent, pt, precedingPt, precedingRect) {
 	if (pt) {
 		let rect = pt.getBoundingClientRect();
 		if ((rect.x!=0) || (rect.y!=0) || (rect.width!=0) || (rect.height!=0))
@@ -1079,7 +1211,6 @@ ItemDragger.getInsertionPointRect = function(parent, pt, precedingPt, precedingR
 	 }
 	 return new DOMRect(0,0,0,0); //really can't
 }
-
 /*
 Same but pass HTML elements as item and pts (targets for insertBefore).
 Accepts:
@@ -1091,7 +1222,7 @@ Returns:
 Assumes that:
   all insertion points are in the same parent, in the given order
 */
-ItemDragger.dragMoveObj = function(item, pos, pts) {
+ItemDragMgr.dragMoveObj = function(item, pos, pts) {
 	//console.log('dragMoveObj: item=', item, 'pos=', pos, 'pts=', pts);
 	let itemRect = item.getBoundingClientRect();
 	if (!pts || !pts.length || (pts.length <= 0))
@@ -1218,7 +1349,7 @@ Splitter.prototype.dragStart = function() {
 	//Store initial splitter.x/y and the corresponding growElement's width/height
 	this.dragBoxStart = this.box.getBoundingClientRect();
 	this.dragElementStart = getInnerClientRect(this.growElement); //inner! we're going to use this in adjusting
-	console.log('dbs:', this.dragBoxStart, 'des:', this.dragElementStart);
+	//console.log('dbs:', this.dragBoxStart, 'des:', this.dragElementStart);
 	//Store initial EXPLICIT size config to restore on cancel
 	this.dragElementBackup = { width: this.growElement.style.width, height: this.growElement.style.height };
 	return true;
@@ -1284,7 +1415,7 @@ AddCustomEventTarget.dispatchEvent = function(event, args) {
 	if (args)
 		for (let key in args)
 			event[key] = args[key];
-	this.eventTarget.dispatchEvent(event);
+	return this.eventTarget.dispatchEvent(event);
 }
 
 
