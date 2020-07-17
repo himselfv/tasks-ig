@@ -1060,6 +1060,8 @@ ItemDragger.getInsertionPointRect = function(parent, pt, precedingPt, precedingR
 	} else {
 		//"null" means after all items, but that's not "parent.bottom" --
 		//it's "just after parent.lastElementChild"! there can be empty space
+		if (!parent)
+			return new DOMRect(0,0,0,0);
 		pt = parent.lastElementChild;
 	}
 	
@@ -1099,7 +1101,7 @@ ItemDragger.dragMoveObj = function(item, pos, pts) {
 	let prevRect = null;
 	for (let i=0; i<pts.length; i++) {
 		//Calculate the insertion point position
-		let nextRect = this.getInsertionPointRect(item.parent, pts[i], (i>0) ? pts[i-1] : null, prevRect);
+		let nextRect = this.getInsertionPointRect(item.parentElement, pts[i], (i>0) ? pts[i-1] : null, prevRect);
 		//console.log('dragMoveObj: trying pt['+String(i)+']', pts[i], 'rect=', nextRect);
 		if (pos.y < nextRect.y) {
 			if (!prevRect) {

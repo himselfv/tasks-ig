@@ -2132,11 +2132,12 @@ var dragContext = {}; //stores some things temporarily while dragging
     
     let afterEntry = (beforeEntry) ? beforeEntry.getPrev() : tasks.last();
     //console.log('taskDragMove: beforeEntry=', beforeEntry, 'afterEntry=', afterEntry);
-    tasks.insertEntryBefore(dragEntry, beforeEntry);
-      
-    //Which parent to put this under? Always the same level as the node after us, or before us
-    var newLevel = beforeEntry ? beforeEntry.getLevel() : afterEntry ? afterEntry.getLevel() : 0;
-    dragEntry.setLevel(newLevel);
+    if ((typeof beforeEntry != 'undefined') && (beforeEntry != dragEntry)) {
+    	tasks.insertEntryBefore(dragEntry, beforeEntry);
+	    //Which parent to put this under? Always the same level as the node after us, or before us
+	    var newLevel = beforeEntry ? beforeEntry.getLevel() : afterEntry ? afterEntry.getLevel() : 0;
+	    dragEntry.setLevel(newLevel);
+	}
   }
 
 
