@@ -1248,7 +1248,7 @@ function TaskListPanel(boxElement) {
 	this.showAccounts = true; //Task list panel always shows account names atm
 	this.showLists = true; //Disable to show only accounts
 	this.selectAccounts = options.accountsClickable;
-	this.selectFailedAccounts = false;
+	this.selectFailedAccounts = true;
 	accounts.addEventListener('change', () => this.reload());
 	//Item dragging
 	this.dragMgr = new DragMgr();
@@ -1298,14 +1298,14 @@ TaskListPanel.prototype.reload = function() {
 			if (this.selectFailedAccounts)
 				item.classList.remove('disabled'); //No task lists => make the account always selectable
 			if (account.error) {
-				item.body.textContent = item.body.textContent+' (error)';
+				//Do not add (error) to the title - can be added with CSS
 				item.classList.add('error');
 			}
 			else if (!account.isSignedIn()) {
 				item.classList.add('loading');
 			}
 			else if (!!account.ui && !!account.ui.tasklists && isArrayEmpty(account.ui.tasklists)) {
-				item.body.textContent = item.body.textContent+' (no lists)';
+				//Do not add (no lists) to the title - obvious from the panel and can be added with CSS
 				item.classList.add('empty');
 			}
 			item.classList.add("grayed");

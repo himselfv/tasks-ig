@@ -387,6 +387,12 @@ Task list panel
   top: 0.2em;
   margin-left: 0.5em;
 }
+.taskListPanel .account.error > span:after {
+  content: url("res/error-381599-16.png");
+  position: relative;
+  top: 0.2em;
+  margin-left: 0.5em;
+}
 /* Tasklists */
 .taskListPanel .tasklist,
 .taskListPanel .tasklistAdd {
