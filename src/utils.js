@@ -1040,7 +1040,7 @@ ItemDragger.dragMove = function(item, pos, pt1, pt2) {
 	let pt1_a = (item.y >= pt1) ? pt1 : pt1 - item.height;
 	let pt2_a = (item.y >= pt2) ? pt2 + item.height : pt2;
 	let ret = (pos.y > (pt1_a + pt2_a) / 2) ? 2 : 1;
-	//	console.log('dragMove: item=', item, 'pos=', pos, 'pt1=', pt1, 'pt2=', pt2, 'pt1a=', pt1_a, 'pt2a=', pt2_a, 'mid=', (pt1_a+pt2_a)/2, 'ret=', ret);
+	//console.log('dragMove: item=', item, 'pos=', pos, 'pt1=', pt1, 'pt2=', pt2, 'pt1a=', pt1_a, 'pt2a=', pt2_a, 'mid=', (pt1_a+pt2_a)/2, 'ret=', ret);
 	if (((ret==2) && (item.y==pt2))||((ret==1)&&(item.y==pt1)))
 		return 0;
 	return ret;
@@ -1100,7 +1100,6 @@ ItemDragger.dragMoveObj = function(item, pos, pts) {
 	for (let i=0; i<pts.length; i++) {
 		//Calculate the insertion point position
 		let nextRect = this.getInsertionPointRect(item.parent, pts[i], (i>0) ? pts[i-1] : null, prevRect);
-
 		//console.log('dragMoveObj: trying pt['+String(i)+']', pts[i], 'rect=', nextRect);
 		if (pos.y < nextRect.y) {
 			if (!prevRect) {
@@ -1110,7 +1109,6 @@ ItemDragger.dragMoveObj = function(item, pos, pts) {
 			let ret = this.dragMove(itemRect, pos, prevRect.y, nextRect.y);
 			return (ret==2) ? pts[i] : (ret==1) ? pts[i-1] : undefined;
 		}
-		
 		prevRect = nextRect;
 	}
 	//console.log('dragMoveObj: after last point, returning last');

@@ -1513,7 +1513,6 @@ TaskListPanel.prototype.dragEnd = function(cancelDrag) {
 	
 	dragNode.classList.remove("dragging");
 	
-	console.log('dragEnd', cancelDrag, this.dragContext, dragNode);
 	if (!cancelDrag && (this.dragContext.oldPrev != dragNode.previousElementSibling)) {
 		if (dragNode.classList.contains('account'))
 			this.dragAccountApply(dragNode)
@@ -1522,7 +1521,6 @@ TaskListPanel.prototype.dragEnd = function(cancelDrag) {
 }
 //Applies the changes made by dragging an account node to the application account list
 TaskListPanel.prototype.dragAccountApply = function(dragNode) {
-	console.log('dragAccountApply');
 	//Find the account index
 	let accountId = dragNode.listHandle.account;
 	
@@ -1531,7 +1529,6 @@ TaskListPanel.prototype.dragAccountApply = function(dragNode) {
 	let nextAccountId = nextAccount ? nextAccount.listHandle.account : null;
 	
 	//Move
-	console.log('--> accounts.move');
 	accounts.move(accountId, nextAccountId);
 }
 
