@@ -909,7 +909,7 @@ DragMgr.prototype.onDragMouseMove = function(event) {
 DragMgr.prototype.onDocumentDragMouseMove = function(event) {
 	//Start non-immediate drag on mouse move
 	if (!this.dragging && (this.dragTolerance > 0) && this.dragEntry) {
-		if (event.pageX - this.dragStartPos.x + event.pageY - this.dragStartPos.y > this.dragTolerance)
+		if (Math.abs(event.pageX - this.dragStartPos.x + event.pageY - this.dragStartPos.y) > this.dragTolerance)
 			this.startDrag();
 	}
 	if (this.dragging) {
