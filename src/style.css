@@ -702,6 +702,7 @@ There's too little info for the 100% width so center everything
 }
 /* Hide all account actions except for approved ones */
 #accountsPage .tasklistPanel .dropdown-content * { display: none; }
+#accountsPage .tasklistPanel .accountRenameBtn,
 #accountsPage .tasklistPanel .accountEditBtn,
 #accountsPage .tasklistPanel .accountDeleteBtn,
 #accountsPage .tasklistPanel .accountResetBtn { display: block; }

@@ -766,7 +766,7 @@ function accountRename(account) {
 //Opens the account settings page, lets the user edit, try to apply and then save the settings
 function accountEditSettings(account) {
 	if (!account) account = backend;
-	alert('At the moment, please delete and re-add the account to edit its settings');
+	alert('At the moment, please delete and re-add the account to change its settings');
 	//TODO: Implement.
 	//TODO: Return a Page prototype to wait on
 	return Promise.resolve();
