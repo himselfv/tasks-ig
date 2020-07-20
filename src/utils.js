@@ -984,9 +984,13 @@ DragMgr.prototype.dragMove = function(pos) {}
 
 /*
 Manages dragging of HTML elements.
-Build on the following assumptions:
+Built on the following assumptions:
  - Nodes are arranged vertically one after another
  - All nodes belong to the same parent
+
+Potential settings:
+  - Hide child nodes (default) or drag them together with the parent
+  - Do not change position while over the dragged node itself / always select the best position
 */
 function ItemDragMgr() {
 	DragMgr.call(this);
@@ -1093,7 +1097,12 @@ ItemDragMgr.prototype.restoreContext = function() {
 	
 	//Move the node back to where it was
 	let oldPrev = this.context.oldPrev;
-	oldPrev.parentNode.insertBefore(dragNode, oldPrev.nextElement);
+	if (this.dragNode.previousElementSibling != oldPrev) {
+		if (oldPrev)
+			oldPrev.parentNode.insertBefore(this.dragNode, oldPrev.nextElementSibling);
+		else
+			this.dragNode.parentNode.insertBefore(this.dragNode, this.dragNode.parentNode.firstElementChild);
+	}
 }
 ItemDragMgr.prototype.dragCommit = function() {
 	//Commits changes permanently if the drag operation finishes successfully.
