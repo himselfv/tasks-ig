@@ -288,6 +288,9 @@ function Backend() {
 	//Some backends can retrieve recently deleted tasks (marked .deleted=true).
 	//Set this to ask them to do this (more data to transfer):
 	this.showDeleted = false;
+	
+	//Set to assign a custom ui name to this account
+	//this.customName = undefined;
 }
 unit.export(Backend);
 
@@ -351,10 +354,14 @@ Backend.prototype.isSignedIn = function() {
 Backend.prototype.notifySignInStatus = function(status) {
 	this.onSignInStatus.notify(this, status);
 }
-//Once logged in, returns the UI name for this account
-Backend.prototype.uiName = function() {
+//Automatically chosen UI name for this account (once logged in). Can be overriden by descendants.
+Backend.prototype.autoName = function() {
 	//By default just returns the backend name. Fall back to this if not logged in / no better ideas.
 	return this.constructor.uiName || this.constructor.name;
+}
+//Customized name for this account or the default UI name
+Backend.prototype.uiName = function() {
+	return this.customName || this.autoName();
 }
 
 

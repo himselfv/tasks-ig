@@ -311,6 +311,11 @@ function Accounts() {
 }
 AddCustomEventTarget(Accounts);
 Accounts.prototype[Symbol.iterator] = function() { return this.list[Symbol.iterator](); } //implements for..of
+Accounts.prototype._loadAccountData = function(accountId) { return getLocalStorageItem("tasksIg_account_"+accountId) || {}; }
+Accounts.prototype._saveAccountData = function(accountId, data) {
+	setLocalStorageItem("tasksIg_account_"+accountId, data);
+	//console.debug('Accounts.saveAccountData: accountData=', accountData);
+}
 //Loads the current list of accounts and tries to activate each
 Accounts.prototype.load = function() {
 	console.log('accountsLoad');
@@ -327,8 +332,7 @@ Accounts.prototype.load = function() {
 	for (let i in accountList) {
 		if (!accountList[i]) continue;
 		
-		let accountData = getLocalStorageItem("tasksIg_account_"+accountList[i]) || {};
-		//console.debug('accountsLoad: account#',i,' = ',accountData);
+		let accountData = this._loadAccountData(accountList[i]);
 		//Each entry has:
 		//  backendName
 		//  params: any account params
@@ -343,6 +347,8 @@ Accounts.prototype.load = function() {
 		if (!account)
 			account = backendCreateDummy(accountData.backendName, error);
 		account.id = accountList[i]; //copy the id
+		if (accountData.customName)
+			account.customName = accountData.customName;
 		this.list.push(account);
 		account.init()
 		.then(() => {
@@ -376,8 +382,7 @@ Accounts.prototype.add = function(account, params) {
 	var accountData = {};
 	accountData.backendName = account.constructor.name;
 	accountData.params = params;
-	setLocalStorageItem("tasksIg_account_"+account.id, accountData);
-	//console.debug('accountAdd: accountData=', accountData);
+	this._saveAccountData(account.id, accountData);
 	
 	//Store the account ID in the permanent account list
 	var accountList = getLocalStorageItem("tasksIg_accounts") || [];
@@ -424,6 +429,26 @@ Accounts.prototype.findIndex = function(account) {
 Accounts.prototype.find = function(account) {
 	let i = this.findIndex(account);
 	return ((i >= 0) && (i < this.list.length)) ? this.list[i] : null;
+}
+//Changes customized name for the account. Removes the customization if newName==null
+Accounts.prototype.rename = function(account, newName) {
+	console.debug('Accounts.rename', account, newName);
+	account = this.find(account);
+	if (!account) {
+		console.warn('Account not found: '+String(account));
+		return;
+	}
+	
+	account.customName = newName;
+	
+	let accountData = this._loadAccountData(account.id);
+	if (newName)
+		accountData.customName = newName;
+	else
+		delete accountData.customName;
+	this._saveAccountData(account.id, accountData);
+	
+	this.stateChanged(account);
 }
 Accounts.prototype.move = function(account, insertBefore) {
 	console.debug('Accounts.move', account, insertBefore);
@@ -592,6 +617,7 @@ function AccountsPage() {
 	
 	document.getElementById('accountListClose').onclick = this.cancelClick.bind(this);
 	document.getElementById('accountListAdd').onclick = this.addClick.bind(this);
+	document.getElementById('accountListRename').onclick = this.renameClick.bind(this);
 	document.getElementById('accountListEditSettings').onclick = this.editSettingsClick.bind(this);
 	document.getElementById('accountListDelete').onclick = this.deleteClick.bind(this);
 	document.getElementById('accountListReset').onclick = this.resetClick.bind(this);
@@ -641,8 +667,15 @@ AccountsPage.prototype.moveDownClick = function() {
 AccountsPage.prototype.addClick = function() {
 	StartNewAccountUi({ hasCancel:true, }).then(account => this.reload());
 }
+AccountsPage.prototype.renameSettingsClick = function() {
+	let account = accounts.find(this.content.selected.account);
+	if (!account) return;
+	accountEditSettings(account).then(() => this.reload() );
+}
 AccountsPage.prototype.editSettingsClick = function() {
-	accountEditSettings().then(() => this.reload() );
+	let account = accounts.find(this.content.selected.account);
+	if (!account) return;
+	accountRename(account).then(() => this.reload() );
 }
 AccountsPage.prototype.deleteClick = function() {
 	let account = accounts.find(this.content.selected.account);
@@ -707,11 +740,29 @@ function accountReset(account) {
 		+'Do you want to continue?'))
 		return;
 	if (!confirm('Are you SURE you want to delete ALL your task lists and tasks in account "'+account.uiName()+'"?'))
-	return;
+		return;
 	var job = account.reset()
 		.then(() => accounts.reloadTasklists(account));
 	pushJob(job);
 }
+//Changes account UI name
+function accountRename(account) {
+	if (!account) account = backend;
+	if (!account) return;
+	
+	let oldName = String(account.uiName());
+	let fullName = oldName;
+	if (account.autoName() != oldName)
+		fullName += ' (' + String(account.autoName()) + ')';
+	
+	let newName = prompt("Enter new name for account "+String(fullName), oldName);
+	if (!newName || (newName == oldName)) //null == cancelled
+		return;
+	//empty string is okay and means "remove the override"
+	
+	return Promise.resolve(accounts.rename(account, newName));
+}
+
 //Opens the account settings page, lets the user edit, try to apply and then save the settings
 function accountEditSettings(account) {
 	if (!account) account = backend;
@@ -1277,7 +1328,8 @@ TaskListPanel.prototype.reload = function() {
 		if (account.tasklistAdd)
 			drop.add('', tasklistAdd.bind(null, account), "Add list").classList.add('tasklistAddBtn');
 		drop.addSeparator();
-		drop.add('', accountEditSettings.bind(null, account), "Edit...").classList.add('accountEditBtn');
+		drop.add('', accountRename.bind(null, account), "Rename...").classList.add('accountRenameBtn');
+		drop.add('', accountEditSettings.bind(null, account), "Settings...").classList.add('accountEditBtn');
 		drop.add('', accountDelete.bind(null, account), "Delete").classList.add('accountDeleteBtn');
 		if (options.debug && account.reset)
 			drop.add('', accountReset.bind(null, account), "Reset").classList.add('accountResetBtn');

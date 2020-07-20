@@ -187,11 +187,11 @@ BackendGTasks.prototype.getUserEmail = function() {
 		return Promise.resolve(profile.getEmail());
 	return Promise.resolve();
 }
-BackendGTasks.prototype.uiName = function() {
-	let uiName = Backend.prototype.uiName.call(this);
+BackendGTasks.prototype.autoName = function() {
+	let autoName = Backend.prototype.autoName.call(this);
 	if (this.isSignedIn() && !!this.userEmail)
-		uiName = uiName + ' ('+this.userEmail+')';
-	return uiName;
+		autoName = autoName + ' ('+this.userEmail+')';
+	return autoName;
 }
 
 
