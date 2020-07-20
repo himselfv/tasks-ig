@@ -667,15 +667,15 @@ AccountsPage.prototype.moveDownClick = function() {
 AccountsPage.prototype.addClick = function() {
 	StartNewAccountUi({ hasCancel:true, }).then(account => this.reload());
 }
-AccountsPage.prototype.renameSettingsClick = function() {
+AccountsPage.prototype.renameClick = function() {
 	let account = accounts.find(this.content.selected.account);
 	if (!account) return;
-	accountEditSettings(account).then(() => this.reload() );
+	accountRename(account).then(() => this.reload() );
 }
 AccountsPage.prototype.editSettingsClick = function() {
 	let account = accounts.find(this.content.selected.account);
 	if (!account) return;
-	accountRename(account).then(() => this.reload() );
+	accountEditSettings(account).then(() => this.reload() );
 }
 AccountsPage.prototype.deleteClick = function() {
 	let account = accounts.find(this.content.selected.account);
