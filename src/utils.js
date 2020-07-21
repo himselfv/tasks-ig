@@ -314,8 +314,8 @@ JobQueue.prototype.waitIdle = function() {
 	else
 		return new Promise((resolve, reject) => { this.idlePromises.push(resolve); })
 }
-JobQueue.prototype.addIdleJob = function(job) {
-	this.waitIdle().then(() => job());
+JobQueue.prototype.addIdleJob = function(fn) {
+	this.waitIdle().then(() => fn());
 }
 //Returns a promise that fires when all operations queued AT THE MOMENT OF THE REQUEST have completed SUCCESSFULLY.
 //New operations may be queued by the time it fires.

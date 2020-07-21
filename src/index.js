@@ -167,13 +167,43 @@ function handleError(reason) {
 		printError(reason);
 }
 
+/*
+Changes are first applied locally then queued to the server.
+Local state is synchronous and says what we can and cannot do.
+
+Server updates are delayed so if you start several of them quickly they can get mixed up:
+    setParent(11, 10)
+    setParent(11, null) then delete(10)
+    => setParent(11, null), setParent(11, 10)
+This is espectially noticeable with multi-step promises but can happen even with 1-steps.
+
+All new promises must thus wait for the completion of the previous ones:
+	job = newJob().then(...);
+	pushJob(job);
+Or:
+	pushJob(async () => {
+		...
+	});
+
+Any error from the server means our local state is no longer correct and
+a page reload is needed.
+
+Newly created tasks may not yet have IDs. They may not even yet have been commited.
+In this case wait on their ID promises (taskEntryNeedIds).
+This is ~equivalent to commitNow() + wait on newJob().
+*/
 //Pass any promises to track their execution + catch errors.
 var jobs = new JobQueue();
 jobs.onChanged.subscribe(() => {
 	document.getElementById('activityIndicator').classList.toggle('working', (jobs.count > 0));
 });
 jobs.onError.subscribe(handleError);
-function pushJob(job) { return jobs.push(job); } //Backward compatibility
+function newJob() { return jobs.waitCurrentJobsCompleted(); }
+function pushJob(job) {
+	if (typeof job == 'function')
+		return jobs.push(newJob().then(() => job()));
+	return jobs.push(job);
+} //Backward compatibility
 function addIdleJob(job) { return jobs.addIdleJob(job); }
 
 function handleBeforeUnload(event) {
@@ -741,9 +771,10 @@ function accountReset(account) {
 		return;
 	if (!confirm('Are you SURE you want to delete ALL your task lists and tasks in account "'+account.uiName()+'"?'))
 		return;
-	var job = account.reset()
-		.then(() => accounts.reloadTasklists(account));
-	pushJob(job);
+	return pushJob(async () => {
+		await account.reset();
+		accounts.reloadTasklists(account);
+	});
 }
 //Changes account UI name
 function accountRename(account) {
@@ -1759,12 +1790,11 @@ function taskEntryEditFocused() {
 function taskEntryChecked(event) {
 	var patch = {};
 	taskResSetCompleted(patch, event.entry.getCompleted());
-	var job = taskEntryNeedIds([event.entry])
-		.then(ids => {
-			patch.id = ids[0];
-			return backend.patch(patch);
-		});
-	pushJob(job);
+	return pushJob(async () => {
+		let ids = await taskEntryNeedIds([event.entry]);
+		patch.id = ids[0];
+		return await backend.patch(patch);
+	});
 }
 
 function taskEntryAddClicked(event) {
@@ -1788,10 +1818,12 @@ function taskEntryExportToFile(event) {
 	var focusedEntry = tasks.getFocusedEntry();
 	if (!focusedEntry)
 		return;
-	var job = taskEntryNeedIds([focusedEntry])
-		.then(ids => backend.get(ids[0]))
-		.then(result => downloadAsJson(result, focusedEntry.getTitle()));
-	pushJob(job);
+	let title = focusedEntry.getTitle();
+	return pushJob(async () => {
+		let ids = await taskEntryNeedIds([focusedEntry]);
+		let result = await backend.get(ids[0]);
+		return downloadAsJson(result, title);
+	});
 }
 function taskEntryCopyJSON(event) {
 	var focusedEntry = tasks.getFocusedEntry();
@@ -1807,10 +1839,12 @@ function taskEntryCopyJSON(event) {
 }
 function taskEntryExportAllToFile() {
 	var entries = tasks.allEntries();
-	var job = taskEntryNeedIds(entries)
-		.then(ids => backend.get(ids))
-		.then(result => downloadAsJson(result, selectedTaskListTitle()));
-	pushJob(job);
+	let title = selectedTaskListTitle();
+	return pushJob(async () => {
+		let ids = await taskEntryNeedIds(entries);
+		let result = await backend.get(ids);
+		return downloadAsJson(result, title);
+	});
 }
 
 function tasklistClearCompleted() {
@@ -1827,12 +1861,12 @@ function tasklistClearCompleted() {
 	//Delete the tasks
 	//The "completed" flag is independent for the children so don't delete recursively
 	//-- some of the children may even be in the list explicitly
-	
-	let job = taskEntryNeedIds(entries);
-	//delete() operations must be sequential
-	for (let entry of entries)
-		job = job.then(() => taskDelete(entry, false));
-	return pushJob(job);
+	return pushJob(async () => {
+		await taskEntryNeedIds(entries);
+		//delete() operations must be sequential
+		for (let entry of entries)
+			await taskDelete(entry, false);
+	});
 }
 
 function filterShowCompleted() {
@@ -1996,12 +2030,11 @@ function filterShowCompleted() {
     //console.log('newText: "'+patch.title+'"');
     taskEntryTitleCommitEntry = null;
     
-    var job = taskEntryNeedIds([entry])
-    	.then(ids => {
-    	  patch.id = ids[0];
-    	  return backend.patch(patch);
-    	});
-    pushJob(job);
+    pushJob(async () => {
+    	let ids = await taskEntryNeedIds([entry]);
+    	patch.id = ids[0];
+    	return await backend.patch(patch);
+    });
     
     timeoutPromiseResolve();
   }
@@ -2029,11 +2062,12 @@ function taskEntryDragStart(event) {
 }
 //Permanently commits the results of a sucessful task entry drag
 function taskEntryDragCommit(event) {
-	var newParent = event.entry.getParent();
-	var newPrev = event.entry.getPreviousSibling();
-	var job = taskEntryNeedIds([event.entry, newParent, newPrev])
-		.then(ids => backend.move(ids[0], ids[1], ids[2]));
-	pushJob(job);
+	let newParent = event.entry.getParent();
+	let newPrev = event.entry.getPreviousSibling();
+	return pushJob(async () => {
+		let ids = await taskEntryNeedIds([event.entry, newParent, newPrev]);
+		return await backend.move(ids[0], ids[1], ids[2]);
+	});
 }
 
 
@@ -2061,9 +2095,10 @@ function taskEntryDragCommit(event) {
     entry.adjustLevel(+1, true); //recursive
     
     //Post to the backend
-    var job = taskEntryNeedIds([entry, prevEntry, prevEntryLastChild])
-    	.then(ids => backend.move(ids[0], ids[1], ids[2]));
-    pushJob(job);
+    return pushJob(async () => {
+    	let ids = await taskEntryNeedIds([entry, prevEntry, prevEntryLastChild]);
+    	return await backend.move(ids[0], ids[1], ids[2]);
+    });
   }
   
   /*
@@ -2090,24 +2125,22 @@ function taskEntryDragCommit(event) {
     
     //Visually update the entry and all of its children.
     entry.adjustLevel(-1, true); //recursive
-    
-    //Move the entry to the same level as it's parent, after that parent
-    var entryId = null; //to be filled by promise
-    var lastChildId = null;
-    var job = taskEntryNeedIds([entry, newParentEntry, parentEntry, lastChild])
-    	.then(ids => {
-    		entryId = ids[0];
-    		lastChildId = ids[3];
-    		return backend.move(ids[0], ids[1], ids[2])
-    	});
 
-    //Append consequent siblings to the end of the children
-    let i = siblings.findIndex(item => (item==entry));
-    siblings.splice(0, i+1);
-    if (siblings.length >= 1)
-    	job = job.then(result => taskEntryNeedIds(siblings))
-    		.then(siblingIds => backend.move(siblingIds, entryId, lastChildId));
-    pushJob(job);
+    return pushJob(async () => {
+    	//Move the entry to the same level as it's parent, after that parent
+    	let ids = await taskEntryNeedIds([entry, newParentEntry, parentEntry, lastChild]);
+    	let entryId = ids[0];
+    	let lastChildId = ids[3];
+    	await backend.move(ids[0], ids[1], ids[2]);
+    	
+    	//Append consequent siblings to the end of the children
+    	let i = siblings.findIndex(item => (item==entry));
+    	siblings.splice(0, i+1);
+    	if (siblings.length >= 1) {
+    		let siblingIds = await taskEntryNeedIds(siblings);
+    		await backend.move(siblingIds, entryId, lastChildId);
+    	}
+    });
   }
 
   function taskEntryTabFocused() {
@@ -2138,9 +2171,10 @@ function taskEntryDragCommit(event) {
     
     //On the backend do the same but "task before" is going to be an actual "previous sibling" this time (maybe null)
     var newParent = entry_above.getParent();
-    var job = taskEntryNeedIds([entry, newParent, newPrevSibling])
-    	.then(ids => backend.move(ids[0], ids[1], ids[2]));
-    pushJob(job);
+    return pushJob(async () => {
+    	let ids = await taskEntryNeedIds([entry, newParent, newPrevSibling]);
+    	await backend.move(ids[0], ids[1], ids[2]);
+    });
   }
   function taskMoveEntryUpFocused() {
     var focusedEntry = tasks.getFocusedEntry();
@@ -2183,9 +2217,10 @@ function taskEntryDragCommit(event) {
     entry.setCaret(oldCaret); //preserve focus
     
     //Move the entry on the backend
-    var job = taskEntryNeedIds([entry, newParent, newPrevSibling])
-    	.then(ids => backend.move(ids[0], ids[1], ids[2]));
-    pushJob(job);
+    return pushJob(async () => {
+    	let ids = await taskEntryNeedIds([entry, newParent, newPrevSibling]);
+    	await backend.move(ids[0], ids[1], ids[2]);
+    });
   }
   function taskMoveEntryDownFocused() {
     var focusedEntry = tasks.getFocusedEntry();
@@ -2220,50 +2255,43 @@ function taskEntryDragCommit(event) {
     //We don't have some data at hand (Notes, Due) so we have to query the backend first
     //Otherwise if we leave the function and the user opens the editor while our promise here is waiting to GET() data,
     //they're going to see old unmerged Notes.
-    
-    var entryToId = null;
-    var entryWhatId = null;
-    var newPrevChildId = null;
-    var job = taskEntryNeedIds([entry_to, entry_what, newPrevChild])
-    .then(ids => {
-    	entryToId = ids[0];
-    	entryWhatId = ids[1];
-    	newPrevChildId = ids.splice(2, 1)[0]; //don't query this one
-    	return backend.get(ids)
-    })
-    .then(results => {
-      //console.log("have entry data");
-      let task_to = results[entryToId];
-      let task_what = results[entryWhatId];
-      
-      //Now that we have everything, first update the UI
-      //Move children
-      var allChildren = entry_what.getAllChildren();
-      newPrevEntry.insertEntriesAfter(allChildren, entry_to.getLevel() - entry_what.getLevel());
-      
-      //Patch entry_to and delete entry_what
-      var patch_to = {
-        id: entryToId,
-        title: taskEntryNormalizeTitle(entry_to.getTitle() + entry_what.getTitle()),
-        notes: [task_to.notes, task_what.notes].filter(Boolean).join('\r\n'), //join non-empty parts
-      };
-      tasks.delete(entry_what);
-      entry_to.patch(patch_to);
-      entry_to.setCaret(mergePos);
-      
-      //Now produce calls to the backend
-      //TODO: We could do both updates batched
-      return backend.patch(patch_to)
-        .then(response => {
-          //console.log("patched entry to");
-          //Move children first!
-          return backend.moveChildren(entryWhatId, entryToId, newPrevChildId);
-        }).then(response => {
-          //console.log("moved children")
-          return backend.deleteWithChildren(entryWhatId);
-        });
+    return pushJob(async () => {
+    	let ids = await taskEntryNeedIds([entry_to, entry_what, newPrevChild]);
+    	let entryToId = ids[0];
+    	let entryWhatId = ids[1];
+    	let newPrevChildId = ids.splice(2, 1)[0]; //don't query this one
+		let results = await backend.get(ids);
+		
+		//console.log("have entry data");
+		let task_to = results[entryToId];
+		let task_what = results[entryWhatId];
+		
+		//Now that we have everything, first update the UI
+		//Move children
+		var allChildren = entry_what.getAllChildren();
+		newPrevEntry.insertEntriesAfter(allChildren, entry_to.getLevel() - entry_what.getLevel());
+		
+		//Patch entry_to and delete entry_what
+		var patch_to = {
+			id: entryToId,
+			title: taskEntryNormalizeTitle(entry_to.getTitle() + entry_what.getTitle()),
+			notes: [task_to.notes, task_what.notes].filter(Boolean).join('\r\n'), //join non-empty parts
+		};
+		tasks.delete(entry_what);
+		entry_to.patch(patch_to);
+		entry_to.setCaret(mergePos);
+		
+		//Now produce calls to the backend
+		//TODO: We could do both updates batched
+		await backend.patch(patch_to);
+		//console.log("patched entry to");
+		
+		//Move children first!
+		await backend.moveChildren(entryWhatId, entryToId, newPrevChildId);
+		//console.log("moved children")
+		
+		return await backend.deleteWithChildren(entryWhatId);
     });
-    pushJob(job);
   }
   
   //Merges the next entry into this one
@@ -2296,12 +2324,11 @@ function taskEntryDragCommit(event) {
     var newEntry = tasks.createEntry(newTask, level);
     tasks.insertEntryAfter(newEntry, prevEntry);
     
-    var job = taskEntryNeedIds([parentEntry, prevEntry])
-    	.then(ids => {
-    	  newTask.parent = ids[0];
-    	  return backend.insert(newTask, ids[1], backend.selectedTaskList);
-    	});
-    pushJob(job);
+    let job = pushJob(async () => {
+		let ids = await taskEntryNeedIds([parentEntry, prevEntry]);
+		newTask.parent = ids[0];
+		return await backend.insert(newTask, ids[1], backend.selectedTaskList);
+    });
 
     newEntry.promiseId(job); //set temporary promised ID
     return newEntry;
@@ -2337,24 +2364,19 @@ function taskEntryDragCommit(event) {
     //TODO: Move all children of the original task visually here? Or are they automatically where they need to be?
     
     //Once the backend request completes and we have the ID, update the old task
-    var newTaskId = null; //must be var -- promise will put value here
-    var prevTaskId = null;
-    var job = taskEntryNeedIds([newEntry, prevEntry])
-   	.then(ids => {
-   		newTaskId = ids[0]; //Store in a shared context for later promise
-  		prevTaskId = ids[1];
-   		prevPatch.id = ids[1];
-   		if (prevPatch.title != prevTitle) { //trim the previous one
-     		backend.cache.patch(prevPatch);
-     		return backend.patch(prevPatch);
-    	} //else no update needed
+    return pushJob(async () => {
+		let ids = await taskEntryNeedIds([newEntry, prevEntry]);
+		let newTaskId = ids[0]; //Store in a shared context for later promise
+		let prevTaskId = ids[1];
+		prevPatch.id = ids[1];
+		if (prevPatch.title != prevTitle) { //trim the previous one
+			backend.cache.patch(prevPatch);
+			await backend.patch(prevPatch);
+		} //else no update needed
+		//Move all children of the original task to the new task
+		//console.log("running backend.moveChildren")
+		return await backend.moveChildren(prevTaskId, newTaskId, null);
     });
-    //Move all children of the original task to the new task
-    job = job.then(response => {
-      //console.log("running backend.moveChildren")
-      return backend.moveChildren(prevTaskId, newTaskId, null);
-    });
-    return pushJob(job);
   }
 
   /*
@@ -2362,8 +2384,7 @@ function taskEntryDragCommit(event) {
   Makes the first child their new parent.
   */
   function taskLiberateChildren(entry) {
-    //console.log("taskLiberateChildren:");
-    //console.log(entry);
+    //console.log("taskLiberateChildren:", entry);
     var children = entry.getChildren();
     if (!children || (children.length <= 0))
       return Promise.resolve();
@@ -2375,23 +2396,19 @@ function taskEntryDragCommit(event) {
     
     //Of the child tasks select the top one
     var firstChild = children.splice(0, 1)[0];
-    //console.log("taskLiberateChildren: Making this one new parent:");
-    //console.log(firstChild);
+    //console.log("taskLiberateChildren: Making this one new parent:", firstChild);
     
     //This entry is the only one that's visually changing nesting level
     firstChild.adjustLevel(-1, false); //non-recursive
     
-    var firstChildId = null; //shared between promises
-    var childIds = null;
-    var job = taskEntryNeedIds([entry, entryParent, firstChild].concat(children))
-   	.then(ids => {
-   		childIds = ids.splice(3);
-   		firstChildId = ids[2];
+    return pushJob(async () => {
+    	let ids = await taskEntryNeedIds([entry, entryParent, firstChild].concat(children));
+   		let childIds = ids.splice(3);
+   		let firstChildId = ids[2];
    		//Move it to this task's parent, under this task.
-   		return backend.move(firstChildId, ids[1], ids[0]);
-   	})
-   	.then(result => backend.move(childIds, firstChildId, null));
-    return pushJob(job);
+   		await backend.move(firstChildId, ids[1], ids[0]);
+   		return await backend.move(childIds, firstChildId, null);
+    });
   }
 
   /*
@@ -2403,42 +2420,39 @@ function taskEntryDragCommit(event) {
   	  return Promise.reject("Not implemented");
     taskEntryTitleCommitNow(); //commit any pending changes
     
-    var job = null;
-    if (!recursive) {
-      //Move the children outside parent first
-      job = taskLiberateChildren(entry);
-    } else {
-      //Delete the UI entries for all children
-      entry.getAllChildren().forEach(child => tasks.delete(child));
-      job = Promise.resolve();
-    }
-    
+    if (recursive)
+		//Delete the UI entries for all children
+		entry.getAllChildren().forEach(child => tasks.delete(child));
+    else
+    	//Move the children outside parent first
+    	//Updates the UI now and schedules the backend job
+    	taskLiberateChildren(entry);
+
     //Find next entry to focus:
     //* either the new liberated parent or the next sibling
     //* or the previous sibling (but not their child)
     //* or the parent
     let nextEntry = entry.getNextSibling() || entry.getPreviousSibling() || entry.getParent();
     //All null? => top level, no siblings => no other nodes to focus, sorry
-    
+
     //BEFORE DELETION, copy the ID promise
     var whenTaskId = entry.whenHaveId();
-    
+
     //Delete the node itself
     tasks.delete(entry);
     if (nextEntry)
       nextEntry.setCaret();
-    
-    //Delete the task on the backend
-    job = Promise.all([job, whenTaskId])
-    	.then(response => backend.deleteWithChildren(response[1]));
-    return pushJob(job);
+
+	return pushJob(async () => {
+		let taskId = await whenTaskId;
+		await backend.deleteWithChildren(taskId);
+	});
   }
 
   //Edits the task properties unrelated to its position in the list
   function taskPatch(patch) {
     tasks.patchEntry(patch); //Update the task UI node
-    var job = backend.patch(patch);
-    return pushJob(job);
+    return pushJob(() => backend.patch(patch));
   }
 
   //Moves the task and all of its children to a different tasklist
@@ -2458,13 +2472,12 @@ function taskEntryDragCommit(event) {
     entry.getAllChildren().forEach(child => tasks.delete(child));
     tasks.delete(entry);
     
-    var job = whenTaskId
-    .then(taskId => {
+    return pushJob(async () => {
+    	let taskId = await whenTaskId;
     	console.log('taskPatchMoveToList: moving', taskId, 'to newList=', newTasklist, ', newBackend=', newBackend);
     	console.log('current backend:', backend);
-    	backend.moveToList(taskId, newTasklist, newBackend);
+    	return await backend.moveToList(taskId, newTasklist, newBackend);
     });
-    return pushJob(job);
   }
 
   //Edits the task and immediately moves it and all of its children to a different tasklist
@@ -2491,16 +2504,11 @@ function tasklistAdd(account) {
 	if (!title)
 		return;
 
-	var newTasklistId = null;
-	var job = account.tasklistAdd(title)
-	.then(result => {
-		newTasklistId = result.id;
-		return accounts.reloadTasklists(account)
-	})
-	.then(response => {
+	return pushJob(async () => {
+		let newTasklistId = (await account.tasklistAdd(title)).id;
+		await accounts.reloadTasklists(account);
 		setSelectedTaskList(new TaskListHandle(account, newTasklistId));
 	});
-	pushJob(job);
 }
 
 function tasklistRename(tasklist) {
@@ -2523,9 +2531,10 @@ function tasklistRename(tasklist) {
 		'id': tasklist.tasklist,
 		'title': title,
 	};
-	var job = account.tasklistPatch(patch)
-		.then(result => accounts.reloadTasklists(account));
-	pushJob(job);
+	return pushJob(async () => {
+		await account.tasklistPatch(patch);
+		await accounts.reloadTasklists(account);
+	});
 }
 
 function tasklistDelete(tasklist) {
@@ -2552,9 +2561,10 @@ function tasklistDelete(tasklist) {
 	if (!confirm('Are you SURE you want to delete task list "'+title+'"?'))
 		return;
 	
-	var job = account.tasklistDelete(tasklist.tasklist)
-	.then(result => accounts.reloadTasklists(account));
-	pushJob(job);
+	return pushJob(async () => {
+		await account.tasklistDelete(tasklist.tasklist);
+		accounts.reloadTasklists(account);
+	});
 }
 
 
@@ -2594,11 +2604,10 @@ Editor.prototype.open = function(taskId) {
 	if (!taskId) return;
 	console.log("Opening editor for task "+taskId);
 
-	//Title edits sometimes are not yet commited even though we've sent the request
-	var job = jobs.waitCurrentJobsCompleted()
-	//Load the task data into the editor
-	.then(results => backend.get(taskId))
-	.then(task => {
+	return pushJob(async () => {
+		//Load the task data into the editor
+		let task = await backend.get(taskId);
+		
 		if (!task) {
 			console.log("Failed to load the requested task for editing");
 			this.taskId = null;
@@ -2623,7 +2632,6 @@ Editor.prototype.open = function(taskId) {
 		listPage.style.display = "none";
 		this.page.classList.remove("hidden");
 	});
-	pushJob(job);
 }
 //Close the editor
 Editor.prototype.cancel = function() {
@@ -2717,8 +2725,7 @@ Editor.prototype.newSaveJob = function() {
 Editor.prototype.saveContinue = function() {
 	if (!this.taskId)
 		return;
-	let job = this.newSaveJob();
-	pushJob(job);
+	pushJob(this.newSaveJob());
 	
 	//Disable the button
 	this.setDirty(false);
@@ -2749,20 +2756,19 @@ Editor.prototype.saveCopyClose = function() {
 		return;
 	
 	//Get the current version of the task
-	let job = backend.get(this.taskId)
-	.then(task => {
+	return pushJob(async () => {
+		let task = await backend.get(this.taskId);
+		
 		//Patch the task in memory. Let's hope copyToList uses this. (Otherwise we should copy and THEN edit)
 		resourcePatch(task, patch);
 		//Copy recursively
 		let items = {};
 		items[task.id] = { task: task };
-		return backend.copyToList(items, newList.tasklist, newList.account, true);
-	});
-	job = job.then(response => {
+		await backend.copyToList(items, newList.tasklist, newList.account, true);
+		
 		this.setDirty(false);
 		this.cancel();
 	});
-	pushJob(job);
 }
 Editor.prototype.deleteBtnClick = function() {
 	if (!this.taskId)
