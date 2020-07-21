@@ -98,10 +98,6 @@ var optionSet = {
 		type: 'bool',
 		title: 'Make accounts clickable',
 		hint: 'Make account entries in tasklist combobox clickable -- shows a page with a few account actions when you click on them', },
-	uiMaxWidth: {
-		type: 'number', default: 400,
-		title: 'UI max width',
-		hint: 'Limit the UI to this width. Set to 0 to expand to all available horizontal space', },
 	mergeByDelete: {
 		type: 'bool', default: true,
 		title: 'Merge by Delete',
@@ -127,6 +123,10 @@ var optionSet = {
 		type: 'bool',
 		title: 'Debug',
 		hint: 'Enables debug backends and more logging', },
+	uiMaxWidth: {
+		type: 'number', default: 0,
+		title: 'UI max width',
+		hint: 'Limit the UI to this width. Set to 0 to expand to all available horizontal space', },
 };
 function optionsPageOpen() {
 	console.debug('options:', options);

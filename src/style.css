@@ -681,8 +681,7 @@ There's too little info for the 100% width so center everything
 }
 #accountList {
   flex-grow: 1;
-  max-width: 400px;
-  margin-left: auto;
+  margin-left: auto; /* Works with max-width */
   margin-right: 4px;
 }
 #accountListControls {
@@ -760,6 +759,10 @@ Settings page
   /*position: absolute;
   bottom: 0;*/
 }
+#settingsPage button {
+  min-height: 2em;
+  padding: 2px 2em;
+}
 .settingsRow {
   display: flex;
   flex-direction: row;
@@ -797,8 +800,7 @@ Settings page
 body { max-width: none; }
 }
 /* Scale up the pixel dense versions */
-@media handheld, (min-resolution: 150dpi) {
-body {
+@media handheld, (min-resolution: 150dpi) { body {
   zoom: 1.5;
 /*
 Not this:
@@ -806,7 +808,18 @@ Not this:
    transform-origin: 0 0;
 This scales the bottom elements away from the bottom.
 */
+}}
+
+/*
+Max-width on some pages that look bad when wide
+*/
+#accountList /* sic */ {
+  max-width: 400px;
 }
+#backendSelectPage,
+#settingsPage *,
+#editorPage * {
+  max-width: 500px;
 }
 
 
