@@ -146,7 +146,6 @@ The button itself will be .dropdown .dropbtn
   background-repeat: no-repeat;
   background-position: center;
   /* Default size, borders, background image */
-  border: 1px solid lightgray;
 }
 .dropdown .dropbtn:hover {
   /* Highlight the button */
