@@ -24,6 +24,69 @@ html, body {
   min-height: 20px;
 }
 
+/* Task list panel */
+
+/* Task list panel dropdowns: move to the left, change icon */
+.taskListPanel .grip {
+  order: 1;
+}
+.taskListPanel .dropdown {
+  order: 2;
+  padding-right: 0;
+}
+.taskListPanel span {
+  order: 3;
+  padding-right: 0.3em;
+}
+.taskListPanel .dropdown {
+  align-self: start;
+  padding-top: 0.2em;
+}
+.taskListPanel .dropbtn {
+  background-image: url("res/sprites-gt.png");
+  background-position:-144px -25px;
+  min-width: 13px;
+  min-height: 12px;
+  margin-left:0px;
+  margin-right:5px;
+  border: 0;
+  padding: 0;
+}
+.taskListPanel .dropdown-content {
+  font-weight: normal;
+  left: 0;
+  right: unset;
+}
+
+/* tasklistPanel formatting */
+.taskListPanel .account,
+.taskListPanel .accountAdd,
+.taskListPanel .tasklist,
+.taskListPanel .tasklistAdd {
+  font-weight: normal;
+  font-size: 1em;
+  color: #2a5db0;
+}
+.taskListPanel span {
+  padding: 0;
+}
+.taskListPanel .account,
+.taskListPanel .accountAdd {
+  color: black;
+  margin-top: 0.25em;
+}
+
+
+/* Left panel */
+#listPanelTitle {
+  display: block;
+  font-weight: bold;
+  padding-left: 0.4em;
+  margin: 0.5em 0 0; /* margin-bottom is 0.25em in Canvas but our .accounts have margin-top 0.25em instead */
+}
+
+
+
 /* Default listPanel width is 142 + splitter 4 */
 #listPanel {
   width: 142px;
@@ -46,7 +109,6 @@ html, body {
 #listPanel .accountAdd {
   display: none; /* hide additional "add account" */
 }
-
 
 /* Panel toolbar */
 #listPanelToolbar .button {
