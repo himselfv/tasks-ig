@@ -816,7 +816,7 @@ Max-width on some pages that look bad when wide
 #accountList /* sic */ {
   max-width: 400px;
 }
-#backendSelectPage,
+#backendSelectPage *,
 #settingsPage *,
 #editorPage * {
   max-width: 500px;
