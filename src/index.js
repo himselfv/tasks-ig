@@ -605,7 +605,8 @@ function accountListChanged() {
 }
 accounts.addEventListener('change', accountListChanged);
 
-function accountStateChanged(account) {
+function accountStateChanged(event) {
+	let account = event.account;
 	let oldSelected = selectedTaskList();
 	
 	//Things to update:
