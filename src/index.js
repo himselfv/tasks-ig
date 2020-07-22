@@ -605,9 +605,9 @@ function accountListChanged() {
 }
 accounts.addEventListener('change', accountListChanged);
 
-function accountStateChanged(event) {
-	let account = event.account;
+function accountStateChanged(account) {
 	let oldSelected = selectedTaskList();
+	console.log('accountStateChanged', account);
 	
 	//Things to update:
 	// 1. Account's own combobox entry
@@ -620,16 +620,18 @@ function accountStateChanged(event) {
 	// 4. Account actions in page menu, if it's the currently selected account
 	//If tasklistbox reloading switched pages, everything refreshed anyway
 	if ((String(newSelected) == String(oldSelected)) && (newSelected.account == account))
-		if (!newSelected.tasklist)
+		if (!newSelected.tasklist) {
+			console.log('accountStateChanged: !newSelected.tasklist');
 			//Account-wide page is open, update it
 			//We don't need to recheck if it's appropriate, tasklistBox.reload() would have done that.
 			accountPageReload(newSelected);
+		}
 		else
 			//We don't need to reload the tasks themselves, account state doesn't influence that directly
 			//But the available actions might have changed
 			accountActionsUpdate();
 }
-accounts.addEventListener('stateChange', accountStateChanged);
+accounts.addEventListener('stateChange', (event) => accountStateChanged(event.account));
 
 
 
@@ -1682,6 +1684,7 @@ function tasklistReloadSelected() {
 }
 //Shows/hides and reloads contents for the "account-wide page" (no specific tasklist selected)
 function accountPageReload(selected) {
+	console.log('accountPageReload', selected);
 	if (typeof selected == 'undefined')
 		selected = selectedTaskList();
 	
