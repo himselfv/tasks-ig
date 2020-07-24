@@ -7,29 +7,33 @@ html, body {
   font-size: 10pt;
 }
 body {
-  /*max-width: 400px;*/ /* One-column view even on wide screens */
   position: relative; /* Absolute-positioned pages stick to us */
 }
 .page {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-  padding: 0;
-  margin: 0;
-  box-sizing: border-box; /* incl. pad and marg in WH */
   position: absolute; /* relative to body */
   left: 0;
   top: 0;
   background-color: white; /* hide everything underneath */
 }
+.page, .page > div {
+  box-sizing: border-box; /* incl. pad and marg in WH */
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+.page > div {
+  max-width: 500px; /* pages are 50px centered unless opt-in to full-width */
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+}
 
 /* See https://codepen.io/sosuke/pen/Pjoqqp to generate filters: black->color */
 
-/* Applied to hide any element without overwriting their display: property. */
-.hidden { display: none !important; }
-/* Applied to the last focused task entry. It'll be the target of operations */
-.focused {}
+.hidden { display: none !important; } /* Applied to hide any element without overwriting their display: property. */
+.focused {} /* Applied to the last focused task entry. It'll be the target of operations */
 
 
 /*
@@ -198,8 +202,9 @@ Used in the main list and in the editor
 Task list page
 Header sticks to top, footer sticks to bottom, the rest expands as content grows.
 */
-#listPage { /* a .page */
+#listPage > div { /* a .page */
   flex-direction: row;
+  max-width: unset; /* full-width */
 }
 #listPanel {
   width: 200px;
@@ -606,7 +611,7 @@ Everything inside is packed unless overriden
 /*
 Editor
 */
-#editorPage { /* a .page */
+#editorPage > div { /* a .page */
   height: 90%;
   /*
   If you want to allow expand to scroll:
@@ -672,19 +677,14 @@ Editor
 
 /*
 Account list page
-There's too little info for the 100% width so center everything
 */
-#accountsPage {
+#accountsPage > div {
   flex-direction: row;
   padding: 0.4em;
 }
 #accountList {
   flex-grow: 1;
-  margin-left: auto; /* Works with max-width */
   margin-right: 4px;
-}
-#accountListControls {
-  margin-right: auto;
 }
 /* Trim tasklistPanel for the purpose */
 #accountList .account {
@@ -725,11 +725,10 @@ There's too little info for the 100% width so center everything
 }
 
 
-
 /*
 Backend selection page
 */
-#backendSelectPage { /* a .page */
+#backendSelectPage > div { /* a .page */
   justify-content: center;
   align-items: center;
   text-align: center;
@@ -745,7 +744,7 @@ Backend selection page
 /*
 Settings page
 */
-#settingsPage { /* a .page */
+#settingsPage > div { /* a .page */
   padding: 1px 1em;
 }
 #settingsControls {
@@ -810,14 +809,14 @@ This scales the bottom elements away from the bottom.
 }}
 
 /*
-Max-width on some pages that look bad when wide
+Max-width on some elements that look bad when wide
 */
-#accountList /* sic */ {
+#accountList > div {
   max-width: 400px;
 }
-#backendSelectPage *,
-#settingsPage *,
-#editorPage * {
+#backendSelectPage > div,
+#settingsPage > div,
+#editorPage > div {
   max-width: 500px;
 }
 

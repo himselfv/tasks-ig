@@ -816,6 +816,7 @@ function BackendSelectPage(params) {
 	
 	this.hasCancel = params.hasCancel;
 	this.prompt = params.prompt;
+	this.content = this.page.firstElementChild;
 	
 	this.reenable();
 	this.reload();
@@ -823,27 +824,27 @@ function BackendSelectPage(params) {
 }
 inherit(CustomPage, BackendSelectPage);
 BackendSelectPage.prototype.reload = function() {
-	document.getElementById('backendSelectPrompt').textContent = 
+	this.content.textContent = 
 		(backends.length > 0) ? this.prompt
 		: "No backends available, see error log for details";
 	
-	nodeRemoveChildrenByTagName(this.page, 'button');
+	nodeRemoveChildrenByTagName(this.content, 'button');
 	backends.forEach(item => {
 		let btn = document.createElement("button");
 		btn.textContent = item.uiName || item.name;
 		btn.associatedBackend = item;
 		btn.onclick = this.backendClicked.bind(this, btn);
-		this.page.appendChild(btn);
+		this.content.appendChild(btn);
 	});
 	
 	if (this.hasCancel) {
 		let sep = document.createElement("p");
-		sep.classList.toggle('backendSelectSeparator', true);
-		this.page.appendChild(sep);
+		sep.classList.toggle('backend-separator', true);
+		this.content.appendChild(sep);
 		let btn = document.createElement("button");
 		btn.textContent = 'Cancel';
 		btn.onclick = this.cancelClick.bind(this);
-		this.page.appendChild(btn);
+		this.content.appendChild(btn);
 	}
 }
 BackendSelectPage.prototype.close = function() {
