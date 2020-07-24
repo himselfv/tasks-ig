@@ -743,16 +743,28 @@ function linkNew(id, onclick, title) {
 	return link;
 }
 utils.export(linkNew);
-//Creates a new <li> wrapper around the content
-function li(content) {
-	let li = document.createElement('li');
+
+/*
+HTML tag creation shortcuts. Usage: html.div(html.p('My text')), html.br()
+*/
+function html() {}
+utils.export(html);
+html.factory = function(tag) { return (content, options) => {
+	let element = document.createElement(tag);
 	if (typeof content == 'string')
-		li.textContent = content;
+		element.textContent = content;
 	else
-		li.appendChild(content)
-	return li;
-}
-utils.export(li);
+	if (content)
+		element.appendChild(content);
+	if (options)
+		for (let key in options)
+			element[key] = options[key];
+	return element;
+}}
+for (let tag of ['p', 'div', 'li', 'br'])
+	html[tag] = html.factory(tag);
+html.text = function(content) { return document.createTextNode(content); }
+
 
 /*
 HTML box model - see:

@@ -1564,10 +1564,10 @@ MainTaskListPanel.prototype.itemClicked = function(item) {
 	if (value)
 		setSelectedTaskList(value);
 }
-var leftPanel = new MainTaskListPanel(document.getElementById('listPanelContent'));
+var leftPanel = new MainTaskListPanel(document.querySelector('#listPage .taskListPanel'));
 
 Splitter.ID_BASE = "tasksIg_";
-var leftSplitter = new Splitter(document.getElementById('listSplitter'));
+var leftSplitter = new Splitter(document.getElementById('listPageSplitter'));
 
 
 //Backend for the currently selected list. Only set if the backend is initialized.
@@ -1645,6 +1645,7 @@ function tasklistInit() {
 //Reloads the currently selected task list. Tries to preserve focus. Returns a promise.
 function tasklistReloadSelected() {
 	console.debug('tasklistReloadSelected');
+	console.log(html);
 	var oldFocus = tasks.getFocusedEntry();
 	if (oldFocus)
 		oldFocus = { id: oldFocus.getId(), pos: oldFocus.getCaret() };
@@ -1689,55 +1690,63 @@ function accountPageReload(selected) {
 	if (typeof selected == 'undefined')
 		selected = selectedTaskList();
 	
-	let messages = document.getElementById('listMessages');
-	nodeRemoveAllChildren(messages);
+	let page = document.querySelector('#listAccountPage > div');
+	nodeRemoveAllChildren(page);
 
 	//If what's selected is not an "account-wide page", we're not concerned
 	if (!selected || !selected.account || !!selected.tasklist) {
-		messages.classList.toggle('hidden', true);
+		page.classList.toggle('hidden', true);
 		return;
 	}
-	messages.classList.remove('hidden');
+	page.classList.remove('hidden');
 	
 	let account = selected.account;
 	if (account.error) {
-		messages.innerHTML = 'Could not initialize the backend '+selected.account.uiName()
-			+'.<br />Error: '+account.error;
-		messages.appendChild(li(linkNew(null, accountEditSettings, 'Change account settings')));
+		let p = html.p('Could not initialize the backend '+selected.account.uiName(), {class: 'status'});
+		p.appendChild(html.br());
+		p.appendChild('Error: '+account.error);
+		page.appendChild(p);
+		p = html.p(null, {class: 'actions'});
+		page.appendChild(html.li(linkNew(null, accountEditSettings, 'Change account settings')));
+		return;
 	}
-	else if (!account.isSignedIn() || !account.ui || !account.ui.tasklists)
-		messages.innerHTML = 'Signing in...<br />If this takes too long, perhaps there are problems';
+	else if (!account.isSignedIn() || !account.ui || !account.ui.tasklists) {
+		let p = html.p('Signing in...', {class: 'status'});
+		p.appendChild(html.br());
+		p.appendChild(html.text('If this takes too long, perhaps there are problems'));
+		page.appendChild(p);
+		return;
+	}
+	
+	//Task lists
+	let p = html.p(null, {class: 'tasklists'});
+	if (isArrayEmpty(account.ui.tasklists))
+		p.textContent = 'No task lists in this account.';
 	else {
-		//Task lists
-		let listP = document.createElement('p');
-		if (isArrayEmpty(account.ui.tasklists))
-			listP.textContent = 'No task lists in this account.';
-		else {
-			listP.textContent = "Task lists:";
-			for (let j in account.ui.tasklists) {
-				let tasklist = account.ui.tasklists[j];
-				listP.appendChild(li(
-					linkNew(null, () => {
-						setSelectedTaskList(new TaskListHandle(account.id, tasklist.id))
-					}, tasklist.title)
-				));
-			}
+		p.textContent = "Task lists:";
+		for (let j in account.ui.tasklists) {
+			let tasklist = account.ui.tasklists[j];
+			p.appendChild(html.li(
+				linkNew(null, () => {
+					setSelectedTaskList(new TaskListHandle(account.id, tasklist.id))
+				}, tasklist.title)
+			));
 		}
-		
-		//"Add task list"
-		if (account.tasklistAdd)
-			listP.appendChild(li(linkNew(null, tasklistAdd, 'Add a task list')));
-		else
-			listP.appendChild(li("Task lists cannot be added to this account."));
-		messages.appendChild(listP);
-		
-		//Actions
-		let actionsP = document.createElement('p');
-		actionsP.appendChild(li(linkNew(null, accountEditSettings, 'Change account settings')));
-		if (options.debug && account.reset)
-			actionsP.appendChild(linkNew(null, accountReset, 'Reset account'));
-		messages.appendChild(actionsP);
 	}
+	
+	//"Add task list"
+	if (account.tasklistAdd)
+		p.appendChild(html.li(linkNew(null, tasklistAdd, 'Add a task list')));
+	else
+		p.appendChild(html.li("Task lists cannot be added to this account."));
+	page.appendChild(p);
+	
+	//Actions
+	p = html.p(null, {class: 'actions'});
+	p.appendChild(html.li(linkNew(null, accountEditSettings, 'Change account settings')));
+	if (options.debug && account.reset)
+		p.appendChild(html.li(linkNew(null, accountReset, 'Reset account')));
+	page.appendChild(p);
 }
 
 //Called when the focused task changes

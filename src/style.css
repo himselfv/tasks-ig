@@ -236,14 +236,10 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
 #listToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
 #listToolbar { display: none; } /* hide in default design */
 #listContent,
-#listMessages { /* both fill 100% height */
+#listAccountPage { /* both fill 100% height */
   width: 100%;
   flex: 1;
   overflow: auto; /* disable to "unstick" header   */
-}
-#listMessages {
-  text-align: center;
-  margin-top: 1em;
 }
 #listFooter {
   border-top: LightGrey 1px solid;
@@ -257,6 +253,31 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
 #activityIndicator {
   margin-right: auto; /* stick to the left */
 }
+
+
+/*
+Single account page
+*/
+#listAccountPage {
+ /* text-align: center;
+  margin-top: 1em;*/
+}
+#listAccountPage > div {
+  /*max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;*/
+}
+
+/* Non-centered version */
+#listAccountPage > div {
+  padding-left: 1em;
+}
+#listAccountPage li {
+  margin-left: 1em;
+}
+
+
+
 
 /*
 Activity indicator
@@ -296,14 +317,14 @@ Left panel
   -ms-user-select: none;
   user-select: none; /* text unselectable (if the user accidentally double-clicks) */
 }
-#listSplitter {
+#listPageSplitter {
   width: 4px;
   background-color: LightGrey; /* same as borders in the main pane */
     /* alternative: #E3E9FF */
 }
 @media(max-width: 600px) {
   #listPanel { display: none; }
-  #listSplitter { display: none; }
+  #listPageSplitter { display: none; }
 }
 #listPanelToolbar { display: none; } /* hide in default design */
 #listPanelToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
@@ -829,7 +850,7 @@ Override any theme colors uniformly
   /*border-color: LightGrey;*/
   border-color: #E3E9FF; /*-- brighter version */
 }
-#listSplitter {
+#listPageSplitter {
   background-color: #E3E9FF;
 }
 

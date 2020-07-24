@@ -1,84 +1,84 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Tasks</title>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="style-canvas.css">
+	<title>Tasks</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<link rel="stylesheet" href="style.css">
+	<link rel="stylesheet" href="style-canvas.css">
 </head>
 <body>
 
 <div id="listPage" class="page hidden" style="z-index: 0;"><div>
-  <div id="listPanel" class="taskListPanel">
-    <div id="listPanelToolbar" class="toolbar"></div>
-    <p id="listPanelTitle">Task lists:</p>
-    <div id="listPanelContent"></div>
-  </div>
-  <div id="listSplitter"></div>
-  <div id="listBody">
-    <div id="listHeader">
-      <select id="listSelectBox"></select>
-      <div id="mainmenu" class="dropdown"></div>
-    </div>
-    <div id="listToolbar" class="toolbar"></div>
-    <div id="listMessages"></div>
-    <div id="listContent"></div>
-    <div id="listFooter">
-      <div id="activityIndicator"></div>
-      <div id="taskmenu" class="dropdown"></div>
-    </div>
-  </div>
+	<div id="listPanel">
+		<div id="listPanelToolbar" class="toolbar"></div>
+		<p id="listPanelTitle">Task lists:</p>
+		<div class="taskListPanel"></div>
+	</div>
+	<div id="listPageSplitter" class="splitter"></div>
+	<div id="listBody">
+		<div id="listHeader">
+			<select id="listSelectBox"></select>
+			<div id="mainmenu" class="dropdown"></div>
+		</div>
+		<div id="listToolbar" class="toolbar"></div>
+		<div id="listAccountPage"><div></div></div>
+		<div id="listContent"></div>
+		<div id="listFooter">
+			<div id="activityIndicator"></div>
+			<div id="taskmenu" class="dropdown"></div>
+		</div>
+	</div>
 </div></div>
 
 <div id="editorPage" class="page hidden" style="z-index: 12;"><div>
-  <p id="editorTaskTitleP">
-    <input type="checkbox" id="editorTaskTitleBox" /><label id="editorTaskTitle" for="editorTaskTitleBox"></label>
-    <button type="button" id="editorDelete">Delete</button>
-  </p>
-  <p id="editorTaskListP"><select id="editorTaskList"></select></p>
-  <p id="editorCannotEditNotice">This task list is read-only.</p>
-  <p id="editorTaskDateP"><input type="date" id="editorTaskDate"></input></p>
-  <textarea id="editorTaskNotes"></textarea>
-  <p id="editorMoveNotice">The task will appear in the different list when you switch to it.</p>
-  <p id="editorMoveBackendNotice">You're moving to a different account. Enhanced properties such as task history or recurrence may be lost.</p>
-  <p id="editorControls">
-    <button type="button" id="editorSaveContinue" title="Save changes but continue editing">Save & continue</button>
-    <button type="button" id="editorSave" title="Save changes and close">Save</button>
-    <button type="button" id="editorSaveCopy" title="Save this task as a copy in another list">Save a copy</button>
-    <button type="button" id="editorCancel">Cancel</button>
-  </p>
+	<p id="editorTaskTitleP">
+		<input type="checkbox" id="editorTaskTitleBox" /><label id="editorTaskTitle" for="editorTaskTitleBox"></label>
+		<button type="button" id="editorDelete">Delete</button>
+	</p>
+	<p id="editorTaskListP"><select id="editorTaskList"></select></p>
+	<p id="editorCannotEditNotice">This task list is read-only.</p>
+	<p id="editorTaskDateP"><input type="date" id="editorTaskDate"></input></p>
+	<textarea id="editorTaskNotes"></textarea>
+	<p id="editorMoveNotice">The task will appear in the different list when you switch to it.</p>
+	<p id="editorMoveBackendNotice">You're moving to a different account. Enhanced properties such as task history or recurrence may be lost.</p>
+	<p id="editorControls">
+		<button type="button" id="editorSaveContinue" title="Save changes but continue editing">Save & continue</button>
+		<button type="button" id="editorSave" title="Save changes and close">Save</button>
+		<button type="button" id="editorSaveCopy" title="Save this task as a copy in another list">Save a copy</button>
+		<button type="button" id="editorCancel">Cancel</button>
+	</p>
 </div></div>
 
 <div id="accountsPage" class="page hidden" style="z-index: 12;"><div>
-  <div id="accountList" class="taskListPanel"></div>
-  <div id="accountListControls">
-    <button type="button" id="accountListAdd">Add</button>
-    <button type="button" id="accountListRename">Rename</button>
-    <button type="button" id="accountListEditSettings">Edit</button>
-    <button type="button" id="accountListDelete">Delete</button>
-    <p class="accountListControlsSpacer"></p>
-    <button type="button" id="accountListMoveUp">Move Up</button>
-    <button type="button" id="accountListMoveDown">Move Down</button>
-    <p class="accountListControlsSpacer"></p>
-    <button type="button" id="accountListReset" class="hidden">Reset</button>
-    <p class="accountListControlsSpacer"></p>
-    <button type="button" id="accountListClose">Close</button>
-  </div>
+	<div id="accountList" class="taskListPanel"></div>
+	<div id="accountListControls">
+		<button type="button" id="accountListAdd">Add</button>
+		<button type="button" id="accountListRename">Rename</button>
+		<button type="button" id="accountListEditSettings">Edit</button>
+		<button type="button" id="accountListDelete">Delete</button>
+		<p class="accountListControlsSpacer"></p>
+		<button type="button" id="accountListMoveUp">Move Up</button>
+		<button type="button" id="accountListMoveDown">Move Down</button>
+		<p class="accountListControlsSpacer"></p>
+		<button type="button" id="accountListReset" class="hidden">Reset</button>
+		<p class="accountListControlsSpacer"></p>
+		<button type="button" id="accountListClose">Close</button>
+	</div>
 </div></div>
 
 <div id="backendSelectPage" class="page hidden" style="z-index: 14;"><div>
-  <span id="backendSelectPrompt">Authorize with:</span>
+	<span id="backendSelectPrompt">Authorize with:</span>
 </div></div>
 
 <div id="settingsPage" class="page hidden" style="z-index: 16;"><div>
-  <h1 id="settingsPageTitle"></h1>
-  <div id="settingsContent">
-  </div>
-  <div id="settingsControls">
-    <button type="button" id="settingsOk">Ok</button>
-    <button type="button" id="settingsCancel">Cancel</button>
-  </div>
+	<h1 id="settingsPageTitle"></h1>
+	<div id="settingsContent">
+	</div>
+	<div id="settingsControls">
+		<button type="button" id="settingsOk">Ok</button>
+		<button type="button" id="settingsCancel">Cancel</button>
+	</div>
 </div></div>
 
 <div id="errorPopup" class="hidden" style="z-index: 200;"></div>

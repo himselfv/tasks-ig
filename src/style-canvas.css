@@ -95,7 +95,7 @@ html, body {
   padding: 0;
   border: 0;
 }
-#listSplitter { width: 4px; }
+#listPageSplitter { width: 4px; }
 /* Title is the same color, same size as headline */
 #listPanelToolbar {
   display: flex;
