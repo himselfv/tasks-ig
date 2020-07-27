@@ -1690,8 +1690,9 @@ function accountPageReload(selected) {
 	if (typeof selected == 'undefined')
 		selected = selectedTaskList();
 	
-	let page = document.querySelector('#listAccountPage > div');
-	nodeRemoveAllChildren(page);
+	let page = document.getElementById('listAccountPage');
+	let content = page.getElementsByTagName('div')[0];
+	nodeRemoveAllChildren(content);
 
 	//If what's selected is not an "account-wide page", we're not concerned
 	if (!selected || !selected.account || !!selected.tasklist) {
@@ -1705,16 +1706,16 @@ function accountPageReload(selected) {
 		let p = html.p('Could not initialize the backend '+selected.account.uiName(), {class: 'status'});
 		p.appendChild(html.br());
 		p.appendChild('Error: '+account.error);
-		page.appendChild(p);
+		content.appendChild(p);
 		p = html.p(null, {class: 'actions'});
-		page.appendChild(html.li(linkNew(null, accountEditSettings, 'Change account settings')));
+		content.appendChild(html.li(linkNew(null, accountEditSettings, 'Change account settings')));
 		return;
 	}
 	else if (!account.isSignedIn() || !account.ui || !account.ui.tasklists) {
 		let p = html.p('Signing in...', {class: 'status'});
 		p.appendChild(html.br());
 		p.appendChild(html.text('If this takes too long, perhaps there are problems'));
-		page.appendChild(p);
+		content.appendChild(p);
 		return;
 	}
 	
@@ -1739,14 +1740,14 @@ function accountPageReload(selected) {
 		p.appendChild(html.li(linkNew(null, tasklistAdd, 'Add a task list')));
 	else
 		p.appendChild(html.li("Task lists cannot be added to this account."));
-	page.appendChild(p);
+	content.appendChild(p);
 	
 	//Actions
 	p = html.p(null, {class: 'actions'});
 	p.appendChild(html.li(linkNew(null, accountEditSettings, 'Change account settings')));
 	if (options.debug && account.reset)
 		p.appendChild(html.li(linkNew(null, accountReset, 'Reset account')));
-	page.appendChild(p);
+	content.appendChild(p);
 }
 
 //Called when the focused task changes
