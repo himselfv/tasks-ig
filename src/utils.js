@@ -13,7 +13,6 @@ Because the former one automatically checks that the object exists
 and automatically uses its name (less chance for error).
 */
 
-//Pass 
 function Unit(module_exports) {
 	this.exports = module_exports || {};
 }

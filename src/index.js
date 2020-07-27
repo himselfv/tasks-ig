@@ -185,12 +185,21 @@ Or:
 		...
 	});
 
-Any error from the server means our local state is no longer correct and
-a page reload is needed.
+CAUTION:
+* Any error from the server means our local state is no longer correct and
+  a page reload is needed.
 
-Newly created tasks may not yet have IDs. They may not even yet have been commited.
-In this case wait on their ID promises (taskEntryNeedIds).
-This is ~equivalent to commitNow() + wait on newJob().
+* Newly created tasks may not yet have IDs. They may not even yet have been commited.
+  Wait on ID promises (taskEntryNeedIds).
+    This is ~equivalent to commitNow() + wait on newJob().
+
+* Avoid job deadlocks:
+    pushJob(A.then(_ => pushJob(B)))
+  pushJob(B) will make B depend on the completion of A, which in turn won't complete without B.
+
+* Do NOT include initial UI updates into the promise at all.
+  Do not include posterior UI updates into the job itself, do them in job.then() instead.
+
 */
 //Pass any promises to track their execution + catch errors.
 var jobs = new JobQueue();
@@ -2467,7 +2476,7 @@ function taskEntryDragCommit(event) {
   //Edits the task properties unrelated to its position in the list
   function taskPatch(patch) {
     tasks.patchEntry(patch); //Update the task UI node
-    return pushJob(() => backend.patch(patch));
+    return pushJob(() => backend.patch(patch)	);
   }
 
   //Moves the task and all of its children to a different tasklist
@@ -2489,8 +2498,8 @@ function taskEntryDragCommit(event) {
     
     return pushJob(async () => {
     	let taskId = await whenTaskId;
-    	console.log('taskPatchMoveToList: moving', taskId, 'to newList=', newTasklist, ', newBackend=', newBackend);
-    	console.log('current backend:', backend);
+    	console.debug('taskPatchMoveToList: moving', taskId, 'to newList=', newTasklist, ', newBackend=', newBackend);
+    	console.debug('current backend:', backend);
     	return await backend.moveToList(taskId, newTasklist, newBackend);
     });
   }
@@ -2619,6 +2628,7 @@ Editor.prototype.open = function(taskId) {
 	if (!taskId) return;
 	console.log("Opening editor for task "+taskId);
 
+	//Maybe this doesn't even need to be a Job? We're simply loading data. Or at least limit the scope and do the rest in .then().
 	return pushJob(async () => {
 		//Load the task data into the editor
 		let task = await backend.get(taskId);
@@ -2740,7 +2750,7 @@ Editor.prototype.newSaveJob = function() {
 Editor.prototype.saveContinue = function() {
 	if (!this.taskId)
 		return;
-	pushJob(this.newSaveJob());
+	this.newSaveJob();
 	
 	//Disable the button
 	this.setDirty(false);
@@ -2756,7 +2766,6 @@ Editor.prototype.saveClose = function() {
 		this.setDirty(false);
 		this.cancel();
 	});
-	pushJob(job);
 }
 //Save the data currently in the editor as a copy in another list
 Editor.prototype.saveCopyClose = function() {
@@ -2788,10 +2797,8 @@ Editor.prototype.saveCopyClose = function() {
 Editor.prototype.deleteBtnClick = function() {
 	if (!this.taskId)
 		return;
-	pushJob(
-		taskDelete(tasks.find(this.taskId))
-		.then(response => this.cancel())
-	);
+	taskDelete(tasks.find(this.taskId))
+	.then(response => this.cancel());
 }
 
 var editor = new Editor();
