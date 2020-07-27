@@ -28,3 +28,13 @@ https://www.iconfinder.com/icons/352386/4871557
 https://www.iconfinder.com/icons/352386/4871564
 https://www.iconfinder.com/icons/5539635
 https://www.iconfinder.com/icons/5539636
+
+error-183267r-16.png:
+A icon by Yannick Lung.
+Licensed as: Free icon.
+https://www.iconfinder.com/icons/183525/error_exclamation_mark_warning_icon
+
+error-381599-16.png
+An icon by Tahsin Tahil
+Licensed under: Creative Commons (Attribution 3.0 Unported)
+https://www.iconfinder.com/icons/381599/error_icon
