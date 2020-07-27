@@ -11,7 +11,10 @@
 
 <div id="listPage" class="page hidden" style="z-index: 0;"><div>
 	<div id="listPanel">
-		<div id="listPanelToolbar" class="toolbar"></div>
+		<div id="listPanelToolbar" class="toolbar">
+			<a class="button accountAdd">Add account</a>
+			<a class="button listAdd">New list</a>
+		</div>
 		<p id="listPanelTitle">Task lists:</p>
 		<div class="taskListPanel"></div>
 	</div>
@@ -21,11 +24,27 @@
 			<select id="listSelectBox"></select>
 			<div id="mainmenu" class="dropdown"></div>
 		</div>
-		<div id="listToolbar" class="toolbar"></div>
+		<div id="listToolbar" class="toolbar">
+			<a class="button tasksClearCompleted">Clear completed</a>
+			<a class="button taskAdd">New task</a>
+			<!-- View: <my order> | <sort by date> | <completed tasks> | <trash> -->
+			<a class="button tasksShowCompleted">Show completed</a>
+			<a class="button taskEdit">Edit details</a>
+			<a class="button taskTab">Indent</a>
+			<a class="button taskShiftTab">Unindent</a>
+			<a class="button taskMoveUp">Move up</a>
+			<a class="button taskMoveDown">Move down</a>
+			<a class="button taskDelete">Delete</a>
+			<a class="button taskDeleteRecursive">Delete w/children</a>
+			<a class="button tasksRefresh">Refresh</a>
+			<a class="button tasksPrint">Print</a>
+		</div>
 		<div id="listAccountPage"><div></div></div>
 		<div id="listContent"></div>
 		<div id="listFooter">
 			<div id="activityIndicator"></div>
+			<a class="button taskAdd">Add task</a>
+			<a class="button taskDelete">Delete task</a>
 			<div id="taskmenu" class="dropdown"></div>
 		</div>
 	</div>

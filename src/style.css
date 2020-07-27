@@ -481,13 +481,13 @@ Main menu
 /*
 Bottom toolbar panel.
 */
-#taskAddBtn { background-image: url("res/plus2.png"); }
-#taskDeleteBtn { background-image: url("res/trash2.png"); }
+#listFooter .taskAdd { background-image: url("res/plus2.png"); }
+#listFooter .taskDelete { background-image: url("res/trash2.png"); }
 #taskmenu .button { background-image: url("res/items3.png"); }
-#taskAddBtn, #taskDeleteBtn, #taskmenu .button {
+#listFooter .button {
   filter: invert(41%) sepia(37%) saturate(581%) hue-rotate(176deg) brightness(91%) contrast(87%); /* black -> 4D6C98 */
 }
-#taskAddBtn:hover, #taskDeleteBtn:hover, #taskmenu .button:hover {
+#listFooter .button:hover {
   background-color: white; /* will be filtered per above */
 }
 

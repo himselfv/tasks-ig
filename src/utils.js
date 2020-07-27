@@ -446,6 +446,8 @@ Editable.getTextNode = function(node) {
 	//We expect node to have exactly one TextNode child but try to handle the case where it's forgotten too
 	return node; //fallback
 }
+//Sets focus AND caret position/selection to a given editable element with a text content.
+//Assumes the node only has one child of type Text (typical for editable elements)
 Editable.setCaret = function(node, start, end) {
 	//console.log("editableSetCaret(start="+start+", end="+end+")");
 	var range = document.createRange();
@@ -520,14 +522,6 @@ Editable.getCaret = function(node) {
 /*
 Misc UI
 */
-
-//Sets focus AND caret position/selection to a given editable element with a text content.
-//Assumes the node only has one child of type Text (typical for editable elements)
-function element(id) {
-	return document.getElementById(id);
-}
-utils.export(element);
-
 function nodeHasParent(node, parent) {
 	while (node && (node != parent))
 		node = node.parentNode;
@@ -547,45 +541,6 @@ function nodeRemoveChildrenByTagName(node, tagName) {
 		node.removeChild(elements[elements.length-1]);
 }
 utils.export(nodeRemoveChildrenByTagName);
-
-//Returns getBoundingClientRect(), only relative not to the offsetParent but to a given parent node
-//Pass null to retrieve the absolute bounding rect
-function relativeBoundingRect(element, base) {
-	//Either the element belongs to the same offsetParent as the base,
-	//or its offsetParent belongs to the same offsetParent as the base,
-	//or so on.
-    var baseOffsetParent = base ? base.offsetParent : null;
-	
-	var rect = { top: 0, left: 0, bottom: 0, right: 0 };
-    if (element) {
-    	// DOMRect is read-only so write our own structure
-    	let thisRect = element.getBoundingClientRect();
-		rect.top = thisRect.top;
-		rect.left = thisRect.left;
-		rect.bottom = thisRect.bottom;
-		rect.right = thisRect.right;
-    }
-    
-	while (element.offsetParent && (element.offsetParent != baseOffsetParent)) {
-		element = element.offsetParent;
-		let parentRect = element.getBoundingClientRect();
-		rect.left += parentRect.left;
-		rect.top += parentRect.top;
-		rect.right += parentRect.left;
-		rect.bottom += parentRect.top;
-	}
-	
-	if (base) {
-	  var baseRect = base.getBoundingClientRect();
-	  rect.left -= baseRect.left;
-	  rect.top -= baseRect.top;
-	  rect.right -= baseRect.left;
-	  rect.bottom -= baseRect.top;
-	}
-	
-	return rect;
-}
-utils.export(relativeBoundingRect);
 
 function downloadToFile(data, type, filename) {
 	//https://stackoverflow.com/a/30832210/360447
@@ -624,6 +579,26 @@ utils.export(copyToClipboard);
 
 
 /*
+Actions.
+Define HTML elements with fixed class names, then use this API to transparently update any number of them.
+*/
+function Actions() {}
+utils.export(Actions);
+Actions.bind = function(className, handler) {
+	for (let element of document.getElementsByClassName(className))
+		element.onclick = handler;
+}
+Actions.setEnabled = function(className, enabled) {
+	Actions.setDisabled(className, !enabled);
+}
+Actions.setDisabled = function(className, disabled) {
+	//For now reuse the .hidden class; may introduce proper .disabled later.
+	for (let element of document.getElementsByClassName(className))
+		element.classList.toggle('hidden', disabled);
+}
+
+
+/*
 Dropdown menus
 
 Initializes the dropdown menu in a given HTML element:
@@ -659,11 +634,10 @@ utils.export(dropdownInit);
 function dropdownClear() {
 	nodeRemoveAllChildren(this.menu);
 }
-function dropdownAdd(id, onclick, text) {
+function dropdownAdd(className, text) {
 	var item = document.createElement('a');
-	if (id) item.id = id;
-	item.textContent = text;
-	item.addEventListener("click", onclick);
+	if (className) item.class = className;
+	if (text) item.textContent = text;
 	this.menu.appendChild(item);
 	return item;
 }
@@ -698,12 +672,26 @@ window.addEventListener("click", (event) => {
 /*
 Buttons
 */
-function buttonNew(id, onclick, title, options) {
-	var button = document.createElement("a");
+function buttonNew(button, id, title) {
+	if (!button)
+		button = document.createElement("a");
 	button.classList.toggle("button", true);
-	button.id = id;
-	button.title = title;
-	button.textContent = title;
+	if (id) button.id = id;
+	if (title) button.textContent = title;
+	//If no explicit title is defined, use button text (visual text may be replaced with pictures by CSS)
+	if (!button.title)
+		button.title = button.textContent;
+	return button;
+}
+utils.export(buttonNew);
+//Initializes all predefined buttons on the page
+window.addEventListener("load", () => {
+	for (let button of document.getElementsByClassName('button'))
+		buttonNew(button);
+});
+
+/*
+function buttonNew(id, onclick, title, options) {
 	if (options && options['autocheck'])
 		button.addEventListener("click", buttonNew.autocheckClick.bind(button));
 	button.addEventListener("click", onclick);
@@ -715,9 +703,7 @@ function buttonNew(id, onclick, title, options) {
 		if ('enabled' in options) button.setEnabled(options['enabled']);
 		if ('checked' in options) button.setChecked(options['checked']);
 	}
-	return button;
 }
-utils.export(buttonNew);
 buttonNew.autocheckClick = function(event) {
 	this.classList.toggle('checked');
 }
@@ -733,6 +719,7 @@ buttonNew.setChecked = function(checked) {
 buttonNew.setEnabled = function(enabled) {
 	this.classList.toggle('disabled', !enabled);
 }
+*/
 function linkNew(id, onclick, title) {
 	var link = document.createElement("a");
 	link.href = '#';
@@ -805,6 +792,45 @@ function getContentRect(element) {
 	return { width: width, height: height };
 }
 utils.export(getContentRect);
+
+//Returns getBoundingClientRect(), only relative not to the offsetParent but to a given parent node
+//Pass null to retrieve the absolute bounding rect
+function relativeBoundingRect(element, base) {
+	//Either the element belongs to the same offsetParent as the base,
+	//or its offsetParent belongs to the same offsetParent as the base,
+	//or so on.
+    var baseOffsetParent = base ? base.offsetParent : null;
+	
+	var rect = { top: 0, left: 0, bottom: 0, right: 0 };
+    if (element) {
+    	// DOMRect is read-only so write our own structure
+    	let thisRect = element.getBoundingClientRect();
+		rect.top = thisRect.top;
+		rect.left = thisRect.left;
+		rect.bottom = thisRect.bottom;
+		rect.right = thisRect.right;
+    }
+    
+	while (element.offsetParent && (element.offsetParent != baseOffsetParent)) {
+		element = element.offsetParent;
+		let parentRect = element.getBoundingClientRect();
+		rect.left += parentRect.left;
+		rect.top += parentRect.top;
+		rect.right += parentRect.left;
+		rect.bottom += parentRect.top;
+	}
+	
+	if (base) {
+	  var baseRect = base.getBoundingClientRect();
+	  rect.left -= baseRect.left;
+	  rect.top -= baseRect.top;
+	  rect.right -= baseRect.left;
+	  rect.bottom -= baseRect.top;
+	}
+	
+	return rect;
+}
+utils.export(relativeBoundingRect);
 
 
 /*

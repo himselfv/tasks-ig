@@ -27,59 +27,70 @@ function initUi() {
 	if (options.uiMaxWidth && (options.uiMaxWidth > 0))
 		document.body.style.maxWidth = options.uiMaxWidth+'px';
 	
-	element('listSelectBox').addEventListener("change", selectedTaskListChanged);
+	let listSelectBox = document.getElementById('listSelectBox');
+	listSelectBox.addEventListener("change", selectedTaskListChanged);
+
+	let listContent = document.getElementById('listContent');
+	listContent.addEventListener("click", tasklistClick);
+	listContent.addEventListener("dblclick", tasklistDblClick);
 
 	mainmenu = dropdownInit('mainmenu');
 	mainmenu.button.title = "Task list action";
-	mainmenu.add('menuReloadBtn', accounts.reloadAllTasklists.bind(accounts), "Reload");
-	mainmenu.add('listAddBtn', tasklistAdd.bind(null, null), "Add list...");
-	mainmenu.add('listRenameBtn', tasklistRename, "Rename list...");
-	mainmenu.add('listDeleteBtn', tasklistDelete, "Delete list");
+	mainmenu.add('accountsReload', 'Reload');
+	mainmenu.add('listAdd', 'Add list...');
+	mainmenu.add('listRename', 'Rename list...');
+	mainmenu.add('listDelete', 'Delete list');
 	//This is a dangerous nuke account option; hide it from general users:
 	if (options.debug)
-		mainmenu.add('accountResetBtn', accountReset, "Reset account");
+		mainmenu.add('accountReset', 'Reset account');
 	mainmenu.addSeparator();
-	mainmenu.add('accountsBtn', AccountsPage.new.bind(AccountsPage), "Accounts...");
-	mainmenu.add('optionsBtn', optionsPageOpen, "Options...");
-	
-	element('listContent').addEventListener("click", tasklistClick);
-	element('listContent').addEventListener("dblclick", tasklistDblClick);
-	
-	element('listFooter').insertBefore(buttonNew("taskAddBtn", taskEntryAddClicked, "Add task"), element('taskmenu'));
-	element('listFooter').insertBefore(buttonNew("taskDeleteBtn", taskEntryDeleteFocused, "Delete task"), element('taskmenu'));
-	
-	let panelToolbar = element('listPanelToolbar');
-	panelToolbar.insertBefore(buttonNew('panelAccountAdd', accountAdd, 'Add account'), null);
-	panelToolbar.insertBefore(buttonNew('panelListAdd', tasklistAdd.bind(null, null), 'New list'), null);
-	
-	let listToolbar = element('listToolbar');
-	listToolbar.insertBefore(buttonNew('tbClearCompleted', tasklistClearCompleted, 'Clear completed'), null);
-	listToolbar.insertBefore(buttonNew('tbTaskAdd', taskEntryAddClicked, 'New task'), null);
-	//View: <my order> | <sort by date> | <completed tasks> | <trash>
-	listToolbar.insertBefore(buttonNew('tbShowCompleted', filterShowCompleted, 'Show completed', { autocheck: true }), null);
-	listToolbar.insertBefore(buttonNew('tbTaskEdit', taskEntryEditFocused, 'Edit details'), null);
-	listToolbar.insertBefore(buttonNew('tbTaskTab', taskEntryTabFocused, 'Indent'), null);
-	listToolbar.insertBefore(buttonNew('tbTaskShiftTab', taskEntryShiftTabFocused, 'Unindent'), null);
-	listToolbar.insertBefore(buttonNew('tbTaskMoveUp', taskMoveEntryUpFocused, 'Move up'), null);
-	listToolbar.insertBefore(buttonNew('tbTaskMoveDown', taskMoveEntryDownFocused, 'Move down'), null);
-	listToolbar.insertBefore(buttonNew('tbTaskDelete', taskEntryDeleteFocused, 'Delete'), null);
-	listToolbar.insertBefore(buttonNew('tbTaskDeleteWithChildren', taskEntryDeleteRecursiveFocused, 'Delete w/children'), null);
-	listToolbar.insertBefore(buttonNew('tbRefresh', tasklistReloadSelected, 'Refresh'), null);
-	//listToolbar.insertBefore(buttonNew('tbPrint', taskListPrint, '[Print icon]'));
+	mainmenu.add('accountsPageOpen', 'Accounts...');
+	mainmenu.add('optionsPageOpen', 'Options...');
 	
 	taskmenu = dropdownInit('taskmenu');
 	taskmenu.button.title = "Task actions";
 	taskmenu.button.classList.toggle("button", true);
-	taskmenu.add("taskTabBtn", taskEntryTabFocused, "—> Tab");
-	taskmenu.add("taskShiftTabBtn", taskEntryShiftTabFocused, "<— Shift-Tab");
+	taskmenu.add('taskTab', '—> Tab');
+	taskmenu.add('taskShiftTab', '<— Shift-Tab');
 	taskmenu.addSeparator();
-	taskmenu.add("taskCopyJSON", taskEntryCopyJSON, "Copy JSON");
-	taskmenu.add("taskExportToFile", taskEntryExportToFile, "Export to file...");
-	taskmenu.add("taskEditFocused", taskEntryEditFocused, "Edit");
-	taskmenu.add("taskDeleteRecursive", taskEntryDeleteRecursiveFocused, "Delete w/children");
+	taskmenu.add('taskCopyJSON', 'Copy JSON');
+	taskmenu.add('taskExportToFile', 'Export to file...');
+	taskmenu.add('taskEdit', 'Edit');
+	taskmenu.add('taskDeleteRecursive', 'Delete w/children');
 	taskmenu.addSeparator();
-	taskmenu.add("tasksExportAllToFile", taskEntryExportAllToFile, "Export all to file...");
-	taskmenu.add("", tasklistReloadSelected, "Refresh");
+	taskmenu.add('tasksExportAllToFile', 'Export all to file...');
+	taskmenu.add('tasksRefresh', 'Refresh');
+	
+	//let panelToolbar = document.getElementById('listPanelToolbar');
+	//initToolbar(panelToolbar)?
+	
+	//let listToolbar = document.getElementById('listToolbar');
+	//initToolbar(listToolbar)?
+	
+	//Bind all actions
+	Actions.bind('accountsPageOpen', AccountsPage.new.bind(AccountsPage));
+	Actions.bind('optionsPageOpen', optionsPageOpen);
+	Actions.bind('accountsReload', accounts.reloadAllTasklists.bind(accounts));
+	Actions.bind('accountAdd', accountAdd);
+	Actions.bind('accountReset', accountReset);
+	Actions.bind('listAdd', tasklistAdd.bind(null, null));
+	Actions.bind('listRename', tasklistRename);
+	Actions.bind('listDelete', tasklistDelete);
+	Actions.bind('tasksClearCompleted', tasklistClearCompleted);
+	Actions.bind('tasksShowCompleted', filterShowCompleted);
+	Actions.bind('tasksRefresh', tasklistReloadSelected);
+	Actions.bind('taskAdd', taskEntryAddClicked);
+	Actions.bind('taskEdit', taskEntryEditFocused);
+	Actions.bind('taskTab', taskEntryTabFocused);
+	Actions.bind('taskShiftTab', taskEntryShiftTabFocused);
+	Actions.bind('taskMoveUp', taskMoveEntryUpFocused);
+	Actions.bind('taskMoveDown', taskMoveEntryDownFocused);
+	Actions.bind('taskDelete', taskEntryDeleteFocused);
+	Actions.bind('taskDeleteRecursive', taskEntryDeleteRecursiveFocused);
+	//Actions.bind('tasksPrint', taskListPrint);
+	Actions.bind('taskCopyJSON', taskEntryCopyJSON);
+	Actions.bind('taskExportToFile', taskEntryExportToFile);
+	Actions.bind('tasksExportAllToFile', taskEntryExportAllToFile);
 	
     tasklistInit();
     accounts.load();
@@ -1604,19 +1615,16 @@ function selectedTaskListChanged() {
 function tasklistActionsUpdate() {
 	var tasklist = selectedTaskList();
 	console.debug('tasklistActionsUpdate:', tasklist, backend);
-	element('panelListAdd').classList.toggle('hidden',	!backend || !backend.tasklistAdd);
-	element("listAddBtn").classList.toggle("hidden",    !backend || !backend.tasklistAdd);
-	element("listRenameBtn").classList.toggle("hidden", !backend || !backend.tasklistUpdate || !tasklist);
-	element("listDeleteBtn").classList.toggle("hidden", !backend || !backend.tasklistDelete || !tasklist);
-	element("tasksExportAllToFile").classList.toggle("hidden", !tasklist);
+	Actions.setDisabled('listAdd',		!backend || !backend.tasklistAdd);
+	Actions.setDisabled('listRename',	!backend || !backend.tasklistUpdate || !tasklist);
+	Actions.setDisabled('listDelete',	!backend || !backend.tasklistDelete || !tasklist);
+	Actions.setDisabled('tasksExportAllToFile',	!tasklist)
 	tasksActionsUpdate();
 }
 //Update available account actions depending on the selected account/tasklist and its state and available functions
 function accountActionsUpdate() {
 	console.debug('accountActionsUpdate', backend);
-	let accountResetBtn = element('accountResetBtn');
-	if (accountResetBtn) //missing in non-debug
-		accountResetBtn.classList.toggle('hidden', !backend || !backend.reset);
+	Actions.setDisabled('accountReset', !backend || !backend.reset)
 }
 
 
@@ -1770,26 +1778,18 @@ function tasksActionsUpdate() {
 	var list = selectedTaskList();
 	console.log(list);
 	var entry = tasks.getFocusedEntry();
-	element("taskAddBtn").classList.toggle("hidden", !backend || !backend.insert || !list);
-	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
-	element("taskTabBtn").classList.toggle("hidden", !backend || !backend.move || !entry);
-	element("taskShiftTabBtn").classList.toggle("hidden", !backend || !backend.move ||!entry);
-	element("taskDeleteBtn").classList.toggle("hidden", !backend || !backend.delete || !entry);
-	element("taskCopyJSON").classList.toggle("hidden", !entry);
-	element("taskExportToFile").classList.toggle("hidden", !entry);
-	element("taskEditFocused").classList.toggle("hidden", !backend || !entry); //even without !backend.update -- the task can be copied or moved
-	element("taskDeleteRecursive").classList.toggle("hidden", !backend || !backend.move ||!entry);
-	
-	element('tbTaskAdd').classList.toggle("hidden", !backend || !backend.insert || !list);
-	element('tbTaskEdit').classList.toggle("hidden", !backend || !entry);
-	element('tbTaskTab').classList.toggle("hidden", !backend || !backend.move || !entry);
-	element('tbTaskShiftTab').classList.toggle("hidden", !backend || !backend.move ||!entry);
-	element('tbTaskMoveUp').classList.toggle("hidden", !backend || !backend.move || !entry);
-	element('tbTaskMoveDown').classList.toggle("hidden", !backend || !backend.move ||!entry);
-	element('tbTaskDelete').classList.toggle("hidden", !backend || !backend.delete || !entry);
-	
-	element('tbShowCompleted').classList.toggle("hidden", !backend || !list);
-	element('tbClearCompleted').classList.toggle("hidden", !backend || !list || !backend.delete);
+	Actions.setDisabled('taskAdd',		!backend || !backend.insert || !list);
+	Actions.setDisabled('taskTab',		!backend || !backend.move || !entry);
+	Actions.setDisabled('taskShiftTab',	!backend || !backend.move || !entry);
+	Actions.setDisabled('taskMoveUp',	!backend || !backend.move || !entry);
+	Actions.setDisabled('taskMoveDown',	!backend || !backend.move || !entry);
+	Actions.setDisabled('taskEdit',		!backend || !entry); //even without !backend.update -- the task can be copied or moved
+	Actions.setDisabled('taskDelete',	!backend || !backend.delete || !entry);
+	Actions.setDisabled('taskDeleteRecursive', !backend || !backend.move ||!entry);
+	Actions.setDisabled('taskCopyJSON',	!entry);
+	Actions.setDisabled('taskExportToFile', !entry);
+	Actions.setDisabled('tasksShowCompleted', !backend || !list);
+	Actions.setDisabled('tasksClearCompleted', !backend || !list || !backend.delete);
 }
 
 
