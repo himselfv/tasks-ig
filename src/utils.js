@@ -587,7 +587,7 @@ function Actions() {}
 utils.export(Actions);
 //Defines a scope (HTML element) in which actions can be defined. Not neccesary to call explicitly.
 //To isolate a scope (make it swallow all unhandled actions), add a click handler which eats action clicks.
-Actions.getScope = function(scope) {
+Actions.getScopeData = function(scope) {
 	if (!scope) scope = document;
 	//We store action dictionary in the scope element itself.
 	//The events bubble up and are handled at this level.
@@ -599,9 +599,16 @@ Actions.getScope = function(scope) {
 	parent.defaultAction = null; //override to handle action-clicks only
 	return parent.actions;
 }
+Actions.getAction = function(element) {
+	//We support both action attribute and action property, for ease of use
+	//Normally .action is not mapped to properties
+	if (typeof element.action != 'undefined')
+		return element.action;
+	return element.getAttribute('action');
+}
 //Defines an action in a scope
 Actions.bind = function(scope, actionName, handler) {
-	let actions = Actions.getScope(scope);
+	let actions = Actions.getScopeData(scope);
 	actions.dict[actionName] = handler;
 }
 Actions.setEnabled = function(scope, actionName, enabled) {
@@ -613,10 +620,11 @@ Actions.setDisabled = function(scope, actionName, disabled) {
 		element.classList.toggle('hidden', disabled);
 }
 Actions.onClick = function(event) {
-	if (!event.target.action) return;
-	if (!event.currentTarget.actions) return;
-	let actions = event.currentTarget.actions;
-	let action = actions[event.target.action];
+	let action = Actions.getAction(event.target);
+	if (!action) return;
+	let scopeData = event.currentTarget.actions;
+	if (!scopeData) return;
+	action = scopeData.dict[action];
 	if (action)
 		action.apply(this, arguments);
 	else if (actions.defaultAction)
@@ -661,10 +669,10 @@ utils.export(Dropdown);
 Dropdown.clear = function() {
 	nodeRemoveAllChildren(this.menu);
 }
-Dropdown.add = function(className, text) {
+Dropdown.add = function(text, className) {
 	var item = document.createElement('a');
-	if (className) item.className = className;
 	if (text) item.textContent = text;
+	if (className) item.className = className;
 	this.menu.appendChild(item);
 	return item;
 }
@@ -728,7 +736,7 @@ Toolbar.collapseSeparators = function(tb) {
 	//console.log('Toolbar.collapseSeparators');
 	for (let node of tb.children) {
 		let isSep = node.classList.contains('separator');
-		node.classList.toggle('collapsed', lastSep);
+		node.classList.toggle('collapsed', isSep && lastSep);
 		if (isSep)
 			lastSep = node;
 		else if (getComputedStyle(node, null).display!='none')

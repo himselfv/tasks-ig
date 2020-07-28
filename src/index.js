@@ -67,10 +67,10 @@ function initUi() {
 	listToolbar = new Toolbar(document.getElementById('listToolbar'));
 	
 	//Bind all actions
-	Actions.bind(document, 'accountsPageOpen', AccountsPage.new.bind(AccountsPage))
-	Actions.bind(document, 'optionsPageOpen', optionsPageOpen);
-	Actions.bind(document, 'accountsReload', accounts.reloadAllTasklists.bind(accounts));
-	Actions.bind(document, 'accountAdd', accountAdd);
+	Actions.bind(document.body, 'accountsPageOpen', AccountsPage.new.bind(AccountsPage))
+	Actions.bind(document.body, 'optionsPageOpen', optionsPageOpen);
+	Actions.bind(document.body, 'accountsReload', accounts.reloadAllTasklists.bind(accounts));
+	Actions.bind(document.body, 'accountAdd', accountAdd);
 	Actions.bind(listPage, 'accountReset', accountReset);
 	Actions.bind(listPage, 'listAdd', tasklistAdd.bind(null, null));
 	Actions.bind(listPage, 'listRename', tasklistRename);
