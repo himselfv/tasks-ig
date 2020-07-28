@@ -607,7 +607,8 @@ Initializes the dropdown menu in a given HTML element:
   null => create a new element
 Returns the created element.
 */
-function dropdownInit(root) {
+function Dropdown() { return Dropdown.init.apply(this, arguments); }
+Dropdown.init = function(root) {
 	if (typeof root == 'string')
 		root = document.getElementById(root);
 	else if (!root)
@@ -616,7 +617,7 @@ function dropdownInit(root) {
 	
 	var item = document.createElement("span");
 	item.className = "dropbtn";
-	item.addEventListener("click", dropdownClick);
+	item.addEventListener("click", Dropdown.click);
 	root.appendChild(item);
 	root.button = item;
 	
@@ -625,43 +626,43 @@ function dropdownInit(root) {
 	root.appendChild(item);
 	root.menu = item;
 	
-	root.clear = dropdownClear;
-	root.add = dropdownAdd;
-	root.addSeparator = dropdownAddSeparator;
+	root.clear = Dropdown.clear;
+	root.add = Dropdown.add;
+	root.addSeparator = Dropdown.addSeparator;
 	return root;
 }
-utils.export(dropdownInit);
-function dropdownClear() {
+utils.export(Dropdown);
+Dropdown.clear = function() {
 	nodeRemoveAllChildren(this.menu);
 }
-function dropdownAdd(className, text) {
+Dropdown.add = function(className, text) {
 	var item = document.createElement('a');
-	if (className) item.class = className;
+	if (className) item.className = className;
 	if (text) item.textContent = text;
 	this.menu.appendChild(item);
 	return item;
 }
-function dropdownAddSeparator(id) {
+Dropdown.addSeparator = function(id) {
 	var item = document.createElement('span');
 	if (id) item.id = id;
 	item.className = "menu-separator";
 	this.menu.appendChild(item);
 	return item;
 }
-function dropdownGetButton(element) {
+Dropdown.getButton = function(element) {
 	return element.getElementsByClassName("dropbtn")[0];
 }
-function dropdownGetContent(element) {
+Dropdown.getContent = function(element) {
 	return element.getElementsByClassName("dropdown-content")[0];
 }
-function dropdownClick(event) {
+Dropdown.click = function(event) {
 	event.target.classList.toggle('dropopen');
-	dropdownGetContent(event.target.parentNode).classList.toggle("show");
+	Dropdown.getContent(event.target.parentNode).classList.toggle("show");
 }
 window.addEventListener("click", (event) => {
 	var dropdowns = document.getElementsByClassName("dropdown-content");
 	for (let i=0; i<dropdowns.length; i++) {
-		let thisButton = dropdownGetButton(dropdowns[i].parentNode);
+		let thisButton = Dropdown.getButton(dropdowns[i].parentNode);
 		if ((event.target != thisButton) && dropdowns[i].classList.contains('show')) {
 			thisButton.classList.remove('dropopen');
 			dropdowns[i].classList.remove('show');

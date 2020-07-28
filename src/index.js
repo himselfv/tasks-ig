@@ -34,7 +34,7 @@ function initUi() {
 	listContent.addEventListener("click", tasklistClick);
 	listContent.addEventListener("dblclick", tasklistDblClick);
 
-	mainmenu = dropdownInit('mainmenu');
+	mainmenu = Dropdown.init('mainmenu');
 	mainmenu.button.title = "Task list action";
 	mainmenu.add('accountsReload', 'Reload');
 	mainmenu.add('listAdd', 'Add list...');
@@ -47,7 +47,7 @@ function initUi() {
 	mainmenu.add('accountsPageOpen', 'Accounts...');
 	mainmenu.add('optionsPageOpen', 'Options...');
 	
-	taskmenu = dropdownInit('taskmenu');
+	taskmenu = Dropdown.init('taskmenu');
 	taskmenu.button.title = "Task actions";
 	taskmenu.button.classList.toggle("button", true);
 	taskmenu.add('taskTab', '—> Tab');
@@ -1376,7 +1376,7 @@ TaskListPanel.prototype.reload = function() {
 		
 		//Account actions
 		//Can't have uniuqe IDs! Duplicated for every account/tasklist. Using classes
-		let drop = dropdownInit();
+		let drop = Dropdown.init();
 		drop.button.title = "Account actions";
 		if (this.selectAccounts)
 			drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open").classList.add('accountSelectBtn');
@@ -1428,7 +1428,7 @@ TaskListPanel.prototype.reload = function() {
 				item.body.addEventListener('click', this.itemClicked.bind(this, item));
 				
 				//Task list actions
-				let drop = dropdownInit();
+				let drop = Dropdown.init();
 				drop.button.title = "List actions";
 				drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open list").classList.add('listSelectBtn');
 				if (account.tasklistUpdate)
@@ -1584,7 +1584,7 @@ MainTaskListPanel.prototype.itemClicked = function(item) {
 	if (value)
 		setSelectedTaskList(value);
 }
-var leftPanel = new MainTaskListPanel(document.querySelector('#listPage .taskListPanel'));
+var leftPanel = new MainTaskListPanel(document.querySelector('#listPage .tasklistPanel'));
 
 Splitter.ID_BASE = "tasksIg_";
 var leftSplitter = new Splitter(document.getElementById('listPageSplitter'));

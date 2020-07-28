@@ -337,7 +337,7 @@ Task list panel
   disabled: Not selectable
   grayed: Not fully functional but selectable
 */
-.taskListPanel li {
+.tasklistPanel li {
   display: flex;
   align-items: center;
   list-style-type: none;
@@ -346,40 +346,40 @@ Task list panel
   border: 1px solid white;
   font-size: 1.05em;
 }
-.taskListPanel span,
-.taskListPanel .dropdown {
+.tasklistPanel span,
+.tasklistPanel .dropdown {
   padding: 0.3em 0;
 }
-.taskListPanel .dropdown {
+.tasklistPanel .dropdown {
   padding-right: 0.3em;
 }
-.taskListPanel .dragging { /* Dragging */
+.tasklistPanel .dragging { /* Dragging */
   opacity: 0.7;
   background-color: rgba(225,225,225,0.5);
 }
-.taskListPanel .dragGrip {
+.tasklistPanel .dragGrip {
   align-self: stretch;
   min-width: 0.5em;
 }
-.taskListPanel .accountAdd .dragGrip {
+.tasklistPanel .accountAdd .dragGrip {
   visibility: hidden; /* not even appropriate */
 }
-.taskListPanel .tasklist .dragGrip,
-.taskListPanel .tasklistAdd .dragGrip {
+.tasklistPanel .tasklist .dragGrip,
+.tasklistPanel .tasklistAdd .dragGrip {
   min-width: 0.75em; /* bigger grip for left-padded items */
   visibility: hidden; /* currently undraggable */
 }
-.taskListPanel li span {
+.tasklistPanel li span {
   flex-grow: 10;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
 }
-.taskListPanel li:not(.disabled) {
+.tasklistPanel li:not(.disabled) {
   cursor: pointer;
 }
-.taskListPanel li:hover:not(.disabled) {
+.tasklistPanel li:hover:not(.disabled) {
   /* Different highlight: */
   background-color: #E3E9FF;
   border: 1px solid DodgerBlue;
@@ -387,74 +387,74 @@ Task list panel
   background-color: LightSkyBlue; == #87CEFA
   border: 1px solid lightgray; */
 }
-.taskListPanel .selected {
+.tasklistPanel .selected {
   /* Same as the focused task in the main list */
   border-top: 1px solid #F7E784;
   border-bottom: 1px solid #F7E784;
 }
-.taskListPanel .grayed {
+.tasklistPanel .grayed {
   color: gray;
 }
 /* Accounts */
-.taskListPanel .account,
-.taskListPanel .accountAdd {
+.tasklistPanel .account,
+.tasklistPanel .accountAdd {
   margin: 0px;
   margin-top: 0.5em;
   vertical-align: baseline;
 }
-.taskListPanel .accountAdd {
+.tasklistPanel .accountAdd {
   color: gray;
   font-weight: normal;
 }
-.taskListPanel .account.loading > span:after { /* Spinning wheel while loading */
+.tasklistPanel .account.loading > span:after { /* Spinning wheel while loading */
   content: url("res/loading5_16.gif");
   position: relative;
   top: 0.2em;
   margin-left: 0.5em;
 }
-.taskListPanel .account.error > span:after {
+.tasklistPanel .account.error > span:after {
   content: url("res/error-381599-16.png");
   position: relative;
   top: 0.2em;
   margin-left: 0.5em;
 }
 /* Tasklists */
-.taskListPanel .tasklist,
-.taskListPanel .tasklistAdd {
+.tasklistPanel .tasklist,
+.tasklistPanel .tasklistAdd {
   list-style-type: none;
   color: #4E6D9A;
   padding-left: 0.25em;
   font-weight: bold;
 }
-.taskListPanel .tasklistAdd {
+.tasklistPanel .tasklistAdd {
   color: gray;
   font-weight: normal;
 }
 /* Replace "Add account"/"Add tasklist" text:
-.taskListPanel .accountAdd {
+.tasklistPanel .accountAdd {
   visibility:hidden;
 }
-.taskListPanel .accountAdd:after {
+.tasklistPanel .accountAdd:after {
   content: "＋"; -- to use a text
   content: url("res/plus2.png"); -- to use an image
   visibility: visible;
 }*/
 /* Account and tasklist actions */
-.taskListPanel .dropbtn {
+.tasklistPanel .dropbtn {
   background-image: url("res/menu-20.png");
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   padding: 2px;
   box-sizing: content-box;
 }
-.taskListPanel .dropdown-content {
+.tasklistPanel .dropdown-content {
   font-weight: normal;
 }
 /* Display the actions on the same row instead of in submenu:
-.taskListPanel .dropbtn {
+.tasklistPanel .dropbtn {
   display: none;
 }
-.taskListPanel .dropdown-content {
+.tasklistPanel .dropdown-content {
   display: flex;
   font-size: 0;
 }*/
