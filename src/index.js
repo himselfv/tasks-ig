@@ -1778,7 +1778,7 @@ function tasksActionsUpdate() {
 	var list = selectedTaskList();
 	console.log(list);
 	var entry = tasks.getFocusedEntry();
-	Actions.setDisabled('taskAdd',		!backend || !backend.insert || !list);
+	Actions.setDisabled('taskAdd',		!backend || !backend.insert || !list.list);
 	Actions.setDisabled('taskTab',		!backend || !backend.move || !entry);
 	Actions.setDisabled('taskShiftTab',	!backend || !backend.move || !entry);
 	Actions.setDisabled('taskMoveUp',	!backend || !backend.move || !entry);
@@ -1788,8 +1788,10 @@ function tasksActionsUpdate() {
 	Actions.setDisabled('taskDeleteRecursive', !backend || !backend.move ||!entry);
 	Actions.setDisabled('taskCopyJSON',	!entry);
 	Actions.setDisabled('taskExportToFile', !entry);
-	Actions.setDisabled('tasksShowCompleted', !backend || !list);
-	Actions.setDisabled('tasksClearCompleted', !backend || !list || !backend.delete);
+	Actions.setDisabled('tasksShowCompleted', !backend || !list.list);
+	Actions.setDisabled('tasksClearCompleted', !backend || !list.list || !backend.delete);
+	Actions.setDisabled('tasksPrint', !backend || !list.list);
+	Actions.setDisabled('tasksRefresh', !backend);
 }
 
 

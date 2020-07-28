@@ -124,6 +124,18 @@ By default captions are hidden, to show: set font-size.
 }
 .button.disabled { /* Buttons can be disabled==grayed out */ }
 .button.hidden { /* Buttons can be hidden, normally that's just normal hiding */ }
+.toolbar .separator {
+  display: inline-block;
+  align-self: center;
+  min-width: 1px;
+  min-height: 1em;
+  height: 1em;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  margin-left: 4px;
+  border-right: 2px groove #D6D6D6;
+}
 
 
 /*
