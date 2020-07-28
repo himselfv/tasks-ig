@@ -129,7 +129,7 @@ html, body {
 
 /*
 Main canvas toolbar:
-	Clear completed | +New task |
+	Clear completed | +New task | Edit details
 	View: <my order> | <sort by date> | <completed tasks> | <trash>
 	{Tab} {ShiftTab} | {Up} {Down} | {Delete} | Refresh | {Print}
 The <View> block lived basically anywhere at different points of time.
@@ -179,22 +179,7 @@ The <View> block lived basically anywhere at different points of time.
 #listToolbar .tasksSortCustom,
 #listToolbar .tasksSortByDate,
 #listToolbar .tasksShowCompleted,
-#listToolbar .tasksShowDeleted
-{ display: block; }
-#listToolbar .tasksClearCompleted { order: 11; }
-#listToolbar .taskAdd { order: 13; }
-#listToolbar .tasksSortCustom { order: 21; }
-#listToolbar .tasksSortByDate { order: 23; }
-#listToolbar .tasksShowCompleted { order: 25; }
-#listToolbar .tasksShowDeleted { order: 27; }
-#listToolbar .taskEdit { order: 31; }
-#listToolbar .taskTab { order: 32; }
-#listToolbar .taskShiftTab { order: 33; }
-#listToolbar .taskMoveUp { order: 34; }
-#listToolbar .taskMoveDown { order: 36; }
-#listToolbar .taskDelete { order: 40; }
-#listToolbar .taskRefresh { order: 42; }
-#listToolbar .taskPrint { order: 44; }
+#listToolbar .tasksShowDeleted { display: block; }
 /* Prepend "View" to order panel */
 #listToolbar .tasksSortCustom:before { content: "View: "; }
 /* Icons for some buttons */
@@ -206,16 +191,14 @@ The <View> block lived basically anywhere at different points of time.
 #listToolbar .taskMoveDown:before {
   display: inline-block; /* for scaling */
   vertical-align: middle;
-  /*margin-right: 5px;*/
   height: 24;
-  /*margin-top:2px;*/
   min-width: 20px;
 }
 /* Hide captions for some of icon buttons */
 #listToolbar .taskDelete,
 #listToolbar .taskTab,
 #listToolbar .taskShiftTab,
-#listToolbar .tTaskMoveUp,
+#listToolbar .taskMoveUp,
 #listToolbar .taskMoveDown {
   font-size: 0; /* Hide captions */
   filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
