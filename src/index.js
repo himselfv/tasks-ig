@@ -1378,15 +1378,15 @@ TaskListPanel.prototype.reload = function() {
 		let drop = Dropdown.init();
 		drop.button.title = "Account actions";
 		if (this.selectAccounts)
-			drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open").classList.add('accountSelectBtn');
+			drop.add('accountSelectBtn', 'Open').onclick = setSelectedTaskList.bind(null, item.listHandle, false);
 		if (account.tasklistAdd)
-			drop.add('', tasklistAdd.bind(null, account), "Add list").classList.add('tasklistAddBtn');
+			drop.add('tasklistAddBtn', 'Add list').onclick = tasklistAdd.bind(null, account);
 		drop.addSeparator();
-		drop.add('', accountRename.bind(null, account), "Rename...").classList.add('accountRenameBtn');
-		drop.add('', accountEditSettings.bind(null, account), "Settings...").classList.add('accountEditBtn');
-		drop.add('', accountDelete.bind(null, account), "Delete").classList.add('accountDeleteBtn');
+		drop.add('accountRenameBtn', 'Rename...').onclick = accountRename.bind(null, account);
+		drop.add('accountEditBtn', 'Settings...').onclick = accountEditSettings.bind(null, account);
+		drop.add('accountDeleteBtn', 'Delete').onclick = accountDelete.bind(null, account);
 		if (options.debug && account.reset)
-			drop.add('', accountReset.bind(null, account), "Reset").classList.add('accountResetBtn');
+			drop.add('accountResetBtn', 'Reset').onclick = accountReset.bind(null, account);
 		item.appendChild(drop);
 
 		if (!this.selectAccounts)
@@ -1429,11 +1429,11 @@ TaskListPanel.prototype.reload = function() {
 				//Task list actions
 				let drop = Dropdown.init();
 				drop.button.title = "List actions";
-				drop.add('', setSelectedTaskList.bind(null, item.listHandle, false), "Open list").classList.add('listSelectBtn');
+				drop.add('listSelectBtn', 'Open list').onclick = setSelectedTaskList.bind(null, item.listHandle, false);
 				if (account.tasklistUpdate)
-					drop.add('', tasklistRename.bind(null, item.listHandle), "Rename list...").classList.add('listRenameBtn');
+					drop.add('listRenameBtn', 'Rename list...').onclick = tasklistRename.bind(null, item.listHandle);
 				if (account.tasklistDelete)
-					drop.add('', tasklistDelete.bind(null, item.listHandle), "Delete list").classList.add('listDeleteBtn');
+					drop.add('listDeleteBtn', 'Delete list').onclick = tasklistDelete.bind(null, item.listHandle);
 				item.appendChild(drop);
 			}
 			
