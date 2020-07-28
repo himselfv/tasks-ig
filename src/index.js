@@ -1768,16 +1768,14 @@ function accountPageReload(selected) {
 
 //Called when the focused task changes
 function tasksFocusChanged() {
-	console.debug('tasksFocusChanged');
 	tasksActionsUpdate();
 }
 //Updates available task actions depending on the selected task and backend functionality
 function tasksActionsUpdate() {
-	console.debug('tasksActionUpdate');
 	var list = selectedTaskList();
-	console.log(list);
+	console.debug('tasksActionUpdate:', list);
 	var entry = tasks.getFocusedEntry();
-	Actions.setDisabled('taskAdd',		!backend || !backend.insert || !list.list);
+	Actions.setDisabled('taskAdd',		!backend || !backend.insert || !list.tasklist);
 	Actions.setDisabled('taskTab',		!backend || !backend.move || !entry);
 	Actions.setDisabled('taskShiftTab',	!backend || !backend.move || !entry);
 	Actions.setDisabled('taskMoveUp',	!backend || !backend.move || !entry);
@@ -1787,9 +1785,9 @@ function tasksActionsUpdate() {
 	Actions.setDisabled('taskDeleteRecursive', !backend || !backend.move ||!entry);
 	Actions.setDisabled('taskCopyJSON',	!entry);
 	Actions.setDisabled('taskExportToFile', !entry);
-	Actions.setDisabled('tasksShowCompleted', !backend || !list.list);
-	Actions.setDisabled('tasksClearCompleted', !backend || !list.list || !backend.delete);
-	Actions.setDisabled('tasksPrint', !backend || !list.list);
+	Actions.setDisabled('tasksShowCompleted', !backend || !list.tasklist);
+	Actions.setDisabled('tasksClearCompleted', !backend || !list.tasklist || !backend.delete);
+	Actions.setDisabled('tasksPrint', !backend || !list.tasklist);
 	Actions.setDisabled('tasksRefresh', !backend);
 }
 
