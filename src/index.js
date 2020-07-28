@@ -38,58 +38,58 @@ function initUi() {
 
 	mainmenu = Dropdown.init('mainmenu');
 	mainmenu.button.title = "Task list action";
-	mainmenu.add('accountsReload', 'Reload');
-	mainmenu.add('listAdd', 'Add list...');
-	mainmenu.add('listRename', 'Rename list...');
-	mainmenu.add('listDelete', 'Delete list');
+	mainmenu.add('Reload').action='accountsReload';
+	mainmenu.add('Add list...').action='listAdd';
+	mainmenu.add('Rename list...').action='listRename';
+	mainmenu.add('Delete list').action='listDelete';
 	//This is a dangerous nuke account option; hide it from general users:
 	if (options.debug)
-		mainmenu.add('accountReset', 'Reset account');
+		mainmenu.add('Reset account').action='accountReset';
 	mainmenu.addSeparator();
-	mainmenu.add('accountsPageOpen', 'Accounts...');
-	mainmenu.add('optionsPageOpen', 'Options...');
+	mainmenu.add('Accounts...').action='accountsPageOpen';
+	mainmenu.add('Options...').action='optionsPageOpen';
 	
 	taskmenu = Dropdown.init('taskmenu');
 	taskmenu.button.title = "Task actions";
 	taskmenu.button.classList.toggle("button", true);
-	taskmenu.add('taskTab', '—> Tab');
-	taskmenu.add('taskShiftTab', '<— Shift-Tab');
+	taskmenu.add('—> Tab').action='taskTab';
+	taskmenu.add('<— Shift-Tab').action='taskShiftTab';
 	taskmenu.addSeparator();
-	taskmenu.add('taskCopyJSON', 'Copy JSON');
-	taskmenu.add('taskExportToFile', 'Export to file...');
-	taskmenu.add('taskEdit', 'Edit');
-	taskmenu.add('taskDeleteRecursive', 'Delete w/children');
+	taskmenu.add('Copy JSON').action='taskCopyJSON';
+	taskmenu.add('Export to file...').action='taskExportToFile';
+	taskmenu.add('Edit').action='taskEdit';
+	taskmenu.add('Delete w/children').action='taskDeleteRecursive';
 	taskmenu.addSeparator();
-	taskmenu.add('tasksExportAllToFile', 'Export all to file...');
-	taskmenu.add('tasksRefresh', 'Refresh');
+	taskmenu.add('Export all to file...').action='tasksExportAllToFile';
+	taskmenu.add('Refresh').action='tasksRefresh';
 	
 	panelToolbar = new Toolbar(document.getElementById('listPanelToolbar'));
 	listToolbar = new Toolbar(document.getElementById('listToolbar'));
 	
 	//Bind all actions
-	Actions.bind('accountsPageOpen', AccountsPage.new.bind(AccountsPage));
-	Actions.bind('optionsPageOpen', optionsPageOpen);
-	Actions.bind('accountsReload', accounts.reloadAllTasklists.bind(accounts));
-	Actions.bind('accountAdd', accountAdd);
-	Actions.bind('accountReset', accountReset);
-	Actions.bind('listAdd', tasklistAdd.bind(null, null));
-	Actions.bind('listRename', tasklistRename);
-	Actions.bind('listDelete', tasklistDelete);
-	Actions.bind('tasksClearCompleted', tasklistClearCompleted);
-	Actions.bind('tasksShowCompleted', filterShowCompleted);
-	Actions.bind('tasksRefresh', tasklistReloadSelected);
-	Actions.bind('taskAdd', taskEntryAddClicked);
-	Actions.bind('taskEdit', taskEntryEditFocused);
-	Actions.bind('taskTab', taskEntryTabFocused);
-	Actions.bind('taskShiftTab', taskEntryShiftTabFocused);
-	Actions.bind('taskMoveUp', taskMoveEntryUpFocused);
-	Actions.bind('taskMoveDown', taskMoveEntryDownFocused);
-	Actions.bind('taskDelete', taskEntryDeleteFocused);
-	Actions.bind('taskDeleteRecursive', taskEntryDeleteRecursiveFocused);
-	//Actions.bind('tasksPrint', taskListPrint);
-	Actions.bind('taskCopyJSON', taskEntryCopyJSON);
-	Actions.bind('taskExportToFile', taskEntryExportToFile);
-	Actions.bind('tasksExportAllToFile', taskEntryExportAllToFile);
+	Actions.bind(document, 'accountsPageOpen', AccountsPage.new.bind(AccountsPage))
+	Actions.bind(document, 'optionsPageOpen', optionsPageOpen);
+	Actions.bind(document, 'accountsReload', accounts.reloadAllTasklists.bind(accounts));
+	Actions.bind(document, 'accountAdd', accountAdd);
+	Actions.bind(listPage, 'accountReset', accountReset);
+	Actions.bind(listPage, 'listAdd', tasklistAdd.bind(null, null));
+	Actions.bind(listPage, 'listRename', tasklistRename);
+	Actions.bind(listPage, 'listDelete', tasklistDelete);
+	Actions.bind(listPage, 'tasksClearCompleted', tasklistClearCompleted);
+	Actions.bind(listPage, 'tasksShowCompleted', filterShowCompleted);
+	Actions.bind(listPage, 'tasksRefresh', tasklistReloadSelected);
+	Actions.bind(listPage, 'taskAdd', taskEntryAddClicked);
+	Actions.bind(listPage, 'taskEdit', taskEntryEditFocused);
+	Actions.bind(listPage, 'taskTab', taskEntryTabFocused);
+	Actions.bind(listPage, 'taskShiftTab', taskEntryShiftTabFocused);
+	Actions.bind(listPage, 'taskMoveUp', taskMoveEntryUpFocused);
+	Actions.bind(listPage, 'taskMoveDown', taskMoveEntryDownFocused);
+	Actions.bind(listPage, 'taskDelete', taskEntryDeleteFocused);
+	Actions.bind(listPage, 'taskDeleteRecursive', taskEntryDeleteRecursiveFocused);
+	//Actions.bind(listPage, 'tasksPrint', taskListPrint);
+	Actions.bind(listPage, 'taskCopyJSON', taskEntryCopyJSON);
+	Actions.bind(listPage, 'taskExportToFile', taskEntryExportToFile);
+	Actions.bind(listPage, 'tasksExportAllToFile', taskEntryExportAllToFile);
 	
     tasklistInit();
     accounts.load();
@@ -1614,16 +1614,16 @@ function selectedTaskListChanged() {
 function tasklistActionsUpdate() {
 	var tasklist = selectedTaskList();
 	console.debug('tasklistActionsUpdate:', tasklist, backend);
-	Actions.setDisabled('listAdd',		!backend || !backend.tasklistAdd);
-	Actions.setDisabled('listRename',	!backend || !backend.tasklistUpdate || !tasklist);
-	Actions.setDisabled('listDelete',	!backend || !backend.tasklistDelete || !tasklist);
-	Actions.setDisabled('tasksExportAllToFile',	!tasklist)
+	Actions.setDisabled(listPage, 'listAdd',		!backend || !backend.tasklistAdd);
+	Actions.setDisabled(listPage, 'listRename',	!backend || !backend.tasklistUpdate || !tasklist);
+	Actions.setDisabled(listPage, 'listDelete',	!backend || !backend.tasklistDelete || !tasklist);
+	Actions.setDisabled(listPage, 'tasksExportAllToFile',	!tasklist)
 	tasksActionsUpdate();
 }
 //Update available account actions depending on the selected account/tasklist and its state and available functions
 function accountActionsUpdate() {
 	console.debug('accountActionsUpdate', backend);
-	Actions.setDisabled('accountReset', !backend || !backend.reset)
+	Actions.setDisabled(listPage, 'accountReset', !backend || !backend.reset)
 }
 
 
@@ -1775,20 +1775,20 @@ function tasksActionsUpdate() {
 	var list = selectedTaskList();
 	console.debug('tasksActionUpdate:', list);
 	var entry = tasks.getFocusedEntry();
-	Actions.setDisabled('taskAdd',		!backend || !backend.insert || !list.tasklist);
-	Actions.setDisabled('taskTab',		!backend || !backend.move || !entry);
-	Actions.setDisabled('taskShiftTab',	!backend || !backend.move || !entry);
-	Actions.setDisabled('taskMoveUp',	!backend || !backend.move || !entry);
-	Actions.setDisabled('taskMoveDown',	!backend || !backend.move || !entry);
-	Actions.setDisabled('taskEdit',		!backend || !entry); //even without !backend.update -- the task can be copied or moved
-	Actions.setDisabled('taskDelete',	!backend || !backend.delete || !entry);
-	Actions.setDisabled('taskDeleteRecursive', !backend || !backend.move ||!entry);
-	Actions.setDisabled('taskCopyJSON',	!entry);
-	Actions.setDisabled('taskExportToFile', !entry);
-	Actions.setDisabled('tasksShowCompleted', !backend || !list.tasklist);
-	Actions.setDisabled('tasksClearCompleted', !backend || !list.tasklist || !backend.delete);
-	Actions.setDisabled('tasksPrint', !backend || !list.tasklist);
-	Actions.setDisabled('tasksRefresh', !backend);
+	Actions.setDisabled(listPage, 'taskAdd',		!backend || !backend.insert || !list.tasklist);
+	Actions.setDisabled(listPage, 'taskTab',		!backend || !backend.move || !entry);
+	Actions.setDisabled(listPage, 'taskShiftTab',	!backend || !backend.move || !entry);
+	Actions.setDisabled(listPage, 'taskMoveUp',	!backend || !backend.move || !entry);
+	Actions.setDisabled(listPage, 'taskMoveDown',	!backend || !backend.move || !entry);
+	Actions.setDisabled(listPage, 'taskEdit',		!backend || !entry); //even without !backend.update -- the task can be copied or moved
+	Actions.setDisabled(listPage, 'taskDelete',	!backend || !backend.delete || !entry);
+	Actions.setDisabled(listPage, 'taskDeleteRecursive', !backend || !backend.move ||!entry);
+	Actions.setDisabled(listPage, 'taskCopyJSON',	!entry);
+	Actions.setDisabled(listPage, 'taskExportToFile', !entry);
+	Actions.setDisabled(listPage, 'tasksShowCompleted', !backend || !list.tasklist);
+	Actions.setDisabled(listPage, 'tasksClearCompleted', !backend || !list.tasklist || !backend.delete);
+	Actions.setDisabled(listPage, 'tasksPrint', !backend || !list.tasklist);
+	Actions.setDisabled(listPage, 'tasksRefresh', !backend);
 }
 
 

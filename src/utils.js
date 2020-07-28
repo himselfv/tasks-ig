@@ -579,21 +579,48 @@ utils.export(copyToClipboard);
 
 /*
 Actions.
-Define HTML elements with fixed class names, then use this API to transparently update any number of them.
+Define HTML elements with action=.. attributes, then use this API to:
+- define these actions for certain scopes
+- transparently update any number of them
 */
 function Actions() {}
 utils.export(Actions);
-Actions.bind = function(className, handler) {
-	for (let element of document.getElementsByClassName(className))
-		element.onclick = handler;
+//Defines a scope (HTML element) in which actions can be defined. Not neccesary to call explicitly.
+//To isolate a scope (make it swallow all unhandled actions), add a click handler which eats action clicks.
+Actions.getScope = function(scope) {
+	if (!scope) scope = document;
+	//We store action dictionary in the scope element itself.
+	//The events bubble up and are handled at this level.
+	if (typeof parent.actions == 'undefined') {
+		parent.actions = {};
+		parent.actions.dict = {};
+		parent.addEventListener('click', Actions.onClick);
+	}
+	parent.defaultAction = null; //override to handle action-clicks only
+	return parent.actions;
 }
-Actions.setEnabled = function(className, enabled) {
-	Actions.setDisabled(className, !enabled);
+//Defines an action in a scope
+Actions.bind = function(scope, actionName, handler) {
+	let actions = Actions.getScope(scope);
+	actions.dict[actionName] = handler;
 }
-Actions.setDisabled = function(className, disabled) {
+Actions.setEnabled = function(scope, actionName, enabled) {
+	Actions.setDisabled(scope, actionName, !enabled);
+}
+Actions.setDisabled = function(scope, actionName, disabled) {
 	//For now reuse the .hidden class; may introduce proper .disabled later.
-	for (let element of document.getElementsByClassName(className))
+	for (let element of scope.querySelectorAll('[action='+actionName+']'))
 		element.classList.toggle('hidden', disabled);
+}
+Actions.onClick = function(event) {
+	if (!event.target.action) return;
+	if (!event.currentTarget.actions) return;
+	let actions = event.currentTarget.actions;
+	let action = actions[event.target.action];
+	if (action)
+		action.apply(this, arguments);
+	else if (actions.defaultAction)
+		actions.defaultAction.apply(this, arguments);
 }
 
 

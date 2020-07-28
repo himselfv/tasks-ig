@@ -123,8 +123,8 @@ html, body {
   padding-right: 5px;
   padding-top: 3px;
 }
-#listPanelToolbar .accountAdd:before { content: url(res/plus.png); }
-#listPanelToolbar .listAdd:before { content: url(res/plus.png); }
+#listPanelToolbar [action=accountAdd]:before { content: url(res/plus.png); }
+#listPanelToolbar [action=listAdd]:before { content: url(res/plus.png); }
 
 
 /*
@@ -166,61 +166,61 @@ The <View> block lived basically anywhere at different points of time.
 
 /* Hide all buttons and only show specific ones */
 #listToolbar .button { display: none; }
-#listToolbar .taskAdd,
-#listToolbar .taskEdit,
-#listToolbar .taskTab,
-#listToolbar .taskShiftTab,
-#listToolbar .taskMoveUp,
-#listToolbar .taskMoveDown,
-#listToolbar .taskDelete,
-#listToolbar .tasksClearCompleted,
-#listToolbar .tasksRefresh,
-#listToolbar .tasksPrint,
-#listToolbar .tasksSortCustom,
-#listToolbar .tasksSortByDate,
-#listToolbar .tasksShowCompleted,
-#listToolbar .tasksShowDeleted { display: block; }
+#listToolbar [action=taskAdd],
+#listToolbar [action=taskEdit],
+#listToolbar [action=taskTab],
+#listToolbar [action=taskShiftTab],
+#listToolbar [action=taskMoveUp],
+#listToolbar [action=taskMoveDown],
+#listToolbar [action=taskDelete],
+#listToolbar [action=tasksClearCompleted],
+#listToolbar [action=tasksRefresh],
+#listToolbar [action=tasksPrint],
+#listToolbar [action=tasksSortCustom],
+#listToolbar [action=tasksSortByDate],
+#listToolbar [action=tasksShowCompleted],
+#listToolbar [action=tasksShowDeleted] { display: block; }
 /* Prepend "View" to order panel */
-#listToolbar .tasksSortCustom:before { content: "View: "; }
+#listToolbar [action=tasksSortCustom]:before { content: "View: "; }
 /* Icons for some buttons */
-#listToolbar .taskAdd:before,
-#listToolbar .taskDelete:before,
-#listToolbar .taskTab:before,
-#listToolbar .taskShiftTab:before,
-#listToolbar .taskMoveUp:before,
-#listToolbar .taskMoveDown:before {
+#listToolbar [action=taskAdd]:before,
+#listToolbar [action=taskDelete]:before,
+#listToolbar [action=taskTab]:before,
+#listToolbar [action=taskShiftTab]:before,
+#listToolbar [action=taskMoveUp]:before,
+#listToolbar [action=taskMoveDown]:before {
   display: inline-block; /* for scaling */
   vertical-align: middle;
   height: 24;
   min-width: 20px;
 }
 /* Hide captions for some of icon buttons */
-#listToolbar .taskDelete,
-#listToolbar .taskTab,
-#listToolbar .taskShiftTab,
-#listToolbar .taskMoveUp,
-#listToolbar .taskMoveDown {
+#listToolbar [action=taskDelete],
+#listToolbar [action=taskTab],
+#listToolbar [action=taskShiftTab],
+#listToolbar [action=taskMoveUp],
+#listToolbar [action=taskMoveDown] {
   font-size: 0; /* Hide captions */
   filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
 }
-#listToolbar .taskAdd:before {
+#listToolbar [action=taskAdd]:before {
   filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
 }
-#listToolbar .taskDelete:after {
+#listToolbar [action=taskDelete]:after {
   margin-left: 0;
 }
 /* Plus icon for the New button */
-#listToolbar .taskAdd:before,
-#listToolbar .taskDelete:before {
+#listToolbar [action=taskAdd]:before,
+#listToolbar [action=taskDelete]:before {
   transform: scale(0.85);
   transform-origin: 13px 13px; /* deblurs transform: https://stackoverflow.com/questions/29037176/ */
 }
-#listToolbar .taskAdd:before { content: url(res/plus2.png); }
-#listToolbar .taskDelete:before { content: url(res/trash2.png); }
-#listToolbar .taskTab { background-image: url(res/ikigai-4871557-16.png); }
-#listToolbar .taskShiftTab { background-image: url(res/ikigai-4871564-16.png); }
-#listToolbar .taskMoveUp { background-image: url(res/visual-arrow-5539635.png); }
-#listToolbar .taskMoveDown { background-image: url(res/visual-arrow-5539636.png); }
+#listToolbar [action=taskAdd]:before { content: url(res/plus2.png); }
+#listToolbar [action=taskDelete]:before { content: url(res/trash2.png); }
+#listToolbar [action=taskTab] { background-image: url(res/ikigai-4871557-16.png); }
+#listToolbar [action=taskShiftTab] { background-image: url(res/ikigai-4871564-16.png); }
+#listToolbar [action=taskMoveUp] { background-image: url(res/visual-arrow-5539635.png); }
+#listToolbar [action=taskMoveDown] { background-image: url(res/visual-arrow-5539636.png); }
 
 
 /* Tasks */

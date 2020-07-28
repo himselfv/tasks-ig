@@ -12,8 +12,8 @@
 <div id="listPage" class="page hidden" style="z-index: 0;"><div>
 	<div id="listPanel">
 		<div id="listPanelToolbar" class="toolbar">
-			<a class="button accountAdd">Add account</a>
-			<a class="button listAdd">New list</a>
+			<a class="button" action="accountAdd">Add account</a>
+			<a class="button" action="listAdd">New list</a>
 		</div>
 		<p id="listPanelTitle">Task lists:</p>
 		<div class="tasklistPanel"></div>
@@ -25,25 +25,25 @@
 			<div id="mainmenu" class="dropdown"></div>
 		</div>
 		<div id="listToolbar" class="toolbar">
-			<a class="button tasksClearCompleted">Clear completed</a>
+			<a class="button" action="tasksClearCompleted">Clear completed</a>
 			<span class="separator"></span>
-			<a class="button taskAdd">New task</a>
+			<a class="button" action="taskAdd">New task</a>
 			<span class="separator"></span>
 			<!-- View: <my order> | <sort by date> | <completed tasks> | <trash> -->
-			<a class="button tasksShowCompleted">Show completed</a>
+			<a class="button" action="tasksShowCompleted">Show completed</a>
 			<span class="separator"></span>
-			<a class="button taskEdit">Edit details</a>
+			<a class="button" action="taskEdit">Edit details</a>
 			<span class="separator"></span>
-			<a class="button taskTab">Indent</a>
-			<a class="button taskShiftTab">Unindent</a>
+			<a class="button" action="taskTab">Indent</a>
+			<a class="button" action="taskShiftTab">Unindent</a>
 			<span class="separator"></span>
-			<a class="button taskMoveUp">Move up</a>
-			<a class="button taskMoveDown">Move down</a>
+			<a class="button" action="taskMoveUp">Move up</a>
+			<a class="button" action="taskMoveDown">Move down</a>
 			<span class="separator"></span>
-			<a class="button taskDelete">Delete</a>
-			<a class="button taskDeleteRecursive">Delete w/children</a>
+			<a class="button" action="taskDelete">Delete</a>
+			<a class="button" action="taskDeleteRecursive">Delete w/children</a>
 			<span class="separator"></span>
-			<a class="button tasksRefresh">Refresh</a>
+			<a class="button" action="tasksRefresh">Refresh</a>
 			<span class="separator"></span>
 			<!--a class="button tasksPrint">Print</a-->
 		</div>
@@ -51,8 +51,8 @@
 		<div id="listContent"></div>
 		<div id="listFooter">
 			<div id="activityIndicator"></div>
-			<a class="button taskAdd">Add task</a>
-			<a class="button taskDelete">Delete task</a>
+			<a class="button" action="taskAdd">Add task</a>
+			<a class="button" action="taskDelete">Delete task</a>
 			<div id="taskmenu" class="dropdown"></div>
 		</div>
 	</div>
