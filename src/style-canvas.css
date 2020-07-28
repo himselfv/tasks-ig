@@ -163,6 +163,7 @@ The <View> block lived basically anywhere at different points of time.
   filter: invert(59%) sepia(11%) saturate(516%) hue-rotate(174deg) brightness(95%) contrast(95%);
   pointer-events: none;
 } */
+
 /* Hide all buttons and only show specific ones */
 #listToolbar .button { display: none; }
 #listToolbar .taskAdd,
@@ -181,40 +182,19 @@ The <View> block lived basically anywhere at different points of time.
 #listToolbar .tasksShowDeleted
 { display: block; }
 #listToolbar .tasksClearCompleted { order: 11; }
-#listToolbar .taskAdd { order: 12; }
+#listToolbar .taskAdd { order: 13; }
 #listToolbar .tasksSortCustom { order: 21; }
-#listToolbar .tasksSortByDate { order: 22; }
-#listToolbar .tasksShowCompleted { order: 23; }
-#listToolbar .tasksShowDeleted { order: 24; }
+#listToolbar .tasksSortByDate { order: 23; }
+#listToolbar .tasksShowCompleted { order: 25; }
+#listToolbar .tasksShowDeleted { order: 27; }
 #listToolbar .taskEdit { order: 31; }
 #listToolbar .taskTab { order: 32; }
 #listToolbar .taskShiftTab { order: 33; }
 #listToolbar .taskMoveUp { order: 34; }
-#listToolbar .taskMoveDown { order: 35; }
-#listToolbar .taskDelete { order: 36; }
-#listToolbar .taskRefresh { order: 37; }
-#listToolbar .taskPrint { order: 38; }
-/* Enable splitters after some tasks */
-#listToolbar .taskAdd:after,
-#listToolbar .taskEdit:after,
-#listToolbar .taskShiftTab:after,
-#listToolbar .taskMoveDown:after,
-#listToolbar .taskDelete:after,
-#listToolbar .tasksClearCompleted:after,
-#listToolbar .tasksRefresh:after,
-#listToolbar .tasksPrint:after,
-#listToolbar .tasksSortCustom:after,
-#listToolbar .tasksSortByDate:after,
-#listToolbar .tasksShowCompleted:after,
-#listToolbar .tasksShowDeleted:after
-{
-  display: inline-block;
-  content: "";
-  min-width: 1px;
-  min-height: 1rem; /* font-size can be 0 if caption is hidden */
-  height: 1em;
-  vertical-align: middle;
-  margin-left: 4px; border-right: 2px groove #D6D6D6; }
+#listToolbar .taskMoveDown { order: 36; }
+#listToolbar .taskDelete { order: 40; }
+#listToolbar .taskRefresh { order: 42; }
+#listToolbar .taskPrint { order: 44; }
 /* Prepend "View" to order panel */
 #listToolbar .tasksSortCustom:before { content: "View: "; }
 /* Icons for some buttons */

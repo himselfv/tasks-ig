@@ -546,7 +546,7 @@ TaskList.prototype.onEntryFocus = function(event) {
 	console.log("entryfocus");
 	console.log(event);
 	if (this.focusedTaskEntry)
-		this.clearFocus(this.focusedTaskEntry);
+		this.clearFocus(this.focusedTaskEntry, { noNotify: true });
 	this.focusedTaskEntry = event.currentTarget.taskEntry;
 	event.currentTarget.classList.add("focused");
 	this.focusChanged();
@@ -555,12 +555,13 @@ TaskList.prototype.onEntryBlur = function(event) {
 	//Do nothing -- remember the focus
 }
 //Removes the focus markings. Only called manually
-TaskList.prototype.clearFocus = function(entry) {
+TaskList.prototype.clearFocus = function(entry, options) {
 	if (!entry || (this.focusedTaskEntry == entry))
 		this.focusedTaskEntry = null;
 	if (entry)
 		entry.node.classList.remove("focused");
-	this.focusChanged();
+	if (!options || !options.noNotify)
+		this.focusChanged();
 }
 TaskList.prototype.focusChanged = function() {
 	var event = new CustomEvent("focuschanged");

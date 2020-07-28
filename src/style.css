@@ -132,9 +132,11 @@ By default captions are hidden, to show: set font-size.
   height: 1em;
   border: 0;
   padding: 0;
-  margin: 0;
-  margin-left: 4px;
+  margin: 0 2px;
   border-right: 2px groove #D6D6D6;
+}
+.toolbar .separator.collapsed {
+  display: none;
 }
 
 

@@ -336,7 +336,6 @@ JobQueue.prototype.queueIndependentJob = function(fn) {
 }
 
 
-
 /*
 Saves/reads params in the URL's #anchor part
 Please use URI compatible key names at least.
@@ -669,6 +668,50 @@ window.addEventListener("click", (event) => {
 		}
 	}
 });
+
+
+/*
+Toolbars
+*/
+function Toolbar(element) {
+	if (!element)
+		element = document.createElement('div');
+	console.log('Toolbar()', element);
+	//Observe child visibility changes to auto-collapse separators:
+	element.observer = new MutationObserver(Toolbar.mutationCallback.bind(element));
+	element.observer.observe(element, { attributes: true, subtree: true });
+	Toolbar.collapseSeparators(element);
+	return element;
+}
+utils.export(Toolbar);
+Toolbar.mutationCallback = function(mutationsList, observer) {
+	let needRescan = false;
+	for(let mu of mutationsList) {
+		//console.debug('Toolbar.mutation: ', mu);
+		if (mu.	target.classList.contains('separator'))
+			continue; //Do not react to separators themselves
+		if (mu.type === 'attributes' && mu.attributeName === 'class')
+			needRescan = true;
+	}
+	if (needRescan)
+		Toolbar.collapseSeparators(this);
+}
+Toolbar.collapseSeparators = function(tb) {
+	let lastSep = true; //Collapse initial separator
+	//console.log('Toolbar.collapseSeparators');
+	for (let node of tb.children) {
+		let isSep = node.classList.contains('separator');
+		node.classList.toggle('collapsed', lastSep);
+		if (isSep)
+			lastSep = node;
+		else if (getComputedStyle(node, null).display!='none')
+			lastSep = null;
+	}
+	if (lastSep && (typeof lastSep == 'object'))
+		lastSep.classList.toggle('collapsed', true);
+}
+
+
 
 /*
 Buttons

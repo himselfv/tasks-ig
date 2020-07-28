@@ -19,6 +19,8 @@ var listPage = document.getElementById('listPage');
 
 var mainmenu = null;
 var taskmenu = null;
+var panelToolbar = null;
+var listToolbar = null;
 
 function initUi() {
 	window.addEventListener("beforeunload", handleBeforeUnload);
@@ -61,11 +63,8 @@ function initUi() {
 	taskmenu.add('tasksExportAllToFile', 'Export all to file...');
 	taskmenu.add('tasksRefresh', 'Refresh');
 	
-	//let panelToolbar = document.getElementById('listPanelToolbar');
-	//initToolbar(panelToolbar)?
-	
-	//let listToolbar = document.getElementById('listToolbar');
-	//initToolbar(listToolbar)?
+	panelToolbar = new Toolbar(document.getElementById('listPanelToolbar'));
+	listToolbar = new Toolbar(document.getElementById('listToolbar'));
 	
 	//Bind all actions
 	Actions.bind('accountsPageOpen', AccountsPage.new.bind(AccountsPage));
