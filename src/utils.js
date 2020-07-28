@@ -580,7 +580,7 @@ utils.export(copyToClipboard);
 /*
 Actions.
 Define HTML elements with action=.. attributes, then use this API to:
-- define these actions for certain scopes
+- implement these actions for certain scopes
 - transparently update any number of them
 */
 function Actions() {}
