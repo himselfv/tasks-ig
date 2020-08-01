@@ -195,7 +195,6 @@ The <View> block lived basically anywhere at different points of time.
   min-width: 20px;
 }
 /* Hide captions for some of icon buttons */
-#listToolbar [action=taskDelete],
 #listToolbar [action=taskTab],
 #listToolbar [action=taskShiftTab],
 #listToolbar [action=taskMoveUp],
@@ -203,8 +202,11 @@ The <View> block lived basically anywhere at different points of time.
   font-size: 0; /* Hide captions */
   filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
 }
-#listToolbar [action=taskAdd]:before {
-  filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
+#listToolbar [action=taskDelete] {
+  font-size: 0; /* Hide captions */
+}
+#listToolbar [action=taskDelete]:before {
+  margin-right: 0;
 }
 #listToolbar [action=taskDelete]:after {
   margin-left: 0;
@@ -214,9 +216,10 @@ The <View> block lived basically anywhere at different points of time.
 #listToolbar [action=taskDelete]:before {
   transform: scale(0.85);
   transform-origin: 13px 13px; /* deblurs transform: https://stackoverflow.com/questions/29037176/ */
+  filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
 }
-#listToolbar [action=taskAdd]:before { content: url(res/plus2.png); }
-#listToolbar [action=taskDelete]:before { content: url(res/trash2.png); }
+#listToolbar [action=taskAdd]:before { content: ""; background: url("res/_sprites-ig.png") no-repeat -12px -4px; }
+#listToolbar [action=taskDelete]:before { content: ""; background: url("res/_sprites-ig.png") no-repeat -36px -4px; }
 #listToolbar [action=taskTab] { background-image: url(res/ikigai-4871557-16.png); }
 #listToolbar [action=taskShiftTab] { background-image: url(res/ikigai-4871564-16.png); }
 #listToolbar [action=taskMoveUp] { background-image: url(res/visual-arrow-5539635.png); }

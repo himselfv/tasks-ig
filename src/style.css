@@ -64,7 +64,7 @@ Error message popup
   cursor: move;
 }
 .dragGrip { /* Explicit drag grip which appears when you hover over things like tasks */
-  background-image: url("res/grip.png");
+  background: url("res/_sprites-ig.png") -0px -0px;
   cursor: move;
   min-width: 10px;
   position: relative;
@@ -112,7 +112,7 @@ By default captions are hidden, to show: set font-size.
 .button:before {
   display: inline-block;
   vertical-align: middle;
-  margin-right: 5px; /*between image and caption*/
+  margin-right: 2px; /*between image and caption*/
   height: 100%;
   /* Set content:url() in descendants to use image+caption  */
 }
@@ -455,7 +455,7 @@ Task list panel
 }*/
 /* Account and tasklist actions */
 .tasklistPanel .dropbtn {
-  background-image: url("res/menu-20.png");
+  background: url("res/_sprites-ig.png") no-repeat -32px -24px; /* burger menu */
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   padding: 2px;
@@ -478,12 +478,10 @@ Task list panel
 Main menu
 */
 #mainmenu > .dropbtn {
-  background-image: url("res/menu-20.png");
+  background: url("res/_sprites-ig.png") no-repeat -32px -24px; /* burger menu */
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   display: block;
-  background-repeat: no-repeat;
-  background-position: center;
   border: 1px solid lightgray;
   padding: 2px;
   box-sizing: content-box;
@@ -495,15 +493,16 @@ Main menu
 /*
 Bottom toolbar panel.
 */
-#listFooter .taskAdd { background-image: url("res/plus2.png"); }
-#listFooter .taskDelete { background-image: url("res/trash2.png"); }
-#taskmenu .button { background-image: url("res/items3.png"); }
 #listFooter .button {
+  background-image: url("res/_sprites-ig.png");
   filter: invert(41%) sepia(37%) saturate(581%) hue-rotate(176deg) brightness(91%) contrast(87%); /* black -> 4D6C98 */
 }
 #listFooter .button:hover {
   background-color: white; /* will be filtered per above */
 }
+#listFooter [action='taskAdd'] { background-position:-8px -0px; } /* plus */
+#listFooter [action='taskDelete'] { background-position:-32px -0px; } /* trash can */
+#taskmenu .button { background-position:-8px -24px; } /* micro menu */
 
 /*
 Task menu
