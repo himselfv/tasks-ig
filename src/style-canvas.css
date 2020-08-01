@@ -43,12 +43,11 @@ html, body {
   padding-top: 0.2em;
 }
 .tasklistPanel .dropbtn {
-  background-image: url("res/sprites-gt.png");
-  background-position:-144px -25px;
+  background: url(res/_sprites-cv.png) no-repeat -53px -29px;
   min-width: 13px;
-  min-height: 12px;
-  margin-left:0px;
-  margin-right:5px;
+  min-height: 13px;
+  margin-left: 0px;
+  margin-right: 5px;
   border: 0;
   padding: 0;
 }
@@ -123,8 +122,16 @@ html, body {
   padding-right: 5px;
   padding-top: 3px;
 }
-#listPanelToolbar [action=accountAdd]:before { content: url(res/plus.png); }
-#listPanelToolbar [action=listAdd]:before { content: url(res/plus.png); }
+#listPanelToolbar [action=accountAdd]:before,
+#listPanelToolbar [action=listAdd]:before {
+  content: "";
+  vertical-align: top;
+  position: relative;
+  top: 3px;
+  width: 13px;
+  height: 13px;
+  background: url(res/_sprites-cv.png) no-repeat -53px -5px;
+}
 
 
 /*
@@ -193,38 +200,28 @@ The <View> block lived basically anywhere at different points of time.
   vertical-align: middle;
   height: 24;
   min-width: 20px;
-}
-/* Hide captions for some of icon buttons */
-#listToolbar [action=taskTab],
-#listToolbar [action=taskShiftTab],
-#listToolbar [action=taskMoveUp],
-#listToolbar [action=taskMoveDown] {
-  font-size: 0; /* Hide captions */
+  content: "";
   filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
 }
-#listToolbar [action=taskDelete] {
-  font-size: 0; /* Hide captions */
-}
-#listToolbar [action=taskDelete]:before {
-  margin-right: 0;
-}
-#listToolbar [action=taskDelete]:after {
-  margin-left: 0;
-}
-/* Plus icon for the New button */
 #listToolbar [action=taskAdd]:before,
 #listToolbar [action=taskDelete]:before {
   transform: scale(0.85);
   transform-origin: 13px 13px; /* deblurs transform: https://stackoverflow.com/questions/29037176/ */
-  filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
 }
-#listToolbar [action=taskAdd]:before { content: ""; background: url("res/_sprites-ig.png") no-repeat -12px -4px; }
-#listToolbar [action=taskDelete]:before { content: ""; background: url("res/_sprites-ig.png") no-repeat -36px -4px; }
-#listToolbar [action=taskTab] { background-image: url(res/ikigai-4871557-16.png); }
-#listToolbar [action=taskShiftTab] { background-image: url(res/ikigai-4871564-16.png); }
-#listToolbar [action=taskMoveUp] { background-image: url(res/visual-arrow-5539635.png); }
-#listToolbar [action=taskMoveDown] { background-image: url(res/visual-arrow-5539636.png); }
-
+#listToolbar [action=taskAdd]:before { background: url(res/_sprites-ig.png) no-repeat -12px -4px; }
+#listToolbar [action=taskDelete]:before { background: url(res/_sprites-ig.png) no-repeat -36px -4px; }
+#listToolbar [action=taskTab]:before { background: url(res/_sprites-cv.png) no-repeat -2px -2px; }
+#listToolbar [action=taskShiftTab]:before { background: url(res/_sprites-cv.png) no-repeat -2px -26px; }
+#listToolbar [action=taskMoveUp]:before { background: url(res/_sprites-cv.png) no-repeat -26px -2px; }
+#listToolbar [action=taskMoveDown]:before { background: url(res/_sprites-cv.png) no-repeat -26px -26px; }
+/* Hide captions for some of icon buttons */
+#listToolbar [action=taskTab],
+#listToolbar [action=taskShiftTab],
+#listToolbar [action=taskMoveUp],
+#listToolbar [action=taskMoveDown],
+#listToolbar [action=taskDelete] {
+  font-size: 0;
+}
 
 /* Tasks */
 .task {

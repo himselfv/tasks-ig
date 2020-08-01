@@ -64,7 +64,7 @@ Error message popup
   cursor: move;
 }
 .dragGrip { /* Explicit drag grip which appears when you hover over things like tasks */
-  background: url("res/_sprites-ig.png") -0px -0px;
+  background: url(res/_sprites-ig.png) -0px -0px;
   cursor: move;
   min-width: 10px;
   position: relative;
@@ -421,13 +421,13 @@ Task list panel
   font-weight: normal;
 }
 .tasklistPanel .account.loading > span:after { /* Spinning wheel while loading */
-  content: url("res/loading5_16.png");
+  content: url(res/loading5_16.png);
   position: relative;
   top: 0.2em;
   margin-left: 0.5em;
 }
 .tasklistPanel .account.error > span:after {
-  content: url("res/error-381599-16.png");
+  content: url(res/error-381599-16.png);
   position: relative;
   top: 0.2em;
   margin-left: 0.5em;
@@ -450,12 +450,12 @@ Task list panel
 }
 .tasklistPanel .accountAdd:after {
   content: "＋"; -- to use a text
-  content: url("res/plus2.png"); -- to use an image
+  content: url(res/plus2.png); -- to use an image
   visibility: visible;
 }*/
 /* Account and tasklist actions */
 .tasklistPanel .dropbtn {
-  background: url("res/_sprites-ig.png") no-repeat -32px -24px; /* burger menu */
+  background: url(res/_sprites-ig.png) no-repeat -32px -24px; /* burger menu */
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   padding: 2px;
@@ -478,7 +478,7 @@ Task list panel
 Main menu
 */
 #mainmenu > .dropbtn {
-  background: url("res/_sprites-ig.png") no-repeat -32px -24px; /* burger menu */
+  background: url(res/_sprites-ig.png) no-repeat -32px -24px; /* burger menu */
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   display: block;
@@ -494,7 +494,7 @@ Main menu
 Bottom toolbar panel.
 */
 #listFooter .button {
-  background-image: url("res/_sprites-ig.png");
+  background-image: url(res/_sprites-ig.png);
   filter: invert(41%) sepia(37%) saturate(581%) hue-rotate(176deg) brightness(91%) contrast(87%); /* black -> 4D6C98 */
 }
 #listFooter .button:hover {
