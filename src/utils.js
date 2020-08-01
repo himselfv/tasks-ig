@@ -578,57 +578,92 @@ utils.export(copyToClipboard);
 
 
 /*
-Actions.
-Define HTML elements with action=.. attributes, then use this API to:
+Actions. Define HTML elements with action=.. attributes, then use this API to:
 - implement these actions for certain scopes
 - transparently update any number of them
 */
+function Action(scope, actionName) {}
+utils.export(Action);
 function Actions() {}
 utils.export(Actions);
-//Defines a scope (HTML element) in which actions can be defined. Not neccesary to call explicitly.
-//To isolate a scope (make it swallow all unhandled actions), add a click handler which eats action clicks.
+//Actions are stored in scopeElement.actions
+//To make a scope swallow all unhandled actions, add a click handler which eats action clicks.
 Actions.getScopeData = function(scope) {
 	if (!scope) scope = document;
 	//We store action dictionary in the scope element itself.
 	//The events bubble up and are handled at this level.
-	if (typeof parent.actions == 'undefined') {
-		parent.actions = {};
-		parent.actions.dict = {};
-		parent.addEventListener('click', Actions.onClick);
+	if (typeof scope.actions == 'undefined') {
+		scope.actions = {};
+		scope.addEventListener('click', Actions.onClick);
 	}
-	parent.defaultAction = null; //override to handle action-clicks only
-	return parent.actions;
+	return scope.actions;
 }
-Actions.getAction = function(element) {
+//Retrieves existing action with a given name or creates a new one
+Actions.get = function(scope, actionName) {
+	let scopeData = Actions.getScopeData(scope);
+	let action = scopeData[actionName];
+	if (!action) {
+		action = new Action();
+		scopeData[actionName] = action;
+	}
+	return action;
+}
+//Creates an action by its handler
+Actions.bind = function(scope, actionName, handler) {
+	let action = Actions.get(scope, actionName);
+	action.handler = handler;
+	return action;
+}
+//Retrieves a registered action with a given name in a given scope
+//If there's no such action returns defaultValue (if given) or null.
+Actions.find = function(scope, actionName, defaultValue) {
+	let scopeData = (scope || document).actions;
+	if (!scopeData) return null;
+	return scopeData[actionName] || defaultValue || null;
+}
+//Returns the element's assigned action name
+Actions.getAssignedActionName = function(element) {
 	//We support both action attribute and action property, for ease of use
 	//Normally .action is not mapped to properties
 	if (typeof element.action != 'undefined')
 		return element.action;
 	return element.getAttribute('action');
 }
-//Defines an action in a scope
-Actions.bind = function(scope, actionName, handler) {
-	let actions = Actions.getScopeData(scope);
-	actions.dict[actionName] = handler;
+//Returns the list of HTML elements inside a scope that are assigned a certain action
+Actions.getActionClients = function(scope, actionName) {
+	return scope.querySelectorAll('[action='+actionName+']');
+}
+//Toggles a given CSS class [to a given value] for all action clients
+Actions.toggleClass = function(scope, actionName, className, value) {
+	//console.debug('Actions.toggleClass:', scope, actionName, className, value);
+	for (let element of Actions.getActionClients(scope, actionName))
+		element.classList.toggle(className, value);
+}
+Actions.setDisabled = function(scope, actionName, disabled) {
+	//For now reuse the .hidden class; may introduce proper .disabled later.
+	Actions.toggleClass(scope, actionName, 'hidden', disabled);
 }
 Actions.setEnabled = function(scope, actionName, enabled) {
 	Actions.setDisabled(scope, actionName, !enabled);
 }
-Actions.setDisabled = function(scope, actionName, disabled) {
-	//For now reuse the .hidden class; may introduce proper .disabled later.
-	for (let element of scope.querySelectorAll('[action='+actionName+']'))
-		element.classList.toggle('hidden', disabled);
+Actions.setChecked = function(scope, actionName, value) {
+	let action = Actions.find(scope, actionName, null);
+	if (action) { //Do not setChecked() on unregistered actions to prevent accidental context misses
+		action.checked = value;
+		Actions.toggleClass(scope, actionName, 'checked', value);
+	}
 }
 Actions.onClick = function(event) {
-	let action = Actions.getAction(event.target);
+	if (event.button != 0) return; //For now only handling the left button
+	let actionName = Actions.getAssignedActionName(event.target);
+	if (!actionName) return;
+	let action = Actions.find(event.currentTarget, actionName);
 	if (!action) return;
-	let scopeData = event.currentTarget.actions;
-	if (!scopeData) return;
-	action = scopeData.dict[action];
-	if (action)
-		action.apply(this, arguments);
-	else if (actions.defaultAction)
-		actions.defaultAction.apply(this, arguments);
+	if (action.autoCheck) {
+		action.checked = !action.checked;
+		Actions.setChecked(event.currentTarget, actionName, action.checked);
+	}
+	action.handler.apply(this, arguments);
 }
 
 

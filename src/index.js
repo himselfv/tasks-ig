@@ -76,7 +76,8 @@ function initUi() {
 	Actions.bind(listPage, 'listRename', tasklistRename);
 	Actions.bind(listPage, 'listDelete', tasklistDelete);
 	Actions.bind(listPage, 'tasksClearCompleted', tasklistClearCompleted);
-	Actions.bind(listPage, 'tasksShowCompleted', filterShowCompleted);
+	let action = Actions.bind(listPage, 'tasksShowCompleted', filterShowCompleted);
+	action.autoCheck = true;
 	Actions.bind(listPage, 'tasksRefresh', tasklistReloadSelected);
 	Actions.bind(listPage, 'taskAdd', taskEntryAddClicked);
 	Actions.bind(listPage, 'taskEdit', taskEntryEditFocused);
