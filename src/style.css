@@ -421,7 +421,7 @@ Task list panel
   font-weight: normal;
 }
 .tasklistPanel .account.loading > span:after { /* Spinning wheel while loading */
-  content: url("res/loading5_16.gif");
+  content: url("res/loading5_16.png");
   position: relative;
   top: 0.2em;
   margin-left: 0.5em;
