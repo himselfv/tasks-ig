@@ -633,7 +633,15 @@ Actions.getAssignedActionName = function(element) {
 Actions.getActionClients = function(scope, actionName) {
 	return scope.querySelectorAll('[action='+actionName+']');
 }
-//Toggles a given CSS class [to a given value] for all action clients
+/* Properties (.checked, .disabled) are not stored in the action -- only in the linked controls
+This way the initial state can be set in HTML */
+//True if the class is set for at least one of the linked controls
+Actions.containsClass = function(scope, actionName, className) {
+	for (let element of Actions.getActionClients(scope, actionName))
+		if (element.classList.contains(className)) return true;
+	return false;
+}
+//Toggles given CSS class for all linked controls
 Actions.toggleClass = function(scope, actionName, className, value) {
 	//console.debug('Actions.toggleClass:', scope, actionName, className, value);
 	for (let element of Actions.getActionClients(scope, actionName))
@@ -646,23 +654,25 @@ Actions.setDisabled = function(scope, actionName, disabled) {
 Actions.setEnabled = function(scope, actionName, enabled) {
 	Actions.setDisabled(scope, actionName, !enabled);
 }
+Actions.getChecked = function(scope, actionName) {
+	return Actions.containsClass(scope, actionName, 'checked');
+}
 Actions.setChecked = function(scope, actionName, value) {
+	//Do not setChecked() on unregistered actions to prevent accidental context misses
 	let action = Actions.find(scope, actionName, null);
-	if (action) { //Do not setChecked() on unregistered actions to prevent accidental context misses
-		action.checked = value;
+	if (action)
 		Actions.toggleClass(scope, actionName, 'checked', value);
-	}
 }
 Actions.onClick = function(event) {
-	if (event.button != 0) return; //For now only handling the left button
+	if (event.button != 0) return; //For now only handling the LMB
 	let actionName = Actions.getAssignedActionName(event.target);
 	if (!actionName) return;
 	let action = Actions.find(event.currentTarget, actionName);
 	if (!action) return;
-	if (action.autoCheck) {
-		action.checked = !action.checked;
-		Actions.setChecked(event.currentTarget, actionName, action.checked);
-	}
+	if (action.autoCheck)
+		//Use the .checked value of the control that had been clicked
+		Actions.setChecked(event.currentTarget, actionName,
+			!event.target.classList.contains('checked'));
 	action.handler.apply(this, arguments);
 }
 
