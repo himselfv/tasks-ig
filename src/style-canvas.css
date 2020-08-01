@@ -203,13 +203,8 @@ The <View> block lived basically anywhere at different points of time.
   content: "";
   filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
 }
-#listToolbar [action=taskAdd]:before,
-#listToolbar [action=taskDelete]:before {
-  transform: scale(0.85);
-  transform-origin: 13px 13px; /* deblurs transform: https://stackoverflow.com/questions/29037176/ */
-}
-#listToolbar [action=taskAdd]:before { background: url(res/_sprites-ig.png) no-repeat -12px -4px; }
-#listToolbar [action=taskDelete]:before { background: url(res/_sprites-ig.png) no-repeat -36px -4px; }
+#listToolbar [action=taskAdd]:before { background: url(res/_sprites-ig.png) no-repeat -11px -3px; }
+#listToolbar [action=taskDelete]:before { background: url(res/_sprites-ig.png) no-repeat -33px -2px; }
 #listToolbar [action=taskTab]:before { background: url(res/_sprites-cv.png) no-repeat -2px -2px; }
 #listToolbar [action=taskShiftTab]:before { background: url(res/_sprites-cv.png) no-repeat -2px -26px; }
 #listToolbar [action=taskMoveUp]:before { background: url(res/_sprites-cv.png) no-repeat -26px -2px; }
