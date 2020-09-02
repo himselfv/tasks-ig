@@ -9,6 +9,9 @@ if (typeof require != 'undefined') {
 }
 var unit = new Unit((typeof exports != 'undefined') && exports);
 
+//Without .debug don't even declare all the functions below,
+//or when you flip .debug to off, constructors are still going to be available.
+if (options.debug) {
 
 function BackendTestBase() {
 	Backend.call(this);
@@ -198,3 +201,5 @@ BackendTestDeletedFlag.prototype.delete = function(taskIds, tasklistId) {
 		batch.push(this.patch({ id: taskId, deleted: true, }));
 	return Promise.all(batch);
 }
+
+} //of if(options.debug)
