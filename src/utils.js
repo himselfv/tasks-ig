@@ -694,16 +694,20 @@ Dropdown.init = function(root) {
 		root = document.createElement("div");
 	root.classList.toggle("dropdown", true);
 	
-	var item = document.createElement("span");
-	item.className = "dropbtn";
-	item.addEventListener("click", Dropdown.click);
-	root.appendChild(item);
-	root.button = item;
+	//Move all child elements under content - to simplify pre-designed HTML
+	let content = document.createElement("div");
+	content.className = "dropdown-content";
+	while (root.firstChild)
+		content.appendChild(root.firstChild);
 	
-	item = document.createElement("div");
-	item.className = "dropdown-content";
-	root.appendChild(item);
-	root.menu = item;
+	let btn = document.createElement("span");
+	btn.className = "dropbtn";
+	btn.addEventListener("click", Dropdown.click);
+	root.appendChild(btn);
+	root.button = btn;
+	
+	root.appendChild(content);
+	root.menu = content;
 	
 	root.clear = Dropdown.clear;
 	root.add = Dropdown.add;
@@ -722,9 +726,8 @@ Dropdown.add = function(text, className) {
 	return item;
 }
 Dropdown.addSeparator = function(id) {
-	var item = document.createElement('span');
+	var item = document.createElement('hr');
 	if (id) item.id = id;
-	item.className = "menu-separator";
 	this.menu.appendChild(item);
 	return item;
 }

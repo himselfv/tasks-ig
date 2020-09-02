@@ -186,9 +186,10 @@ The button itself will be .dropdown .dropbtn
 .dropdown-content a:hover {
   background-color: #ddd;
 }
-.menu-separator {
+.dropdown-content > hr { /* separator */
   display: block;
   width: 95%;
+  border: none;
   border-bottom: 1px solid lightgray;
   margin: 2px 2px;
 }

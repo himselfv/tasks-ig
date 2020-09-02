@@ -21,7 +21,16 @@
 	<div id="listBody">
 		<div id="listHeader">
 			<select id="listSelectBox"></select>
-			<div id="mainmenu" class="dropdown"></div>
+			<div id="mainmenu" class="dropdown" title="Task list action">
+				<a action='accountsReload'>Reload</a>
+				<a action='listAdd'>Add list...</a>
+				<a action='listRename'>Rename list...</a>
+				<a action='listDelete'>Delete list</a>
+				<a action='accountReset'>Reset account</a>
+				<hr />
+				<a action='accountsPageOpen'>Accounts...</a>
+				<a action='optionsPageOpen'>Options...</a>
+			</div>
 		</div>
 		<div id="listToolbar" class="toolbar">
 			<a class="button" action="tasksClearCompleted">Clear completed</a>
@@ -52,7 +61,18 @@
 			<div id="activityIndicator"></div>
 			<a class="button" action="taskAdd">Add task</a>
 			<a class="button" action="taskDelete">Delete task</a>
-			<div id="taskmenu" class="dropdown"></div>
+			<div id="taskmenu" class="dropdown" title="Task actions">
+				<a action='taskTab'>—&gt; Tab</a>
+				<a action='taskShiftTab'>&lt;— Shift-Tab</a>
+				<hr />
+				<a action='taskCopyJSON'>Copy JSON</a>
+				<a action='taskExportToFile'>Export to file...</a>
+				<a action='taskEdit'>Edit</a>
+				<a action='taskDeleteRecursive'>Delete w/children</a>
+				<hr />
+				<a action='tasksExportAllToFile'>Export all to file...</a>
+				<a action='tasksRefresh'>Refresh</a>
+			</div>
 		</div>
 	</div>
 </div></div>

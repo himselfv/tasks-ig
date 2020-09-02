@@ -16,9 +16,6 @@ Security considerations in some contexts require:
  * No inline onclick= handlers.
 */
 var listPage = document.getElementById('listPage');
-
-var mainmenu = null;
-var taskmenu = null;
 var panelToolbar = null;
 var listToolbar = null;
 
@@ -29,6 +26,15 @@ function initUi() {
 	if (options.uiMaxWidth && (options.uiMaxWidth > 0))
 		document.body.style.maxWidth = options.uiMaxWidth+'px';
 	
+	if (typeof options.uiExtraCss == 'string')
+	for (let cssUri of options.uiExtraCss.split(',')) {
+			let link = document.createElement("link");
+			link.rel = "stylesheet";
+			link.type = "text/css";
+			link.href = cssUri;
+			document.head.appendChild(link);
+		}
+	
 	let listSelectBox = document.getElementById('listSelectBox');
 	listSelectBox.addEventListener("change", selectedTaskListChanged);
 
@@ -36,32 +42,9 @@ function initUi() {
 	listContent.addEventListener("click", tasklistClick);
 	listContent.addEventListener("dblclick", tasklistDblClick);
 
-	mainmenu = Dropdown.init('mainmenu');
-	mainmenu.button.title = "Task list action";
-	mainmenu.add('Reload').action='accountsReload';
-	mainmenu.add('Add list...').action='listAdd';
-	mainmenu.add('Rename list...').action='listRename';
-	mainmenu.add('Delete list').action='listDelete';
-	//This is a dangerous nuke account option; hide it from general users:
-	if (options.debug)
-		mainmenu.add('Reset account').action='accountReset';
-	mainmenu.addSeparator();
-	mainmenu.add('Accounts...').action='accountsPageOpen';
-	mainmenu.add('Options...').action='optionsPageOpen';
-	
-	taskmenu = Dropdown.init('taskmenu');
-	taskmenu.button.title = "Task actions";
+	let mainmenu = Dropdown.init('mainmenu');
+	let taskmenu = Dropdown.init('taskmenu');
 	taskmenu.button.classList.toggle("button", true);
-	taskmenu.add('—> Tab').action='taskTab';
-	taskmenu.add('<— Shift-Tab').action='taskShiftTab';
-	taskmenu.addSeparator();
-	taskmenu.add('Copy JSON').action='taskCopyJSON';
-	taskmenu.add('Export to file...').action='taskExportToFile';
-	taskmenu.add('Edit').action='taskEdit';
-	taskmenu.add('Delete w/children').action='taskDeleteRecursive';
-	taskmenu.addSeparator();
-	taskmenu.add('Export all to file...').action='tasksExportAllToFile';
-	taskmenu.add('Refresh').action='tasksRefresh';
 	
 	panelToolbar = new Toolbar(document.getElementById('listPanelToolbar'));
 	listToolbar = new Toolbar(document.getElementById('listToolbar'));
@@ -134,6 +117,10 @@ var optionSet = {
 		type: 'bool',
 		title: 'Debug',
 		hint: 'Enables debug backends and more logging', },
+	uiExtraCss: {
+		type: 'text',
+		title: 'Extra CSS',
+		hint: 'Paths to additional CSS files to customize appearance (can be relative or URLs). Comma-separated.<br />Try: style-canvas.css', },
 	uiMaxWidth: {
 		type: 'number', default: 0,
 		title: 'UI max width',
@@ -1134,7 +1121,8 @@ TaskListBox.prototype.reload = function() {
 	nodeRemoveAllChildren(this.box); //clear the list
 	
 	for (let account of accounts) {
-		console.debug('tasklistBoxReload: account=', account, 'signedIn=', account.isSignedIn(), 'ui=', account.ui);
+		console.log('tasklistBoxReload: account=', account, 'ui=', account.ui);
+		//console.debug('tasklistBoxReload: account=', account, 'signedIn=', account.isSignedIn(), 'ui=', account.ui);
 		
 		//Add a "grayed line" representing the account
 		let option = document.createElement("option");
