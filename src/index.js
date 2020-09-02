@@ -1650,7 +1650,6 @@ function tasklistInit() {
 //Reloads the currently selected task list. Tries to preserve focus. Returns a promise.
 function tasklistReloadSelected() {
 	console.debug('tasklistReloadSelected');
-	console.log(html);
 	var oldFocus = tasks.getFocusedEntry();
 	if (oldFocus)
 		oldFocus = { id: oldFocus.getId(), pos: oldFocus.getCaret() };
@@ -1733,8 +1732,9 @@ function accountPageReload(selected) {
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
 			p.appendChild(html.li(
-				linkNew(null, () => {
-					setSelectedTaskList(new TaskListHandle(account.id, tasklist.id))
+			linkNew(null, (event) => {
+					setSelectedTaskList(new TaskListHandle(account.id, tasklist.id));
+					event.preventDefault(); /* or href=# will override our URI permanence */
 				}, tasklist.title)
 			));
 		}
