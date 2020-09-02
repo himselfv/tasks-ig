@@ -771,7 +771,7 @@ Toolbar.mutationCallback = function(mutationsList, observer) {
 	let needRescan = false;
 	for(let mu of mutationsList) {
 		//console.debug('Toolbar.mutation: ', mu);
-		if (mu.	target.classList.contains('separator'))
+		if ((mu.target.tagName||'').toLowerCase()=='hr')
 			continue; //Do not react to separators themselves
 		if (mu.type === 'attributes' && mu.attributeName === 'class')
 			needRescan = true;
@@ -783,7 +783,7 @@ Toolbar.collapseSeparators = function(tb) {
 	let lastSep = true; //Collapse initial separator
 	//console.log('Toolbar.collapseSeparators');
 	for (let node of tb.children) {
-		let isSep = node.classList.contains('separator');
+		let isSep = ((node.tagName||'').toLowerCase()=='hr');
 		node.classList.toggle('collapsed', isSep && lastSep);
 		if (isSep)
 			lastSep = node;
