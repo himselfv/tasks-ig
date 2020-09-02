@@ -1710,7 +1710,7 @@ function accountPageReload(selected) {
 	if (account.error) {
 		let p = html.p('Could not initialize the backend '+selected.account.uiName(), {class: 'status'});
 		p.appendChild(html.br());
-		p.appendChild('Error: '+account.error);
+		p.appendChild(html.text('Error: '+account.error));
 		content.appendChild(p);
 		p = html.p(null, {class: 'actions'});
 		content.appendChild(html.li(linkNew(null, accountEditSettings, 'Change account settings')));
