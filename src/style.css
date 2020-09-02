@@ -752,6 +752,10 @@ Account list page
 #accountListControls button {
   min-height: 2em;
 }
+#accountListControls > hr { /* spacers */
+  border: none;
+  margin: 1em 0;
+}
 /* Make [Close] stick to the bottom:
 #accountListClose {
   margin-top: auto; 
