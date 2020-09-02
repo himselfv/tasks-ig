@@ -21,6 +21,7 @@ html, body {
   padding: 1px;
 }
 #mainmenu .dropbtn {
+  background: url(res/_sprites-ig.png) no-repeat -32px -24px;
   min-height: 20px;
 }
 
@@ -64,7 +65,7 @@ html, body {
 .tasklistPanel .tasklistAdd {
   font-weight: normal;
   font-size: 1em;
-  color: #2a5db0;
+  color: #2a5bd0;
 }
 .tasklistPanel span {
   padding: 0;
@@ -127,11 +128,16 @@ html, body {
   content: "";
   vertical-align: top;
   position: relative;
-  top: 3px;
+  top: 2px;
   width: 13px;
   height: 13px;
+  padding-right: 2px;
   background: url(res/_sprites-cv.png) no-repeat -53px -5px;
 }
+#listPanelToolbar [action=listAdd] {
+  display: none;
+}
+
 
 
 /*
@@ -143,10 +149,10 @@ The <View> block lived basically anywhere at different points of time.
  */
 #listToolbar {
   display: flex;
-  background: linear-gradient(#FFFFFF, #DDDDDD);
+  background: linear-gradient(#FFFFFF 1px, #DDDDDD 17px);
   border-bottom: 1px solid #D5D5D5;
   padding: 2px; /* sic */
-  color: #516B97;
+  color: #2F4E6F;/*#516B97;*/
 }
 #listToolbar .button { /* Should be 24px with borders */
   margin: 0px;
@@ -217,6 +223,7 @@ The <View> block lived basically anywhere at different points of time.
 #listToolbar [action=taskDelete] {
   font-size: 0;
 }
+
 
 /* Tasks */
 .task {
