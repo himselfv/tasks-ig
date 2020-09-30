@@ -53,11 +53,11 @@ function initUi() {
 	Actions.bind(document.body, 'accountsPageOpen', AccountsPage.new.bind(AccountsPage))
 	Actions.bind(document.body, 'optionsPageOpen', optionsPageOpen);
 	Actions.bind(document.body, 'accountsReload', accounts.reloadAllTasklists.bind(accounts));
-	Actions.bind(document.body, 'accountAdd', accountAdd);
-	Actions.bind(listPage, 'accountReset', accountReset);
+	Actions.bind(document.body, 'accountAdd', accountAdd.bind(null, null));
+	Actions.bind(listPage, 'accountReset', accountReset.bind(null, null));
 	Actions.bind(listPage, 'listAdd', tasklistAdd.bind(null, null));
-	Actions.bind(listPage, 'listRename', tasklistRename);
-	Actions.bind(listPage, 'listDelete', tasklistDelete);
+	Actions.bind(listPage, 'listRename', tasklistRename.bind(null, null));
+	Actions.bind(listPage, 'listDelete', tasklistDelete.bind(null, null));
 	Actions.bind(listPage, 'tasksClearCompleted', tasklistClearCompleted);
 	let action = Actions.bind(listPage, 'tasksShowCompleted', filterShowCompleted);
 	action.autoCheck = true;
@@ -1742,16 +1742,16 @@ function accountPageReload(selected) {
 	
 	//"Add task list"
 	if (account.tasklistAdd)
-		p.appendChild(html.li(linkNew(null, tasklistAdd, 'Add a task list')));
+		p.appendChild(html.li(linkNew(null, tasklistAdd.bind(null, account), 'Add a task list')));
 	else
 		p.appendChild(html.li("Task lists cannot be added to this account."));
 	content.appendChild(p);
 	
 	//Actions
 	p = html.p(null, {class: 'actions'});
-	p.appendChild(html.li(linkNew(null, accountEditSettings, 'Change account settings')));
+	p.appendChild(html.li(linkNew(null, accountEditSettings.bind(null, account), 'Change account settings')));
 	if (options.debug && account.reset)
-		p.appendChild(html.li(linkNew(null, accountReset, 'Reset account')));
+		p.appendChild(html.li(linkNew(null, accountReset.bind(null, account), 'Reset account')));
 	content.appendChild(p);
 }
 
