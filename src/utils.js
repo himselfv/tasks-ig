@@ -445,32 +445,6 @@ Editable.getTextNode = function(node) {
 	//We expect node to have exactly one TextNode child but try to handle the case where it's forgotten too
 	return node; //fallback
 }
-//Sets focus AND caret position/selection to a given editable element with a text content.
-//Assumes the node only has one child of type Text (typical for editable elements)
-Editable.setCaret = function(node, start, end) {
-	//console.log("editableSetCaret(start="+start+", end="+end+")");
-	var range = document.createRange();
-    
-	var target = Editable.getTextNode(node);
-	
-	//Try to perform the closest selection to what had been asked
-	var content = target.textContent; //geared towards text nodes
-	if (start && (start > content.length))
-		start = content.length;
-	if (end && (end > content.length))
-		end = content.length;
-	//(start or end < 0) || (end < start) == your own damn fault
-	
-	range.setStart(target, start);
-	if (end)
-		range.setEnd(target, end);
-	else
-		range.collapse(true); //set end == start
-   
-	var sel = window.getSelection();
-	sel.removeAllRanges();
-	sel.addRange(range);
-}
 Editable.getLength = function(node) {
 	return Editable.getText(node).length;
 }
@@ -515,6 +489,45 @@ Editable.getCaret = function(node) {
 	}
 	console.log("Editable.getCaret: caret is to the left/empty text");
 	return 0; //caret is before the start of the text or there's no text
+}
+//Sets focus AND caret position/selection to a given editable element with a text content.
+//Assumes the node only has one child of type Text (typical for editable elements)
+Editable.setCaret = function(node, start, end) {
+	//console.log("editableSetCaret(start="+start+", end="+end+")");
+	var range = document.createRange();
+    
+	var target = Editable.getTextNode(node);
+	
+	//Try to perform the closest selection to what had been asked
+	var content = target.textContent; //geared towards text nodes
+	if (start && (start > content.length))
+		start = content.length;
+	if (end && (end > content.length))
+		end = content.length;
+	//(start or end < 0) || (end < start) == your own damn fault
+	
+	range.setStart(target, start);
+	if (end)
+		range.setEnd(target, end);
+	else
+		range.collapse(true); //set end == start
+   
+	var sel = window.getSelection();
+	sel.removeAllRanges();
+	sel.addRange(range);
+	
+	//Some browsers automatically change focus to new selection, others don't:
+	//https://developer.mozilla.org/en-US/docs/Web/API/Selection#Selection_and_input_focus
+	//Update the focus if it's still wrong:
+	Editable.setFocus(target);
+}
+//Sets input focus to a node or its closes focusable parent
+Editable.setFocus = function(node) {
+	//Find something we can focus -- checking for HTMLElement properly is riskier
+	while (node && (typeof node.focus == 'undefined'))
+		node = node.parentNode;
+	if (node && (node != document.activeElement))
+		node.focus();
 }
 
 
