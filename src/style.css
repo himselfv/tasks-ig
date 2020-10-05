@@ -135,7 +135,8 @@ By default captions are hidden, to show: set font-size.
   margin: 0 2px;
   border-right: 2px groove #D6D6D6;
 }
-.toolbar hr.collapsed {
+.toolbar hr.collapsed,
+.dropdown hr.collapsed {
   display: none;
 }
 

@@ -691,6 +691,50 @@ Actions.onClick = function(event) {
 
 
 /*
+
+Auto-collapses visible HRs in the given host element.
+Usage:
+  host.hrCollapser = HrCollapser(host);
+Continues to watch over the element until freed.
+*/
+function HrCollapser(host) {
+	//console.log('HrCollapser: host=', host);
+	//Observe child visibility changes to auto-collapse separators:
+	let observer = new MutationObserver(HrCollapser.mutationCallback.bind(host));
+	observer.observe(host, { attributes: true, subtree: true });
+	HrCollapser.collapseSeparators(host);
+	return observer;
+}
+utils.export(HrCollapser);
+HrCollapser.mutationCallback = function(mutationsList, observer) {
+	let needRescan = false;
+	for(let mu of mutationsList) {
+		//console.debug('HR-host mutation: ', mu);
+		if ((mu.target.tagName||'').toLowerCase()=='hr')
+			continue; //Do not react to separators themselves
+		if (mu.type === 'attributes' && mu.attributeName === 'class')
+			needRescan = true;
+	}
+	if (needRescan)
+		HrCollapser.collapseSeparators(this);
+}
+HrCollapser.collapseSeparators = function(host) {
+	//console.log('HrCollapser.collapseSeparators: host=', host);
+	let lastSep = true; //Collapse initial separator
+	for (let node of host.children) {
+		let isSep = ((node.tagName||'').toLowerCase()=='hr');
+		node.classList.toggle('collapsed', isSep && lastSep);
+		if (isSep)
+			lastSep = node;
+		else if (getComputedStyle(node, null).display!='none')
+			lastSep = null;
+	}
+	if (lastSep && (typeof lastSep == 'object'))
+		lastSep.classList.toggle('collapsed', true);
+}
+
+
+/*
 Dropdown menus
 
 Initializes the dropdown menu in a given HTML element:
@@ -725,6 +769,8 @@ Dropdown.init = function(root) {
 	root.clear = Dropdown.clear;
 	root.add = Dropdown.add;
 	root.addSeparator = Dropdown.addSeparator;
+	
+	root.hrCollapser = HrCollapser(content);
 	return root;
 }
 utils.export(Dropdown);
@@ -773,40 +819,10 @@ function Toolbar(element) {
 	if (!element)
 		element = document.createElement('div');
 	console.log('Toolbar()', element);
-	//Observe child visibility changes to auto-collapse separators:
-	element.observer = new MutationObserver(Toolbar.mutationCallback.bind(element));
-	element.observer.observe(element, { attributes: true, subtree: true });
-	Toolbar.collapseSeparators(element);
+	element.hrCollapser = HrCollapser(element);
 	return element;
 }
 utils.export(Toolbar);
-Toolbar.mutationCallback = function(mutationsList, observer) {
-	let needRescan = false;
-	for(let mu of mutationsList) {
-		//console.debug('Toolbar.mutation: ', mu);
-		if ((mu.target.tagName||'').toLowerCase()=='hr')
-			continue; //Do not react to separators themselves
-		if (mu.type === 'attributes' && mu.attributeName === 'class')
-			needRescan = true;
-	}
-	if (needRescan)
-		Toolbar.collapseSeparators(this);
-}
-Toolbar.collapseSeparators = function(tb) {
-	let lastSep = true; //Collapse initial separator
-	//console.log('Toolbar.collapseSeparators');
-	for (let node of tb.children) {
-		let isSep = ((node.tagName||'').toLowerCase()=='hr');
-		node.classList.toggle('collapsed', isSep && lastSep);
-		if (isSep)
-			lastSep = node;
-		else if (getComputedStyle(node, null).display!='none')
-			lastSep = null;
-	}
-	if (lastSep && (typeof lastSep == 'object'))
-		lastSep.classList.toggle('collapsed', true);
-}
-
 
 
 /*
