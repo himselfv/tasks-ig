@@ -691,35 +691,12 @@ Actions.onClick = function(event) {
 
 
 /*
-
-Auto-collapses visible HRs in the given host element.
-Usage:
-  host.hrCollapser = HrCollapser(host);
-Continues to watch over the element until freed.
+Collapses adjacent visible HRs in the given host element - toolbar and menu separators.
 */
-function HrCollapser(host) {
-	//console.log('HrCollapser: host=', host);
-	//Observe child visibility changes to auto-collapse separators:
-	let observer = new MutationObserver(HrCollapser.mutationCallback.bind(host));
-	observer.observe(host, { attributes: true, subtree: true });
-	HrCollapser.collapseSeparators(host);
-	return observer;
-}
-utils.export(HrCollapser);
-HrCollapser.mutationCallback = function(mutationsList, observer) {
-	let needRescan = false;
-	for(let mu of mutationsList) {
-		//console.debug('HR-host mutation: ', mu);
-		if ((mu.target.tagName||'').toLowerCase()=='hr')
-			continue; //Do not react to separators themselves
-		if (mu.type === 'attributes' && mu.attributeName === 'class')
-			needRescan = true;
-	}
-	if (needRescan)
-		HrCollapser.collapseSeparators(this);
-}
-HrCollapser.collapseSeparators = function(host) {
-	//console.log('HrCollapser.collapseSeparators: host=', host);
+function HrHost() {}
+utils.export(HrHost);
+HrHost.collapseHrs = function(host) {
+	//console.log('HrHost.collapseHrs: host=', host);
 	let lastSep = true; //Collapse initial separator
 	for (let node of host.children) {
 		let isSep = ((node.tagName||'').toLowerCase()=='hr');
@@ -732,6 +709,32 @@ HrCollapser.collapseSeparators = function(host) {
 	if (lastSep && (typeof lastSep == 'object'))
 		lastSep.classList.toggle('collapsed', true);
 }
+/*
+Automatically collapses HRs as the visibility changes:
+  host.hrCollapser = AutoCollapseHrs(host);
+Works while the returned object is alive.
+*/
+HrHost.AutoCollapseHrs = function(host) {
+	//console.log('AutoCollapseHrs: host=', host);
+	//Observe child visibility changes to auto-collapse separators:
+	let observer = new MutationObserver(HrHost.mutationCallback.bind(host));
+	observer.observe(host, { attributes: true, subtree: true });
+	HrHost.collapseHrs(host);
+	return observer;
+}
+HrHost.mutationCallback = function(mutationsList, observer) {
+	let needRescan = false;
+	for(let mu of mutationsList) {
+		//console.debug('HR-host mutation: ', mu);
+		if ((mu.target.tagName||'').toLowerCase()=='hr')
+			continue; //Do not react to separators themselves
+		if (mu.type === 'attributes' && mu.attributeName === 'class')
+			needRescan = true;
+	}
+	if (needRescan)
+		HrHost.collapseHrs(this);
+}
+
 
 
 /*
@@ -770,7 +773,7 @@ Dropdown.init = function(root) {
 	root.add = Dropdown.add;
 	root.addSeparator = Dropdown.addSeparator;
 	
-	root.hrCollapser = HrCollapser(content);
+	root.hrCollapser = HrHost.AutoCollapseHrs(content);
 	return root;
 }
 utils.export(Dropdown);
@@ -819,7 +822,7 @@ function Toolbar(element) {
 	if (!element)
 		element = document.createElement('div');
 	console.log('Toolbar()', element);
-	element.hrCollapser = HrCollapser(element);
+	element.hrCollapser = HrHost.AutoCollapseHrs(element);
 	return element;
 }
 utils.export(Toolbar);
