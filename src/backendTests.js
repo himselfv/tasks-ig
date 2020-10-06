@@ -28,6 +28,11 @@ function newTestBackend(baseBackend, newBackend, uiName) {
 	inheritBackend(baseBackend, newBackend);
 	registerBackend(newBackend, uiName);
 	unit.export(newBackend);
+	//Test backends are defined inside if()s and are not global by default
+	//In pure browser environment JS files may be <script>-included directly so won't even be
+	//importAll()ed. All functions that are expected to be global must be global.
+	if (typeof window != 'undefined')
+		window[newBackend.name] = newBackend;
 }
 
 
