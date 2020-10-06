@@ -51,6 +51,7 @@ class Tasklist {
 			this[key] = args[key];
 	}
 }
+unit.export(Tasklist);
 class Task {
 	constructor(args) {
 		this.id = undefined;			//Unique for this backend
@@ -68,6 +69,7 @@ class Task {
 			this[key] = args[key];
 	}
 }
+unit.export(Task);
 //Dates and times must be returned as JS Dates, but strings from the clients should be tolerated
 Task.parseDate = function(dt) {
 	if ((typeof dt == 'undefined') || (dt instanceof Date)) return dt;

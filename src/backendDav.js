@@ -159,7 +159,7 @@ BackendDav.prototype.tasklistList = function() {
 		return Promise.reject("Not logged in");
 	let entries = [];
 	this.account.calendars.forEach(function(calendar) {
-		console.log('Found calendar named ' + calendar.displayName);
+		console.log('Found calendar named', calendar.displayName);
 		entries.push({id: calendar.url, title: calendar.displayName});
 	});
 	return Promise.resolve(entries);

@@ -309,7 +309,7 @@ function backendCreate(backendCtor) {
 		backendCtor = constructor;
 	}
 
-	console.log("Initializing backend: ", backendCtor.name);
+	console.log("Initializing backend:", backendCtor.name);
 
 	backend = new backendCtor();
 	if (!backend)
@@ -541,7 +541,7 @@ Accounts.prototype.stateChanged = function(account) {
 }
 //Called when the signed in status changes, whether after a button click or automatically
 Accounts.prototype.signinStatusChanged = function(account, isSignedIn) {
-	console.log('account.signinStatusChanged:', isSignedIn, account);
+	console.debug('account.signinStatusChanged:', isSignedIn, account);
 	//Request new task lists (null, if !signedIn)
 	this.reloadTasklists(account);
 
@@ -587,7 +587,7 @@ Accounts.prototype.reloadTasklists = function(account) {
 		if (Array.isArray(account.ui.tasklists) && isEmpty(account.ui.tasklists) && Array.isArray(tasklists) && isEmpty(tasklists))
 			return;
 		account.ui.tasklists = tasklists;
-		console.log('account.reloadTasklists: new lists available for account', account);
+		console.debug('account.reloadTasklists: new lists available for account', account);
 		accountStateChanged(account);
 	});
 	return prom;
@@ -614,7 +614,7 @@ accounts.addEventListener('change', accountListChanged);
 
 function accountStateChanged(account) {
 	let oldSelected = selectedTaskList();
-	console.log('accountStateChanged', account);
+	console.debug('accountStateChanged', account);
 	
 	//Things to update:
 	// 1. Account's own combobox entry
@@ -628,7 +628,7 @@ function accountStateChanged(account) {
 	//If tasklistbox reloading switched pages, everything refreshed anyway
 	if ((String(newSelected) == String(oldSelected)) && (newSelected.account == account))
 		if (!newSelected.tasklist) {
-			console.log('accountStateChanged: !newSelected.tasklist');
+			console.debug('accountStateChanged: !newSelected.tasklist');
 			//Account-wide page is open, update it
 			//We don't need to recheck if it's appropriate, tasklistBox.reload() would have done that.
 			accountPageReload(newSelected);
@@ -1121,8 +1121,7 @@ TaskListBox.prototype.reload = function() {
 	nodeRemoveAllChildren(this.box); //clear the list
 	
 	for (let account of accounts) {
-		console.log('tasklistBoxReload: account=', account, 'ui=', account.ui);
-		//console.debug('tasklistBoxReload: account=', account, 'signedIn=', account.isSignedIn(), 'ui=', account.ui);
+		console.debug('tasklistBoxReload: account=', account, 'signedIn=', account.isSignedIn(), 'ui=', account.ui);
 		
 		//Add a "grayed line" representing the account
 		let option = document.createElement("option");
@@ -1690,7 +1689,7 @@ function tasklistReloadSelected() {
 }
 //Shows/hides and reloads contents for the "account-wide page" (no specific tasklist selected)
 function accountPageReload(selected) {
-	console.log('accountPageReload', selected);
+	console.debug('accountPageReload', selected);
 	if (typeof selected == 'undefined')
 		selected = selectedTaskList();
 	

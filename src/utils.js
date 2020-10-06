@@ -821,7 +821,6 @@ Toolbars
 function Toolbar(element) {
 	if (!element)
 		element = document.createElement('div');
-	console.log('Toolbar()', element);
 	element.hrCollapser = HrHost.AutoCollapseHrs(element);
 	return element;
 }
