@@ -1,8 +1,9 @@
-Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a separate lightweight JS frontend perfect for a browser sidebar, which had been shut down:
+Google Tasks is a TODO/Task service by Google integrated in Calendar. It had several lightweight JS frontends perfect for a browser sidebar, which had been shut down:
 
 > **https://mail.google.com/tasks/ig**
+> **https://mail.google.com/tasks/canvas**
 
-This project reimplements that frontend from scratch. It supports multiple accounts with [different backends](#backends) (including [Google Tasks](#backend-gtasks) and [CalDAV tasks](#backend-caldav)!)
+This project reimplements those frontends from scratch. It supports multiple accounts with [different backends](#backends) (including [Google Tasks](#backend-gtasks) and [CalDAV tasks](#backend-caldav)!)
 
 <img width="320px" src="docs/screen-features.png" />
 
@@ -13,6 +14,7 @@ This project reimplements that frontend from scratch. It supports multiple accou
 * Works with [Google Tasks](#backend-gtasks), [CalDAV](#backend-caldav) and [browser-synced tasks](#backend-browser)
 * Multi-account support, moving and copying tasks between accounts, exporting tasks
 * Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands, undelete.
+* Implements Tasks Canvas!
 * Async requests, fast UI with activity indicator
 
 
