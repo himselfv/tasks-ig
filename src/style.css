@@ -415,7 +415,6 @@ Task list panel
 .tasklistPanel .account,
 .tasklistPanel .accountAdd {
   margin: 0px;
-  margin-top: 0.5em;
   vertical-align: baseline;
 }
 .tasklistPanel .accountAdd {
@@ -462,6 +461,7 @@ Task list panel
 /* Account and tasklist actions */
 .tasklistPanel .dropbtn {
   background: url(res/_sprites-ig.png) no-repeat -32px -27px; /* burger menu */
+  filter: saturate(0%);
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   padding: 2px;
