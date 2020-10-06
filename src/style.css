@@ -417,6 +417,9 @@ Task list panel
   margin: 0px;
   vertical-align: baseline;
 }
+.tasklistPanel .account {
+  font-weight: bold;
+}
 .tasklistPanel .accountAdd {
   color: gray;
   font-weight: normal;
