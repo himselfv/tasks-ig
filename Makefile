@@ -15,7 +15,7 @@ min: build
 	.\node_modules\.bin\browserify --standalone index .\build\base\index.js \
                 -t [ babelify --presets [ @babel/preset-env ] ] \
                 --outfile .\build\min-tmp\index.js
-	.\node_modules\.bin\minify ./build/min-tmp/index.js --out-file ./build/min-tmp/index.min.js
+	.\node_modules\.bin\minify ./build/min-tmp/index.js --keepFnName --out-file ./build/min-tmp/index.min.js
 #	Copy the resources
 	mkdir ./build/min/
 	cp -R ./build/min-tmp/index.min.js ./build/min/index.js
@@ -28,7 +28,7 @@ min: build
 	mkdir ./build/min/dav/
 	cp ./src/dav/*.js ./build/min/dav/
 	cp -R ./src/res ./build/min/res
-	cp ./src/style.css ./build/min/style.css
+	cp ./src/*.css ./build/min/
 
 
 ext: ext-chrome ext-firefox
