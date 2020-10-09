@@ -176,7 +176,15 @@ function TaskEntry(task) {
 	wrap.className="taskWrap";
 	this.node.appendChild(wrap)
 
-	item = document.createElement("div");
+	/*
+	https://stackoverflow.com/a/50059064/
+	Use SPAN element as contenteditable element instead of DIV element:
+	1. DIVs will insert <br> into contenteditable that's empty. SPANs won't, even if you display:block them.
+	2. Block elements collapse to zero dimensions when empty. To maintain height they have to be propped with:
+		.element:empty:before { content: '\a0'; }
+	3. Pure inline won't take width as a property so convert to inline-block or block to set width.
+	*/
+	item = document.createElement("span");
 	item.className = "taskTitle";
 	item.contentEditable=true;
 	item.addEventListener("input", this.onTitleInput.bind(this));
@@ -715,7 +723,7 @@ TaskEntryDragMgr.prototype.dragMoveBefore = function(node, insertBefore) {
 	//Moves the node before the given node or null
 	node.parentNode.insertBefore(node, insertBefore);
 	let beforeEntry = insertBefore ? insertBefore.taskEntry : null;
-	let afterEntry = beforeEntry ? beforeEntry.getPrev() : tasks.last(); //TODO: "tasks"? maybe "parent"
+	let afterEntry = beforeEntry ? beforeEntry.getPrev() : this.parent.last();
 	//Which parent to put this under? Always the same level as the node after us, or before us
 	var newLevel = beforeEntry ? beforeEntry.getLevel() : afterEntry ? afterEntry.getLevel() : 0;
 	node.taskEntry.setLevel(newLevel);
@@ -731,12 +739,10 @@ TaskEntryDragMgr.prototype.restoreContext = function() {
 	dragEntry.move(this.context.oldPrev, this.context.oldLevel);
 }
 TaskEntryDragMgr.prototype.dragCommit = function() {
-	if (!backend || !backend.move) return;
 	let dragEntry = this.dragNode.taskEntry;
 	if (this.context.oldPrev == dragEntry.getPrev())
 		return;
 
-	//Move the nodes on the backend! We only need to move the parent, but we have to properly select where
 	this.parent.dispatchEvent("dragcommit", { entry: dragEntry });
 }
 
