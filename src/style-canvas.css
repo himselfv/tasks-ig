@@ -76,11 +76,17 @@ html, body {
   color: black;
   margin-top: 0.25em;
 }
+.tasklistPanel .account {
+  font-weight: bold;
+}
+.tasklistPanel .account .dropdown {
+  display: none;
+}
 
 
 /* Left panel */
 #listPanelTitle {
-  display: block;
+  /*display: block;*//* Do not display; use account titles instead */
   font-weight: bold;
   padding-left: 0.4em;
   margin: 0.5em 0 0; /* margin-bottom is 0.25em in Canvas but our .accounts have margin-top 0.25em instead */
