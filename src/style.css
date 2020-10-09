@@ -64,7 +64,7 @@ Error message popup
   cursor: move;
 }
 .dragGrip { /* Explicit drag grip which appears when you hover over things like tasks */
-  background: url(res/_sprites-ig.png) -0px -0px;
+  background: url(res/sprites.png) -0px -0px;
   cursor: move;
   min-width: 10px;
   position: relative;
@@ -436,7 +436,7 @@ Task list panel
   position: relative;
   top: 0.2em;
   margin-left: 0.5em;
-  background: url(res/_sprites-ig.png) no-repeat -60px -4px; /* error */
+  background: url(res/sprites.png) no-repeat -132px -4px; /* error */
   width: 16px;
   height: 16px;
 }
@@ -463,7 +463,7 @@ Task list panel
 }*/
 /* Account and tasklist actions */
 .tasklistPanel .dropbtn {
-  background: url(res/_sprites-ig.png) no-repeat -32px -27px; /* burger menu */
+  background: url(res/sprites.png) no-repeat -104px -27px; /* burger menu */
   filter: saturate(0%);
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
@@ -487,7 +487,7 @@ Task list panel
 Main menu
 */
 #mainmenu > .dropbtn {
-  background: url(res/_sprites-ig.png) no-repeat -32px -27px; /* burger menu */
+  background: url(res/sprites.png) no-repeat -104px -27px; /* burger menu */
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   display: block;
@@ -503,15 +503,15 @@ Main menu
 Bottom toolbar panel.
 */
 #listFooter .button {
-  background-image: url(res/_sprites-ig.png);
+  background-image: url(res/sprites.png);
   filter: invert(41%) sepia(37%) saturate(581%) hue-rotate(176deg) brightness(91%) contrast(87%); /* black -> 4D6C98 */
 }
 #listFooter .button:hover {
   background-color: white; /* will be filtered per above */
 }
 #listFooter [action='taskAdd'] { background-position:-8px -0px; } /* plus */
-#listFooter [action='taskDelete'] { background-position:-32px -0px; } /* trash can */
-#taskmenu .button { background-position:-8px -24px; } /* micro menu */
+#listFooter [action='taskDelete'] { background-position:-8px -24px; } /* trash can */
+#taskmenu .button { background-position:-104px -0px; } /* micro menu */
 
 /*
 Task menu
