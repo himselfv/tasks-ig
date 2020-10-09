@@ -723,7 +723,7 @@ TaskEntryDragMgr.prototype.dragMoveBefore = function(node, insertBefore) {
 	//Moves the node before the given node or null
 	node.parentNode.insertBefore(node, insertBefore);
 	let beforeEntry = insertBefore ? insertBefore.taskEntry : null;
-	let afterEntry = beforeEntry ? beforeEntry.getPrev() : tasks.last(); //TODO: "tasks"? maybe "parent"
+	let afterEntry = beforeEntry ? beforeEntry.getPrev() : this.parent.last();
 	//Which parent to put this under? Always the same level as the node after us, or before us
 	var newLevel = beforeEntry ? beforeEntry.getLevel() : afterEntry ? afterEntry.getLevel() : 0;
 	node.taskEntry.setLevel(newLevel);
@@ -739,12 +739,10 @@ TaskEntryDragMgr.prototype.restoreContext = function() {
 	dragEntry.move(this.context.oldPrev, this.context.oldLevel);
 }
 TaskEntryDragMgr.prototype.dragCommit = function() {
-	if (!backend || !backend.move) return;
 	let dragEntry = this.dragNode.taskEntry;
 	if (this.context.oldPrev == dragEntry.getPrev())
 		return;
 
-	//Move the nodes on the backend! We only need to move the parent, but we have to properly select where
 	this.parent.dispatchEvent("dragcommit", { entry: dragEntry });
 }
 

@@ -2073,6 +2073,8 @@ function taskEntryDragStart(event) {
 }
 //Permanently commits the results of a sucessful task entry drag
 function taskEntryDragCommit(event) {
+	if (!backend || !backend.move) return;
+	//Move the nodes on the backend! We only need to move the parent, but we have to properly select where
 	let newParent = event.entry.getParent();
 	let newPrev = event.entry.getPreviousSibling();
 	return pushJob(async () => {
