@@ -249,6 +249,12 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   flex-grow:10;
   margin-right:4px;
 }
+@media(min-width: 600px) {
+#listSelectBox { /* hide dropdown arrow in two-panel mode */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}}
 #listToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
 #listToolbar { display: none; } /* hide in default design */
 #listContent,
@@ -587,9 +593,9 @@ Everything inside is packed unless overriden
   display: inline-block;
   width: 100%;
 }
-.taskTitle:empty {
-  height: 100%; /* Helps maintain height when empty */
-}
+/* Try to maintain height when empty */
+.taskTitle:empty { height: 100%; }
+.taskTitle:empty:before { content: '\a0'; }
 .taskNotesShort {
   /* Gray and small */
   font-size: 0.8em;

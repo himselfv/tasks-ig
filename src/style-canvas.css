@@ -230,7 +230,7 @@ The <View> block lived basically anywhere at different points of time.
   max-width: 75%; /* Tasks are limited to 75% of the full width */
 }
 @media(max-width: 600px) {
-.task {
+#listContent {
   max-width: initial; /* But I do not think this should happen in collapsed form */
 }
 }
