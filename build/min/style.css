@@ -249,6 +249,12 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   flex-grow:10;
   margin-right:4px;
 }
+@media(min-width: 600px) {
+#listSelectBox { /* hide dropdown arrow in two-panel mode */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}}
 #listToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
 #listToolbar { display: none; } /* hide in default design */
 #listContent,
@@ -491,7 +497,7 @@ Main menu
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   display: block;
-  border: 1px solid lightgray;
+  /*border: 1px solid lightgray;*/
   padding: 2px;
   box-sizing: content-box;
 }
@@ -583,11 +589,13 @@ Everything inside is packed unless overriden
   width: 100%; /* So that click anywhere puts focus on title even if the contents is < 100% */
   margin: 0.25em 0; /* Height margin */
 }
-.taskTitle {}
-.taskTitle:empty:before {
-  /* Empty title collapses by height, making it hard to click into it. Preserve the height with this fake content */
-  content: '\a0';
+.taskTitle {
+  display: inline-block;
+  width: 100%;
 }
+/* Try to maintain height when empty */
+.taskTitle:empty { height: 100%; }
+.taskTitle:empty:before { content: '\a0'; }
 .taskNotesShort {
   /* Gray and small */
   font-size: 0.8em;

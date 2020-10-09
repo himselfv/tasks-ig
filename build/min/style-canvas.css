@@ -23,6 +23,7 @@ html, body {
 #mainmenu .dropbtn {
   background: url(res/sprites.png) no-repeat -104px -24px;
   min-height: 20px;
+  border: 1px solid lightgray;
 }
 
 /* Task list panel */
@@ -230,7 +231,7 @@ The <View> block lived basically anywhere at different points of time.
   max-width: 75%; /* Tasks are limited to 75% of the full width */
 }
 @media(max-width: 600px) {
-.task {
+#listContent {
   max-width: initial; /* But I do not think this should happen in collapsed form */
 }
 }
