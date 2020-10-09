@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Tasks</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="listPage" class="page hidden" style="z-index: 0;"><div>
+	<div id="listPanel">
+		<div id="listPanelToolbar" class="toolbar">
+			<a class="button" action="accountAdd">Add Account</a>
+			<a class="button" action="listAdd">New List</a>
+		</div>
+		<p id="listPanelTitle">Task lists:</p>
+		<div class="tasklistPanel"></div>
+	</div>
+	<div id="listPageSplitter" class="splitter"></div>
+	<div id="listBody">
+		<div id="listHeader">
+			<select id="listSelectBox"></select>
+			<div id="mainmenu" class="dropdown" title="Task list action">
+				<a action='accountsReload'>Reload</a>
+				<a action='listAdd'>Add list...</a>
+				<a action='listRename'>Rename list...</a>
+				<a action='listDelete'>Delete list</a>
+				<a action='accountReset'>Reset account</a>
+				<hr />
+				<a action='accountsPageOpen'>Accounts...</a>
+				<a action='optionsPageOpen'>Options...</a>
+			</div>
+		</div>
+		<div id="listToolbar" class="toolbar">
+			<a class="button" action="tasksClearCompleted">Clear completed</a>
+			<hr />
+			<a class="button" action="taskAdd">New task</a>
+			<hr />
+			<!-- View: <my order> | <sort by date> | <completed tasks> | <trash> -->
+			<a class="button" action="tasksShowCompleted">Show completed</a>
+			<hr />
+			<a class="button" action="taskEdit">Edit details</a>
+			<hr />
+			<a class="button" action="taskTab">Indent</a>
+			<a class="button" action="taskShiftTab">Unindent</a>
+			<hr />
+			<a class="button" action="taskMoveUp">Move up</a>
+			<a class="button" action="taskMoveDown">Move down</a>
+			<hr />
+			<a class="button" action="taskDelete">Delete</a>
+			<a class="button" action="taskDeleteRecursive">Delete w/children</a>
+			<hr />
+			<a class="button" action="tasksRefresh">Refresh</a>
+			<hr />
+			<!--a class="button tasksPrint">Print</a-->
+		</div>
+		<div id="listAccountPage"><div></div></div>
+		<div id="listContent"></div>
+		<div id="listFooter">
+			<div id="activityIndicator"></div>
+			<a class="button" action="taskAdd">Add task</a>
+			<a class="button" action="taskDelete">Delete task</a>
+			<div id="taskmenu" class="dropdown" title="Task actions">
+				<a action='taskTab'>—&gt; Tab</a>
+				<a action='taskShiftTab'>&lt;— Shift-Tab</a>
+				<hr />
+				<a action='taskCopyJSON'>Copy JSON</a>
+				<a action='taskExportToFile'>Export to file...</a>
+				<a action='taskEdit'>Edit</a>
+				<a action='taskDeleteRecursive'>Delete w/children</a>
+				<hr />
+				<a action='tasksExportAllToFile'>Export all to file...</a>
+				<a action='tasksRefresh'>Refresh</a>
+			</div>
+		</div>
+	</div>
+</div></div>
+
+<div id="editorPage" class="page hidden" style="z-index: 12;"><div>
+	<p id="editorTaskTitleP">
+		<input type="checkbox" id="editorTaskTitleBox" /><label id="editorTaskTitle" for="editorTaskTitleBox"></label>
+		<button type="button" id="editorDelete">Delete</button>
+	</p>
+	<p id="editorTaskListP"><select id="editorTaskList"></select></p>
+	<p id="editorCannotEditNotice">This task list is read-only.</p>
+	<p id="editorTaskDateP"><input type="date" id="editorTaskDate"></input></p>
+	<textarea id="editorTaskNotes"></textarea>
+	<p id="editorMoveNotice">The task will appear in the different list when you switch to it.</p>
+	<p id="editorMoveBackendNotice">You're moving to a different account. Enhanced properties such as task history or recurrence may be lost.</p>
+	<p id="editorControls">
+		<button type="button" id="editorSaveContinue" title="Save changes but continue editing">Save & continue</button>
+		<button type="button" id="editorSave" title="Save changes and close">Save</button>
+		<button type="button" id="editorSaveCopy" title="Save this task as a copy in another list">Save a copy</button>
+		<button type="button" id="editorCancel">Cancel</button>
+	</p>
+</div></div>
+
+<div id="accountsPage" class="page hidden" style="z-index: 12;"><div>
+	<div id="accountList" class="tasklistPanel"></div>
+	<div id="accountListControls">
+		<button type="button" id="accountListAdd">Add</button>
+		<button type="button" id="accountListRename">Rename</button>
+		<button type="button" id="accountListEditSettings">Edit</button>
+		<button type="button" id="accountListDelete">Delete</button>
+		<hr />
+		<button type="button" id="accountListMoveUp">Move Up</button>
+		<button type="button" id="accountListMoveDown">Move Down</button>
+		<hr />
+		<button type="button" id="accountListReset" class="hidden">Reset</button>
+		<hr />
+		<button type="button" id="accountListClose">Close</button>
+	</div>
+</div></div>
+
+<div id="backendSelectPage" class="page hidden" style="z-index: 14;"><div>
+	<span id="backendSelectPrompt">Authorize with:</span>
+</div></div>
+
+<div id="settingsPage" class="page hidden" style="z-index: 16;"><div>
+	<h1 id="settingsPageTitle"></h1>
+	<div id="settingsContent">
+	</div>
+	<div id="settingsControls">
+		<button type="button" id="settingsOk">Ok</button>
+		<button type="button" id="settingsCancel">Cancel</button>
+	</div>
+</div></div>
+
+<div id="errorPopup" class="hidden" style="z-index: 200;"></div>
+
+<script  src="config.js"></script>
+<script  src="index.js"></script>
+</body>
+</html>

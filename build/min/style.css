@@ -1,0 +1,883 @@
+html, body {
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  font-family: Arial,sans-serif;
+  font-size: 10pt;
+}
+body {
+  position: relative; /* Absolute-positioned pages stick to us */
+}
+.page {
+  position: absolute; /* relative to body */
+  left: 0;
+  top: 0;
+  background-color: white; /* hide everything underneath */
+}
+.page, .page > div {
+  box-sizing: border-box; /* incl. pad and marg in WH */
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+}
+.page > div {
+  max-width: 500px; /* pages are 50px centered unless opt-in to full-width */
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* See https://codepen.io/sosuke/pen/Pjoqqp to generate filters: black->color */
+
+.hidden { display: none !important; } /* Applied to hide any element without overwriting their display: property. */
+.focused {} /* Applied to the last focused task entry. It'll be the target of operations */
+
+
+/*
+Error message popup
+*/
+#errorPopup {
+  position: fixed;
+  bottom: 1em;
+  left: 50%;
+  transform: translateX(-50%);
+  border: LightGrey 1px solid;
+  box-shadow: 0px 2px 4px 0px rgba(0,0,0,0.2);
+  padding: 1em;
+}
+
+
+/* Splitters */
+.splitter {
+  width: 3px;
+  background-color: LightGrey;
+}
+.splitterV { cursor: ew-resize; }
+.splitterH { cursor: ns-resize; }
+
+
+/* Dragging */
+.dragging { /* Set while dragging things, incl. on the mouse shield */
+  cursor: move;
+}
+.dragGrip { /* Explicit drag grip which appears when you hover over things like tasks */
+  background: url(res/sprites.png) -0px -0px;
+  cursor: move;
+  min-width: 10px;
+  position: relative;
+  visibility: hidden;
+}
+:hover > .dragGrip {
+  visibility: visible;
+}
+.dragging > .dragGrip {
+  visibility: visible;
+  cursor: move;
+}
+
+
+/*
+Toolbar basics (overrideable)
+By default captions are hidden, to show: set font-size.
+*/
+.toolbar {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap; /* normally grow */
+  overflow: hidden; /* shouldn't scroll or overflow if can't grow */
+  flex-shrink: 0; /* do not shrink less than min. if wrap is enabled, that's all lines, if not, one line/your min-height */
+}
+.button {
+  display: block;
+  box-sizing: content-box;
+  padding: 2px;
+  min-width: 20px;
+  min-height: 20px;
+  max-height: 20px;
+  height: 20px; /* explicit height useful for children to be able to height:X% */
+  cursor: pointer;
+  font-color: DodgerBlue;
+  font-size: 0; /* hide captions by default */
+  align-self: center; /* Baseline align fails with font-size 0 */
+  overflow: hidden; /* do not spill */
+}
+.button {
+  background-repeat: no-repeat;
+  background-position: center;
+  /* Set background-image in descendants to use only image */
+}
+.button:before {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 2px; /*between image and caption*/
+  height: 100%;
+  /* Set content:url() in descendants to use image+caption  */
+}
+.button:hover {
+  background-color: LightSkyBlue;
+}
+.button.checked { /* Buttons can be on/off, set .checked for that */
+  border-color: #A1BADF;
+}
+.button.disabled { /* Buttons can be disabled==grayed out */ }
+.button.hidden { /* Buttons can be hidden, normally that's just normal hiding */ }
+.toolbar > hr { /* separator */
+  display: inline-block;
+  align-self: center;
+  min-width: 1px;
+  min-height: 1em;
+  height: 1em;
+  border: 0;
+  padding: 0;
+  margin: 0 2px;
+  border-right: 2px groove #D6D6D6;
+}
+.toolbar hr.collapsed,
+.dropdown hr.collapsed {
+  display: none;
+}
+
+
+/*
+Dropdown basics
+The button itself will be .dropdown .dropbtn
+*/
+.dropdown {
+  position: relative;
+  display: inline-block;
+  cursor: pointer;
+}
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: #f1f1f1;
+  min-width: 120px;
+  box-shadow: 0px 2px 4px 0px rgba(0,0,0,0.2);
+  border: LightGrey 1px solid;
+  z-index: 1;
+  right:0;
+}
+.dropdown .dropbtn {
+  display: block;
+  background-repeat: no-repeat;
+  background-position: center;
+  /* Default size, borders, background image */
+}
+.dropdown .dropbtn:hover {
+  /* Highlight the button */
+  background-color: LightSkyBlue;
+}
+.dropdown .dropbtn.dropopen { /* dropbtn's state when dropdown is open */
+  background-color: #f1f1f1;
+}
+/* Show the dropdown menu -- added to the dropdown-content when it's visible */
+.dropdown-content.show {
+  display:block;
+}
+/* Links inside the content */
+.dropdown-content a {
+  color: black;
+  padding: 6px 8px;
+  text-decoration: none;
+  display: block;
+}
+.dropdown-content a:hover {
+  background-color: #ddd;
+}
+.dropdown-content > hr { /* separator */
+  display: block;
+  width: 95%;
+  border: none;
+  border-bottom: 1px solid lightgray;
+  margin: 2px 2px;
+}
+
+
+/*
+Task list selection box
+Used in the main list and in the editor
+*/
+.taskListBox {}
+.taskListBox.grayed, option.grayed {
+  color: gray;
+}
+/* Offset tasklist entries -- when grouped by account */
+.taskListBox option.offset {
+  margin-left: 1em;
+}
+/* Account entries -- when grouped by account, or for accounts that failed to load */
+.taskListBox .optionAccount {
+  margin-left: 0;
+}
+
+
+/*
+Task list page
+Header sticks to top, footer sticks to bottom, the rest expands as content grows.
+*/
+#listPage > div { /* a .page */
+  flex-direction: row;
+  max-width: unset; /* full-width */
+}
+#listPanel {
+  width: 200px;
+  flex-shrink: 0;
+}
+#listBody {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  overflow: auto; /* do not grow outside parent */
+  width: 100%; /* do not shrink if less than 100% width required */
+}
+#listHeader {
+  display: flex;
+  flex-direction: row;
+  padding: 2px 2px;
+  padding-bottom: 3px;
+  /*border-bottom: LightGrey 1px solid;*/ /* A line under the title */
+  /*margin-bottom: 4px;*/ /* A space under the line */
+}
+#listSelectBox { /* a taskListBox */
+  font-family: Arial, sans-serif;
+  font-size: 14px;
+  font-weight: bold;
+  border: 0px;
+  flex-grow:10;
+  margin-right:4px;
+}
+#listToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
+#listToolbar { display: none; } /* hide in default design */
+#listContent,
+#listAccountPage { /* both fill 100% height */
+  width: 100%;
+  flex: 1;
+  overflow: auto; /* disable to "unstick" header   */
+}
+#listFooter {
+  border-top: LightGrey 1px solid;
+  /* Align buttons to the right */
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: baseline;
+  padding: 3px 2px;
+}
+#activityIndicator {
+  margin-right: auto; /* stick to the left */
+}
+
+
+/*
+Single account page
+*/
+#listAccountPage {
+ /* text-align: center;
+  margin-top: 1em;*/
+}
+#listAccountPage > div {
+  /*max-width: 500px;
+  margin-left: auto;
+  margin-right: auto;*/
+}
+
+/* Non-centered version */
+#listAccountPage > div {
+  padding-left: 1em;
+}
+#listAccountPage li {
+  margin-left: 1em;
+}
+
+
+
+
+/*
+Activity indicator
+*/
+#activityIndicator {
+  height: 8px;
+  width: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin: auto;
+  margin-left: 4px;
+}
+#activityIndicator { /* ready */
+  background-color: lime;
+}
+#activityIndicator.working {
+  background-color: orange;
+}
+#activityIndicator.error {
+  background-color: red;
+}
+
+
+
+/*
+Left panel
+*/
+#listPanel {
+  display: flex;
+  flex-direction: column;
+  padding: 0px 0.1em;
+  resize: horizontal; /* can be resized */
+  overflow-x: hidden;
+  overflow-y: auto; /* vertical scrollbar when needed */
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none; /* text unselectable (if the user accidentally double-clicks) */
+}
+#listPageSplitter {
+  width: 4px;
+  background-color: LightGrey; /* same as borders in the main pane */
+    /* alternative: #E3E9FF */
+}
+@media(max-width: 600px) {
+  #listPanel { display: none; }
+  #listPageSplitter { display: none; }
+}
+#listPanelToolbar { display: none; } /* hide in default design */
+#listPanelToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
+#listPanelTitle { display: none; } /* hide in default design */
+
+
+/*
+Task list panel
+  selected: Currently selected
+  disabled: Not selectable
+  grayed: Not fully functional but selectable
+*/
+.tasklistPanel li {
+  display: flex;
+  align-items: center;
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid white;
+  font-size: 1.05em;
+}
+.tasklistPanel span,
+.tasklistPanel .dropdown {
+  padding: 0.3em 0;
+}
+.tasklistPanel .dropdown {
+  padding-right: 0.3em;
+}
+.tasklistPanel .dragging { /* Dragging */
+  opacity: 0.7;
+  background-color: rgba(225,225,225,0.5);
+}
+.tasklistPanel .dragGrip {
+  align-self: stretch;
+  min-width: 0.5em;
+}
+.tasklistPanel .accountAdd .dragGrip {
+  visibility: hidden; /* not even appropriate */
+}
+.tasklistPanel .tasklist .dragGrip,
+.tasklistPanel .tasklistAdd .dragGrip {
+  min-width: 0.75em; /* bigger grip for left-padded items */
+  visibility: hidden; /* currently undraggable */
+}
+.tasklistPanel li span {
+  flex-grow: 10;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+.tasklistPanel li:not(.disabled) {
+  cursor: pointer;
+}
+.tasklistPanel li:hover:not(.disabled) {
+  /* Different highlight: */
+  background-color: #E3E9FF;
+  border: 1px solid DodgerBlue;
+  /* Same highlight as main menu button:
+  background-color: LightSkyBlue; == #87CEFA
+  border: 1px solid lightgray; */
+}
+.tasklistPanel .selected {
+  /* Same as the focused task in the main list */
+  border-top: 1px solid #F7E784;
+  border-bottom: 1px solid #F7E784;
+}
+.tasklistPanel .grayed {
+  color: gray;
+}
+/* Accounts */
+.tasklistPanel .account,
+.tasklistPanel .accountAdd {
+  margin: 0px;
+  vertical-align: baseline;
+}
+.tasklistPanel .account {
+  font-weight: bold;
+}
+.tasklistPanel .accountAdd {
+  color: gray;
+  font-weight: normal;
+}
+.tasklistPanel .account.loading > span:after { /* Spinning wheel while loading */
+  content: url(res/loading5_16.png);
+  position: relative;
+  top: 0.2em;
+  margin-left: 0.5em;
+}
+.tasklistPanel .account.error > span:after {
+  content: "";
+  display: inline-block;
+  position: relative;
+  top: 0.2em;
+  margin-left: 0.5em;
+  background: url(res/sprites.png) no-repeat -132px -4px; /* error */
+  width: 16px;
+  height: 16px;
+}
+/* Tasklists */
+.tasklistPanel .tasklist,
+.tasklistPanel .tasklistAdd {
+  list-style-type: none;
+  color: #4E6D9A;
+  padding-left: 0.25em;
+  font-weight: bold;
+}
+.tasklistPanel .tasklistAdd {
+  color: gray;
+  font-weight: normal;
+}
+/* Replace "Add account"/"Add tasklist" text:
+.tasklistPanel .accountAdd {
+  visibility:hidden;
+}
+.tasklistPanel .accountAdd:after {
+  content: "＋"; -- to use a text
+  content: url(res/plus2.png); -- to use an image
+  visibility: visible;
+}*/
+/* Account and tasklist actions */
+.tasklistPanel .dropbtn {
+  background: url(res/sprites.png) no-repeat -104px -27px; /* burger menu */
+  filter: saturate(0%);
+  min-width: 20px;
+  min-height: 14px; /* 20 for square button */
+  padding: 2px;
+  box-sizing: content-box;
+}
+.tasklistPanel .dropdown-content {
+  font-weight: normal;
+}
+/* Display the actions on the same row instead of in submenu:
+.tasklistPanel .dropbtn {
+  display: none;
+}
+.tasklistPanel .dropdown-content {
+  display: flex;
+  font-size: 0;
+}*/
+
+
+/*
+Main menu
+*/
+#mainmenu > .dropbtn {
+  background: url(res/sprites.png) no-repeat -104px -27px; /* burger menu */
+  min-width: 20px;
+  min-height: 14px; /* 20 for square button */
+  display: block;
+  border: 1px solid lightgray;
+  padding: 2px;
+  box-sizing: content-box;
+}
+#mainmenu > .dropbtn:hover {
+  background-color: LightSkyBlue;
+}
+
+/*
+Bottom toolbar panel.
+*/
+#listFooter .button {
+  background-image: url(res/sprites.png);
+  filter: invert(41%) sepia(37%) saturate(581%) hue-rotate(176deg) brightness(91%) contrast(87%); /* black -> 4D6C98 */
+}
+#listFooter .button:hover {
+  background-color: white; /* will be filtered per above */
+}
+#listFooter [action='taskAdd'] { background-position:-8px -0px; } /* plus */
+#listFooter [action='taskDelete'] { background-position:-8px -24px; } /* trash can */
+#taskmenu .button { background-position:-104px -0px; } /* micro menu */
+
+/*
+Task menu
+*/
+#taskmenu {}
+#taskmenu .dropdown-content {
+  right: 0;
+  bottom: 24px;
+}
+#taskmenu .dropdown-content a {
+  padding: 6px 8px;
+}
+
+
+
+/*
+Task nodes
+*/
+.task {
+  display: flex;
+  flex-direction: row;
+  cursor: text;
+  position: relative;
+  padding: 0 0.25em;
+  /* To have some of the controls full-height,
+  leave height padding==0 here and set margins on individual controls instead */
+}
+/*
+Focus and mouseover
+*/
+.task {
+  border-top: 1px solid white; /* So the size doesn't change on focus */
+  border-bottom: 1px solid white;
+}
+.task.focused {
+  border-top: 1px solid #F7E784;
+  border-bottom: 1px solid #F7E784;
+}
+.task:hover {}
+.task.dragging { /* Set while dragging the node */
+  opacity: 0.75;
+}
+
+/*
+Task contents.
+Everything inside is packed unless overriden
+*/
+.task * {
+  padding: 0;
+  margin: 0;
+}
+.task .dragGrip {
+  min-width: 10px;
+}
+.childlvl-0 .dragGrip {
+  min-width: 8px; /* slightly narrower for root nodes */
+}
+.taskCheck {
+  height: auto;
+  /* Height margins must be coordinated with taskWrap */
+  margin-top: 0.42em;
+  margin-right: 0.38em;
+  margin-left: 0.1em;
+  /*margin-bottom: 0.25em;*/
+  margin-bottom: auto;
+}
+.taskWrap {
+  overflow: hidden; /* So taskNotes doesn't expand to content */
+  width: 100%; /* So that click anywhere puts focus on title even if the contents is < 100% */
+  margin: 0.25em 0; /* Height margin */
+}
+.taskTitle {}
+.taskTitle:empty:before {
+  /* Empty title collapses by height, making it hard to click into it. Preserve the height with this fake content */
+  content: '\a0';
+}
+.taskNotesShort {
+  /* Gray and small */
+  font-size: 0.8em;
+  color: gray;
+  
+  /* Nowrap and trim */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  
+  /* Behaves like a link */
+  cursor: pointer;
+}
+.taskNotesShort:hover {
+  text-decoration: underline;
+}
+.taskDue {
+  /* Gray and small */
+  font-size: 0.7em;
+  color: gray;
+  
+  /* Behaves like a link */
+  cursor: pointer;
+}
+.taskDue:hover {
+  text-decoration: underline;
+}
+
+/* Completed task decorations */
+.task.completed {
+  text-decoration: line-through;
+  color: gray; /* all text, even the title */
+}
+/* Deleted task decorations */
+.task.deleted {
+  color: gray;
+  text-decoration: line-through;
+  text-decoration-style: double;
+}
+/* Remove task checks from deleted tasks to avoid confusing them with normal ones */
+.task.deleted .taskCheck {
+  visibility: hidden;
+}
+
+/* Edit link */
+.task .taskEditLink {
+  display: inline-block;
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 0.1em;
+  padding-left: 0.2em;
+  padding-bottom: 0.2em;
+  cursor: pointer;
+  font-weight: 900;
+  /*height: 100%;*/
+  visibility: hidden;
+}
+.task:hover .taskEditLink {
+  visibility: visible;
+}
+
+
+/*
+Editor
+*/
+#editorPage > div { /* a .page */
+  height: 90%;
+  /*
+  If you want to allow expand to scroll:
+    min-height: 100%;
+    height: auto;
+  But this will make it impossible to expand the textbox 100% by default
+  */
+  /*
+  Elements inside #editor have margins. If padding is 0, they merge into #editor margins and add to its 100% width.
+  Even 1px padding protects from that.
+  */
+  box-sizing: border-box;
+  padding: 1px 5px;
+}
+/* Header */
+/* Display the title and the buttons in the row */
+#editorTaskTitleP {
+  display: flex;
+  flex-direction: row;
+  align-items: baseline; /* Or flex stretches everything to 100% flex height */
+  margin: 10px 0;
+}
+#editorTaskTitle {
+  flex-grow: 5; /* This one should stetch */
+}
+#editorTaskListP {
+  margin: 2px 0;
+}
+#editorTaskDateP {
+  margin: 5px 0;
+}
+#editorTaskNotes {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 70%;
+  font-family: Arial, sans-serif;
+  font-size: 10pt;
+}
+#editorMoveBackendNotice {
+  margin-top: 0;
+}
+#editorControls {
+  /* Align buttons to the right */
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: baseline;
+  /* Stick to bottom: */
+  /*position: absolute;
+  bottom: 0;*/
+}
+#editorSaveContinue {
+  margin-right: auto; /* <- to the left */
+}
+#editorSave {
+  margin: 0px 5px;
+  /*width: 6em;*/
+}
+#editorCancel {
+  /*width: 6em;*/
+}
+
+
+/*
+Account list page
+*/
+#accountsPage > div {
+  flex-direction: row;
+  padding: 0.4em;
+}
+#accountList {
+  flex-grow: 1;
+  margin-right: 4px;
+}
+/* Trim tasklistPanel for the purpose */
+#accountList .account {
+  margin: 0;
+}
+#accountList .account.selected {
+  border: 1px solid black;
+}
+#accountList .accountAdd,
+#accountList .tasklist
+#accountList .tasklistAdd {
+  display: none; /* hide unrelated things */
+}
+/* Hide all account actions except for approved ones */
+#accountsPage .tasklistPanel .dropdown-content * { display: none; }
+#accountsPage .tasklistPanel .accountRenameBtn,
+#accountsPage .tasklistPanel .accountEditBtn,
+#accountsPage .tasklistPanel .accountDeleteBtn,
+#accountsPage .tasklistPanel .accountResetBtn { display: block; }
+/* Controls */
+#accountListControls {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+#accountListControls button {
+  min-height: 2em;
+}
+#accountListControls > hr { /* spacers */
+  border: none;
+  margin: 1em 0;
+}
+/* Make [Close] stick to the bottom:
+#accountListClose {
+  margin-top: auto; 
+}*/
+#accountListReset {
+  color: red;
+}
+#accountListReset:disabled {
+  color: gray;
+}
+
+
+/*
+Backend selection page
+*/
+#backendSelectPage > div { /* a .page */
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 100vh;
+}
+#backendSelectPage button {
+  min-width: 180px;
+  padding: 2px 5px;
+  text-align: center;
+}
+
+
+/*
+Settings page
+*/
+#settingsPage > div { /* a .page */
+  padding: 1px 1em;
+}
+#settingsControls {
+  /* Align buttons to the right */
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-end;
+  align-items: baseline;
+  /* Stick to bottom: */
+  /*position: absolute;
+  bottom: 0;*/
+}
+#settingsPage button {
+  min-height: 2em;
+  padding: 2px 2em;
+}
+.settingsRow {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: baseline;
+  width: 100%;
+  padding-bottom: 0.2em;
+  margin-bottom: 0.2em;
+}
+.settingsRow label {
+  padding-right: 1em;
+}
+/* Checbkox labels / No value input labels => caption auto-flex-expands */
+.settingsRow label {
+  flex-grow: 1;
+}
+/* Value inputs AFTER labels auto-flex-expand */
+.settingsRow label + input,
+.settingsRow label + value {
+  flex-grow: 10;
+}
+/* Hint requires 100% => forced onto a separate line */
+.settingsHintText {
+  width: 100%;
+  padding-top: 0px;
+  margin-top: 0px;
+  margin-left: 1.5em; /* align with end of checkbox */
+  font-size: 1em;
+  color: gray;
+}
+
+
+/* Remove any fixed width limitations on lower widths */
+@media handheld, (max-width: 600px) { 
+body { max-width: none; }
+}
+/* Scale up the pixel dense versions */
+@media handheld, (min-resolution: 150dpi) { body {
+  zoom: 1.5;
+/*
+Not this:
+   transform: scale(1.5);
+   transform-origin: 0 0;
+This scales the bottom elements away from the bottom.
+*/
+}}
+
+/*
+Max-width on some elements that look bad when wide
+*/
+#accountList > div {
+  max-width: 400px;
+}
+#backendSelectPage > div,
+#settingsPage > div,
+#editorPage > div {
+  max-width: 500px;
+}
+
+
+/*
+Override any theme colors uniformly
+*/
+/* All borders have the same color: */
+#listPanel, #listHeader, #listFooter {
+  /*border-color: LightGrey;*/
+  border-color: #E3E9FF; /*-- brighter version */
+}
+#listPageSplitter {
+  background-color: #E3E9FF;
+}
+
+

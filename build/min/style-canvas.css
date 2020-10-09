@@ -1,0 +1,236 @@
+/* All fonts are always Arial,sans-serif */
+html, body {
+  font-family: Arial,sans-serif;
+}
+
+/* Headline */
+#listHeader, #listSelectBox {
+  background-color: #E3E9FF;
+}
+#listSelectBox {
+  font-size: 1.5em;
+  font-weight: normal;
+}
+/* Pixel-perfect 29px headline */
+#listHeader, #listSelectBox {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+#listHeader {
+  padding: 1px;
+}
+#mainmenu .dropbtn {
+  background: url(res/sprites.png) no-repeat -104px -24px;
+  min-height: 20px;
+}
+
+/* Task list panel */
+
+/* Task list panel dropdowns: move to the left, change icon */
+.tasklistPanel .grip {
+  order: 1;
+}
+.tasklistPanel .dropdown {
+  order: 2;
+  padding-right: 0;
+}
+.tasklistPanel span {
+  order: 3;
+  padding-right: 0.3em;
+}
+.tasklistPanel .dropdown {
+  align-self: start;
+  padding-top: 0.2em;
+}
+.tasklistPanel .dropbtn {
+  background: url(res/sprites.png) no-repeat -85px -29px;
+  min-width: 13px;
+  min-height: 13px;
+  margin-left: 0px;
+  margin-right: 5px;
+  border: 0;
+  padding: 0;
+}
+.tasklistPanel .dropdown-content {
+  font-weight: normal;
+  left: 0;
+  right: unset;
+}
+
+/* tasklistPanel formatting */
+.tasklistPanel .account,
+.tasklistPanel .accountAdd,
+.tasklistPanel .tasklist,
+.tasklistPanel .tasklistAdd {
+  font-weight: normal;
+  font-size: 1em;
+  color: #2a5bd0;
+}
+.tasklistPanel span {
+  padding: 0;
+}
+.tasklistPanel .account,
+.tasklistPanel .accountAdd {
+  color: black;
+  margin-top: 0.25em;
+}
+
+
+/* Left panel */
+#listPanelTitle {
+  display: block;
+  font-weight: bold;
+  padding-left: 0.4em;
+  margin: 0.5em 0 0; /* margin-bottom is 0.25em in Canvas but our .accounts have margin-top 0.25em instead */
+}
+
+
+
+/* Default listPanel width is 142 + splitter 4 */
+#listPanel {
+  width: 142px;
+  /* No padding for tasklistPanel */
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+#listPageSplitter { width: 4px; }
+/* Title is the same color, same size as headline */
+#listPanelToolbar {
+  display: flex;
+  background-color: #E3E9FF;
+  min-height: 29px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  flex-shrink: 0; /* do not shrink even if we need more space */
+}
+#listPanel .tasklistPanel .accountAdd {
+  display: none; /* hide additional "add account" */
+}
+
+/* Panel toolbar */
+#listPanelToolbar .button {
+  font-size: 1em; /* Show captions */
+  font-weight: normal;
+  background: linear-gradient(#FFFFFFFF, #DDDDDDDD);
+  border: 1px solid #AAAAAA;
+  border-radius: 2px;
+  margin: 2px;
+  padding: 0;
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-top: 3px;
+}
+#listPanelToolbar [action=accountAdd]:before,
+#listPanelToolbar [action=listAdd]:before {
+  content: "";
+  vertical-align: top;
+  position: relative;
+  top: 2px;
+  width: 13px;
+  height: 13px;
+  padding-right: 2px;
+  background: url(res/sprites.png) no-repeat -85px -5px;
+}
+#listPanelToolbar [action=listAdd] {
+  display: none;
+}
+
+
+
+/*
+Main canvas toolbar:
+	Clear completed | +New task | Edit details
+	View: <my order> | <sort by date> | <completed tasks> | <trash>
+	{Tab} {ShiftTab} | {Up} {Down} | {Delete} | Refresh | {Print}
+The <View> block lived basically anywhere at different points of time.
+ */
+#listToolbar {
+  display: flex;
+  background: linear-gradient(#FFFFFF 1px, #DDDDDD 17px);
+  border-bottom: 1px solid #D5D5D5;
+  padding: 2px; /* sic */
+  color: #2F4E6F;/*#516B97;*/
+}
+#listToolbar .button { /* Should be 24px with borders */
+  margin: 0px;
+  border: 1px solid transparent;
+  padding: 1px;
+  font-size: 1em; /* Show captions */
+  font-weight: normal;
+  vertical-align: bottom;
+}
+#listToolbar .button.checked {
+  border-color: #A1BADF;
+}
+#listToolbar .button:hover {
+  border-color: #729BD1;
+  background-color: #DDE1EB;
+}
+/* We could gray out buttons instead of hiding them, but that's not really what happens in Canvas, even though there are grayed out icons.
+#listToolbar .button.hidden {
+  display: block !important;
+  color: #8594A7;
+  filter: invert(59%) sepia(11%) saturate(516%) hue-rotate(174deg) brightness(95%) contrast(95%);
+  pointer-events: none;
+} */
+
+/* Hide all buttons and only show specific ones */
+#listToolbar .button { display: none; }
+#listToolbar [action=taskAdd],
+#listToolbar [action=taskEdit],
+#listToolbar [action=taskTab],
+#listToolbar [action=taskShiftTab],
+#listToolbar [action=taskMoveUp],
+#listToolbar [action=taskMoveDown],
+#listToolbar [action=taskDelete],
+#listToolbar [action=tasksClearCompleted],
+#listToolbar [action=tasksRefresh],
+#listToolbar [action=tasksPrint],
+#listToolbar [action=tasksSortCustom],
+#listToolbar [action=tasksSortByDate],
+#listToolbar [action=tasksShowCompleted],
+#listToolbar [action=tasksShowDeleted] { display: block; }
+/* Prepend "View" to order panel */
+#listToolbar [action=tasksSortCustom]:before { content: "View: "; }
+/* Icons for some buttons */
+#listToolbar [action=taskAdd]:before,
+#listToolbar [action=taskDelete]:before,
+#listToolbar [action=taskTab]:before,
+#listToolbar [action=taskShiftTab]:before,
+#listToolbar [action=taskMoveUp]:before,
+#listToolbar [action=taskMoveDown]:before {
+  display: inline-block; /* for scaling */
+  vertical-align: middle;
+  height: 24;
+  min-width: 20px;
+  content: "";
+  filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
+}
+#listToolbar [action=taskAdd]:before { background: url(res/sprites.png) no-repeat -11px -3px; }
+#listToolbar [action=taskDelete]:before { background: url(res/sprites.png) no-repeat -11px -27px; }
+#listToolbar [action=taskTab]:before { background: url(res/sprites.png) no-repeat -34px -2px; }
+#listToolbar [action=taskShiftTab]:before { background: url(res/sprites.png) no-repeat -34px -26px; }
+#listToolbar [action=taskMoveUp]:before { background: url(res/sprites.png) no-repeat -58px -2px; }
+#listToolbar [action=taskMoveDown]:before { background: url(res/sprites.png) no-repeat -58px -26px; }
+/* Hide captions for some of icon buttons */
+#listToolbar [action=taskTab],
+#listToolbar [action=taskShiftTab],
+#listToolbar [action=taskMoveUp],
+#listToolbar [action=taskMoveDown],
+#listToolbar [action=taskDelete] {
+  font-size: 0;
+}
+
+
+/* Tasks */
+#listContent {
+  max-width: 75%; /* Tasks are limited to 75% of the full width */
+}
+@media(max-width: 600px) {
+.task {
+  max-width: initial; /* But I do not think this should happen in collapsed form */
+}
+}
