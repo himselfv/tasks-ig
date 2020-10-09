@@ -78,9 +78,15 @@ html, body {
 }
 .tasklistPanel .account {
   font-weight: bold;
+  margin-bottom: 0.2em;
+  margin-top: 0.4em;
 }
 .tasklistPanel .account .dropdown {
   display: none;
+}
+.tasklistPanel .tasklist .dragGrip,
+.tasklistPanel .tasklistAdd .dragGrip {
+  min-width: 0.5em;
 }
 
 
