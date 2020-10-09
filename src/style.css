@@ -586,6 +586,8 @@ Everything inside is packed unless overriden
 .taskTitle {
   display: inline-block;
   width: 100%;
+}
+.taskTitle:empty {
   height: 100%; /* Helps maintain height when empty */
 }
 .taskNotesShort {
