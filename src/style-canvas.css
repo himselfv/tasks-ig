@@ -23,6 +23,7 @@ html, body {
 #mainmenu .dropbtn {
   background: url(res/sprites.png) no-repeat -104px -24px;
   min-height: 20px;
+  border: 1px solid lightgray;
 }
 
 /* Task list panel */
