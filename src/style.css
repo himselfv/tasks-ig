@@ -583,10 +583,10 @@ Everything inside is packed unless overriden
   width: 100%; /* So that click anywhere puts focus on title even if the contents is < 100% */
   margin: 0.25em 0; /* Height margin */
 }
-.taskTitle {}
-.taskTitle:empty:before {
-  /* Empty title collapses by height, making it hard to click into it. Preserve the height with this fake content */
-  content: '\a0';
+.taskTitle {
+  display: inline-block;
+  width: 100%;
+  height: 100%; /* Helps maintain height when empty */
 }
 .taskNotesShort {
   /* Gray and small */

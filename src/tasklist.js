@@ -176,7 +176,16 @@ function TaskEntry(task) {
 	wrap.className="taskWrap";
 	this.node.appendChild(wrap)
 
-	item = document.createElement("div");
+	/*
+	https://stackoverflow.com/a/50059064/
+	Use SPAN element as contenteditable element instead of DIV element:
+	1. DIVs will insert <br> into contenteditable that's empty. SPANs won't, even if you display:block them.
+	2. Block elements collapse to zero dimensions when empty. To maintain height they have to be propped with:
+		.element:empty:before { content: '\a0'; }
+	  Inline elements tend to maintain their height and only width collapses. If not, height:100%; usually suffices.
+	3. Pure inline won't take width as a property so convert to inline-block or block to set width.
+	*/
+	item = document.createElement("span");
 	item.className = "taskTitle";
 	item.contentEditable=true;
 	item.addEventListener("input", this.onTitleInput.bind(this));
