@@ -1226,8 +1226,8 @@ ItemDragMgr.prototype.dragEnd = function(cancelDrag) {
 	
 	//Unhide all children + move to where the parent is
 	let nextNode = dragNode.nextElementSibling;
-	for (let i=0; i < this.context.oldChildren.children.length;) { //don't increment, stay at 0
-		let node = this.context.oldChildren.children[i];
+	while(this.context.oldChildren.children.length > 0) {
+		let node = this.context.oldChildren.children[0];
 		dragNode.parentNode.insertBefore(node, nextNode);
 	}
 	
