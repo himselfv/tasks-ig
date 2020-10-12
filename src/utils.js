@@ -64,10 +64,10 @@ Application-wide options
 Loaded at this point because all scripts may rely on them - more thorough handling in main code.
 Note: Before the main code sets default values, all defaults are undefined.
 */
-var options = options || {};
+var options = options || {}; //Careful! Do not replace the instance once it's exported
 utils.export({ options });
 function optionsLoad() {
-	options = Object.assign({}, options, getLocalStorageItem("tasksIg_options"));
+	Object.assign(options, getLocalStorageItem("tasksIg_options"));
 }
 utils.export(optionsLoad);
 function optionsSave() {
