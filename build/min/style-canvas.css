@@ -76,11 +76,23 @@ html, body {
   color: black;
   margin-top: 0.25em;
 }
+.tasklistPanel .account {
+  font-weight: bold;
+  margin-bottom: 0.2em;
+  margin-top: 0.4em;
+}
+.tasklistPanel .account .dropdown {
+  display: none;
+}
+.tasklistPanel .tasklist .dragGrip,
+.tasklistPanel .tasklistAdd .dragGrip {
+  min-width: 0.5em;
+}
 
 
 /* Left panel */
 #listPanelTitle {
-  display: block;
+  /*display: block;*//* Do not display; use account titles instead */
   font-weight: bold;
   padding-left: 0.4em;
   margin: 0.5em 0 0; /* margin-bottom is 0.25em in Canvas but our .accounts have margin-top 0.25em instead */
