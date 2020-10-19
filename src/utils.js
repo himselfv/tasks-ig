@@ -486,6 +486,7 @@ Editable.getCaret = function(node) {
 			console.log("Editable.getCaret: caret is to the right");
 			return container.childNodes[i-1].textContent.length; //caret is after the end of the text
 		}
+		i--;
 	}
 	console.log("Editable.getCaret: caret is to the left/empty text");
 	return 0; //caret is before the start of the text or there's no text
