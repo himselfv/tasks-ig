@@ -153,6 +153,7 @@ function TaskEntry(task) {
 	this.node.taskId = task.id;
 	this.node.taskEntry = this; //reverse link
 	this.node.addEventListener("click", this.onNodeClicked.bind(this));
+	this.node.addEventListener("keydown", this.onKeyDown.bind(this));
 
 	//Task entries forward to and extend node's event dispatcher
 	this.setupEventTarget(this.node);
@@ -636,6 +637,12 @@ TaskEntry.prototype.onTitlePaste = function(event) {
 	this.setTitle(title);
 	this.setCaret(selection.startOffset + pasteText.length);
 	this.titleChanged();
+}
+
+TaskEntry.prototype.onKeyDown = function(event) {
+	//Do not insert soft newlines -- we don't support newlines in titles
+	if (event.shiftKey && (event.key=="Enter"))
+		event.preventDefault();
 }
 
 
