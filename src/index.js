@@ -2248,6 +2248,9 @@ function taskEntryDragCommit(event) {
     //console.log("taskMerge");
     if (!backend || !backend.update || !backend.move || !backend.delete) return;
     if (!entry_to || !entry_what) return;
+    //Commit entry title so that ensuing focus changes don't trigger a delayed
+    //commit attempt after we've deleted the task
+    taskEntryTitleCommitNow();
     
     var mergePos = entry_to.getTitle().length;
     
