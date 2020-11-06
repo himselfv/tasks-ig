@@ -60,6 +60,13 @@ html, body {
   left: 0;
   right: unset;
 }
+/* No borders or BG for hover/selection */
+.tasklistPanel .selected,
+.tasklistPanel li:hover,
+.tasklistPanel li:hover:not(.disabled) {
+  background: unset;
+  border: 1px solid white;
+}
 
 /* tasklistPanel formatting */
 .tasklistPanel .account,

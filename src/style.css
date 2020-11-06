@@ -161,7 +161,7 @@ The button itself will be .dropdown .dropbtn
   /* Default size, borders, background image */
 }
 .dropdown .dropbtn:hover {
-  background-color: #4279a5;
+  background-color: #6A95D6;
 }
 .dropdown .dropbtn.dropopen { /* dropbtn's state when dropdown is open */
   background-color: #f1f1f1;
@@ -317,7 +317,7 @@ Left panel
 #listPanel {
   display: flex;
   flex-direction: column;
-  padding: 0px 0.1em;
+  padding: 0;
   resize: horizontal; /* can be resized */
   overflow-x: hidden;
   overflow-y: auto; /* vertical scrollbar when needed */
@@ -381,17 +381,13 @@ Task list panel
   cursor: pointer;
 }
 .tasklistPanel li:hover:not(.disabled) {
-  /* Different highlight: */
+  border: 1px solid #6A95D6;
   background-color: #E3E9FF;
-  border: 1px solid #59A6E0;
-  /* Same highlight as main menu button: */
-  /*background-color: LightSkyBlue; == #87CEFA
-  border: 1px solid LightGray; */
 }
 .tasklistPanel .selected {
-  /* Same as the focused task in the main list */
-  border-top: 1px solid #F7E784;
-  border-bottom: 1px solid #F7E784;
+  background-color: #E3E9FF;
+  border-right-color: #E3E9FF;
+  border-left-color: #E3E9FF;
 }
 .tasklistPanel .grayed {
   color: gray;
@@ -452,8 +448,8 @@ Task list panel
   align-self: stretch; /* full-height button */
 }
 .tasklistPanel .dropbtn {
-  background: url(res/sprites.png) no-repeat -128px -24px; /* burger menu */
-  min-width: 20px;
+  background: url(res/sprites.png) no-repeat -127px -24px;
+  min-width: 21px;
   height: 100%;
   min-height: 20px; /* 20 for square button */
   padding: 2px;
@@ -464,12 +460,12 @@ Task list panel
   display: none;
 }
 .tasklistPanel li:hover .dropbtn,
-/*.tasklistPanel li.selected .dropbtn,*/
+.tasklistPanel li.selected .dropbtn,
 .tasklistPanel .dropbtn.dropopen {
   display: block;
 }
 .tasklistPanel .dropbtn:hover {
-  background-color: #59A6E0; /* same as hover-border */
+  background-color: #6A95D6; /* same as hover-border */
 }
 .tasklistPanel .dropdown-content {
   font-weight: normal;
@@ -488,16 +484,18 @@ Task list panel
 Main menu
 */
 #mainmenu > .dropbtn {
+  background: url(res/settings-3592841.png) no-repeat center;
   background: url(res/sprites.png) no-repeat -104px -27px; /* burger menu */
   min-width: 20px;
-  min-height: 14px; /* 20 for square button */
+  /*min-height: 14px; /* 20 for square button */
+  min-height: 14px;
   display: block;
   height: unset;
   padding: 2px;
   box-sizing: content-box;
 }
 #mainmenu > .dropbtn:hover {
-  background-color: LightSkyBlue;
+  background-color: #6A95D6;
 }
 
 /*
@@ -844,7 +842,6 @@ Settings page
   -moz-appearance: none;
   appearance: none;
 }
-#listHeader { display: none; }
 }
 @media(max-width: 600px) {
 #listPanel { display: none; }
