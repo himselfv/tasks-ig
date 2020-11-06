@@ -99,7 +99,7 @@ By default captions are hidden, to show: set font-size.
   max-height: 20px;
   height: 20px; /* explicit height useful for children to be able to height:X% */
   cursor: pointer;
-  font-color: DodgerBlue;
+  color: DodgerBlue;
   font-size: 0; /* hide captions by default */
   align-self: center; /* Baseline align fails with font-size 0 */
   overflow: hidden; /* do not spill */
@@ -150,8 +150,9 @@ The button itself will be .dropdown .dropbtn
   display: inline-block;
   cursor: pointer;
 }
+/* The contents is hidden unless explicitly allowed */
+.dropdown > * { display: none; }
 .dropdown-content {
-  display: none;
   position: absolute;
   background-color: #f1f1f1;
   min-width: 120px;
@@ -249,12 +250,6 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   flex-grow:10;
   margin-right:4px;
 }
-@media(min-width: 600px) {
-#listSelectBox { /* hide dropdown arrow in two-panel mode */
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-}}
 #listToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
 #listToolbar { display: none; } /* hide in default design */
 #listContent,
@@ -343,10 +338,6 @@ Left panel
   width: 4px;
   background-color: LightGrey; /* same as borders in the main pane */
     /* alternative: #E3E9FF */
-}
-@media(max-width: 600px) {
-  #listPanel { display: none; }
-  #listPageSplitter { display: none; }
 }
 #listPanelToolbar { display: none; } /* hide in default design */
 #listPanelToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
@@ -472,6 +463,7 @@ Task list panel
   background: url(res/sprites.png) no-repeat -104px -27px; /* burger menu */
   filter: saturate(0%);
   min-width: 20px;
+  height: unset;
   min-height: 14px; /* 20 for square button */
   padding: 2px;
   box-sizing: content-box;
@@ -497,7 +489,7 @@ Main menu
   min-width: 20px;
   min-height: 14px; /* 20 for square button */
   display: block;
-  /*border: 1px solid lightgray;*/
+  height: unset;
   padding: 2px;
   box-sizing: content-box;
 }
@@ -522,7 +514,6 @@ Bottom toolbar panel.
 /*
 Task menu
 */
-#taskmenu {}
 #taskmenu .dropdown-content {
   right: 0;
   bottom: 24px;
@@ -848,6 +839,17 @@ Settings page
 }
 
 
+@media(min-width: 600px) {
+#listSelectBox { /* hide dropdown arrow in two-panel mode */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}}
+
+@media(max-width: 600px) {
+  #listPanel { display: none; }
+  #listPageSplitter { display: none; }
+}
 /* Remove any fixed width limitations on lower widths */
 @media handheld, (max-width: 600px) { 
 body { max-width: none; }
