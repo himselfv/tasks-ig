@@ -3,8 +3,7 @@ html, body {
   width: 100%;
   padding: 0;
   margin: 0;
-  font-family: Arial,sans-serif;
-  font-size: 10pt;
+  font: 10pt Arial,sans-serif;
 }
 body {
   position: relative; /* Absolute-positioned pages stick to us */
@@ -99,15 +98,10 @@ By default captions are hidden, to show: set font-size.
   max-height: 20px;
   height: 20px; /* explicit height useful for children to be able to height:X% */
   cursor: pointer;
-  color: DodgerBlue;
   font-size: 0; /* hide captions by default */
-  align-self: center; /* Baseline align fails with font-size 0 */
+  align-self: center; /* baseline align fails with font-size 0 */
   overflow: hidden; /* do not spill */
-}
-.button {
-  background-repeat: no-repeat;
-  background-position: center;
-  /* Set background-image in descendants to use only image */
+  background: no-repeat center; /* just set background-image in descendants */
 }
 .button:before {
   display: inline-block;
@@ -117,13 +111,13 @@ By default captions are hidden, to show: set font-size.
   /* Set content:url() in descendants to use image+caption  */
 }
 .button:hover {
-  background-color: LightSkyBlue;
+  background-color: #4279a5;
 }
 .button.checked { /* Buttons can be on/off, set .checked for that */
   border-color: #A1BADF;
 }
 .button.disabled { /* Buttons can be disabled==grayed out */ }
-.button.hidden { /* Buttons can be hidden, normally that's just normal hiding */ }
+.button.hidden { /* Buttons can be .hidden like everything */ }
 .toolbar > hr { /* separator */
   display: inline-block;
   align-self: center;
@@ -135,9 +129,8 @@ By default captions are hidden, to show: set font-size.
   margin: 0 2px;
   border-right: 2px groove #D6D6D6;
 }
-.toolbar hr.collapsed,
-.dropdown hr.collapsed {
-  display: none;
+hr.collapsed { /* adjacent can be collapsed */
+  display: none !important;
 }
 
 
@@ -168,8 +161,7 @@ The button itself will be .dropdown .dropbtn
   /* Default size, borders, background image */
 }
 .dropdown .dropbtn:hover {
-  /* Highlight the button */
-  background-color: LightSkyBlue;
+  background-color: #4279a5;
 }
 .dropdown .dropbtn.dropopen { /* dropbtn's state when dropdown is open */
   background-color: #f1f1f1;
@@ -359,12 +351,8 @@ Task list panel
   border: 1px solid white;
   font-size: 1.05em;
 }
-.tasklistPanel span,
-.tasklistPanel .dropdown {
+.tasklistPanel span {
   padding: 0.3em 0;
-}
-.tasklistPanel .dropdown {
-  padding-right: 0.3em;
 }
 .tasklistPanel .dragging { /* Dragging */
   opacity: 0.7;
@@ -395,10 +383,10 @@ Task list panel
 .tasklistPanel li:hover:not(.disabled) {
   /* Different highlight: */
   background-color: #E3E9FF;
-  border: 1px solid DodgerBlue;
-  /* Same highlight as main menu button:
-  background-color: LightSkyBlue; == #87CEFA
-  border: 1px solid lightgray; */
+  border: 1px solid #59A6E0;
+  /* Same highlight as main menu button: */
+  /*background-color: LightSkyBlue; == #87CEFA
+  border: 1px solid LightGray; */
 }
 .tasklistPanel .selected {
   /* Same as the focused task in the main list */
@@ -459,14 +447,29 @@ Task list panel
   visibility: visible;
 }*/
 /* Account and tasklist actions */
+.tasklistPanel .dropdown {
+  /*padding: 0.3em 0.3em 0.3em 0;*/ /* padded button */
+  align-self: stretch; /* full-height button */
+}
 .tasklistPanel .dropbtn {
-  background: url(res/sprites.png) no-repeat -104px -27px; /* burger menu */
-  filter: saturate(0%);
+  background: url(res/sprites.png) no-repeat -128px -24px; /* burger menu */
   min-width: 20px;
-  height: unset;
-  min-height: 14px; /* 20 for square button */
+  height: 100%;
+  min-height: 20px; /* 20 for square button */
   padding: 2px;
   box-sizing: content-box;
+  max-height: 100%; /* remove limits */
+  padding-top: 0; /* for 100% height */
+  padding-bottom: 0;
+  display: none;
+}
+.tasklistPanel li:hover .dropbtn,
+/*.tasklistPanel li.selected .dropbtn,*/
+.tasklistPanel .dropbtn.dropopen {
+  display: block;
+}
+.tasklistPanel .dropbtn:hover {
+  background-color: #59A6E0; /* same as hover-border */
 }
 .tasklistPanel .dropdown-content {
   font-weight: normal;
@@ -518,10 +521,6 @@ Task menu
   right: 0;
   bottom: 24px;
 }
-#taskmenu .dropdown-content a {
-  padding: 6px 8px;
-}
-
 
 
 /*
@@ -844,11 +843,12 @@ Settings page
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
-}}
-
+}
+#listHeader { display: none; }
+}
 @media(max-width: 600px) {
-  #listPanel { display: none; }
-  #listPageSplitter { display: none; }
+#listPanel { display: none; }
+#listPageSplitter { display: none; }
 }
 /* Remove any fixed width limitations on lower widths */
 @media handheld, (max-width: 600px) { 
@@ -883,7 +883,6 @@ Override any theme colors uniformly
 */
 /* All borders have the same color: */
 #listPanel, #listHeader, #listFooter {
-  /*border-color: LightGrey;*/
   border-color: #E3E9FF; /*-- brighter version */
 }
 #listPageSplitter {
