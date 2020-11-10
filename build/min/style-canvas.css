@@ -4,6 +4,9 @@ html, body {
 }
 
 /* Headline */
+#listHeader {
+  display: flex;
+}
 #listHeader, #listSelectBox {
   background-color: #E3E9FF;
 }
@@ -34,20 +37,19 @@ html, body {
 }
 .tasklistPanel .dropdown {
   order: 2;
-  padding-right: 0;
+  align-self: start;
+  padding: 0.2em 0;
 }
 .tasklistPanel span {
   order: 3;
   padding-right: 0.3em;
 }
-.tasklistPanel .dropdown {
-  align-self: start;
-  padding-top: 0.2em;
-}
 .tasklistPanel .dropbtn {
   background: url(res/sprites.png) no-repeat -85px -29px;
+  display: block;
   min-width: 13px;
   min-height: 13px;
+  height: unset;
   margin-left: 0px;
   margin-right: 5px;
   border: 0;
@@ -57,6 +59,13 @@ html, body {
   font-weight: normal;
   left: 0;
   right: unset;
+}
+/* No borders or BG for hover/selection */
+.tasklistPanel .selected,
+.tasklistPanel li:hover,
+.tasklistPanel li:hover:not(.disabled) {
+  background: unset;
+  border: 1px solid white;
 }
 
 /* tasklistPanel formatting */
