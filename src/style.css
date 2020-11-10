@@ -625,7 +625,8 @@ Everything inside is packed unless overriden
 }
 
 /* Completed task decorations */
-.task.completed {
+.task.completed,
+.task.completed .taskTitle {
   text-decoration: line-through;
   color: gray; /* all text, even the title */
 }
