@@ -5,8 +5,8 @@ Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a f
 
 This project reimplements those frontends from scratch. It supports both styles, multiple accounts with [different backends](#backends) (including [Google Tasks](#backend-gtasks) and [CalDAV tasks](#backend-caldav)!)
 
-|!<img width="320px" src="docs/screen-features.png" />|!<img width="500px" src="docs/screen-canvas1.png" />|
--
+| <img width="320px" src="docs/screen-features.png" /> | <img width="500px" src="docs/screen-canvas1.png" /> |
+|-|-|
 
 
 **[Try it now on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
