@@ -1,11 +1,12 @@
 Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a few lightweight JS frontends perfect for a browser sidebar which had been shut down:
 
 > **https://mail.google.com/tasks/ig**
+>
 > **https://mail.google.com/tasks/canvas**
 
 This project reimplements those frontends from scratch. It supports both styles, multiple accounts with [different backends](#backends) (including [Google Tasks](#backend-gtasks) and [CalDAV tasks](#backend-caldav)!)
 
-| <img width="320px" src="docs/screen-features.png" /> | <img width="500px" src="docs/screen-canvas1.png" /> |
+| <img width="320px" src="docs/screen-features.png" /> | <img width="460px" src="docs/screen-canvas1.png" /> |
 |-|-|
 
 
