@@ -15,8 +15,7 @@ This project reimplements those frontends from scratch. It supports both styles,
 * Multi-account support, moving and copying tasks between accounts, exporting tasks
 * Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands, undelete.
 * Async requests, fast UI with activity indicator
-* Both Canvas (style-canvas.css) and Sidebar/IG (style.css) UIs, custom UIs
-
+* [Custom UI Styles](#styles): Both Canvas and Sidebar/IG are available
 
 ### Runs as a:
 * [Chrome/Firefox/Opera browser extension](#extensions)
@@ -78,6 +77,15 @@ If you don't have a domain you can find someone else who does who you trust (if 
 Store data [locally in the browser](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/storage). They work even while offline. The sync version is synchronized between your different PCs in the background. In this way you can have a fully serverless but distributed tasks (but you will only be able to access them from the browser).
 
 <a name="backend-local-storage"></a>"Less safe" versions use [Local Storage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) instead of [extension Storage](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/storage) and it's easy to reset by clearing cookies, so I wouldn't store anything important.
+
+
+### <a name="styles"></a> Custom UI styles
+Add your custom CSS by listing it in index.html or in Options ("Additional style files"). By default two styles are available:
+
+* No style: Minimalist sidebar-style UI (replicates tasks/ig in narrow mode)
+* style-canvas.css: Google Canvas replica (tasks/canvas)
+
+Both styles collapse into one column when the window is narrower than 600px.
 
 
 ### FAQ
