@@ -3,8 +3,7 @@ html, body {
   width: 100%;
   padding: 0;
   margin: 0;
-  font-family: Arial,sans-serif;
-  font-size: 10pt;
+  font: 10pt Arial,sans-serif;
 }
 body {
   position: relative; /* Absolute-positioned pages stick to us */
@@ -99,15 +98,10 @@ By default captions are hidden, to show: set font-size.
   max-height: 20px;
   height: 20px; /* explicit height useful for children to be able to height:X% */
   cursor: pointer;
-  font-color: DodgerBlue;
   font-size: 0; /* hide captions by default */
-  align-self: center; /* Baseline align fails with font-size 0 */
+  align-self: center; /* baseline align fails with font-size 0 */
   overflow: hidden; /* do not spill */
-}
-.button {
-  background-repeat: no-repeat;
-  background-position: center;
-  /* Set background-image in descendants to use only image */
+  background: no-repeat center; /* just set background-image in descendants */
 }
 .button:before {
   display: inline-block;
@@ -117,13 +111,13 @@ By default captions are hidden, to show: set font-size.
   /* Set content:url() in descendants to use image+caption  */
 }
 .button:hover {
-  background-color: LightSkyBlue;
+  background-color: #4279a5;
 }
 .button.checked { /* Buttons can be on/off, set .checked for that */
   border-color: #A1BADF;
 }
 .button.disabled { /* Buttons can be disabled==grayed out */ }
-.button.hidden { /* Buttons can be hidden, normally that's just normal hiding */ }
+.button.hidden { /* Buttons can be .hidden like everything */ }
 .toolbar > hr { /* separator */
   display: inline-block;
   align-self: center;
@@ -135,9 +129,8 @@ By default captions are hidden, to show: set font-size.
   margin: 0 2px;
   border-right: 2px groove #D6D6D6;
 }
-.toolbar hr.collapsed,
-.dropdown hr.collapsed {
-  display: none;
+hr.collapsed { /* adjacent can be collapsed */
+  display: none !important;
 }
 
 
@@ -150,8 +143,9 @@ The button itself will be .dropdown .dropbtn
   display: inline-block;
   cursor: pointer;
 }
+/* The contents is hidden unless explicitly allowed */
+.dropdown > * { display: none; }
 .dropdown-content {
-  display: none;
   position: absolute;
   background-color: #f1f1f1;
   min-width: 120px;
@@ -167,8 +161,7 @@ The button itself will be .dropdown .dropbtn
   /* Default size, borders, background image */
 }
 .dropdown .dropbtn:hover {
-  /* Highlight the button */
-  background-color: LightSkyBlue;
+  background-color: #6A95D6;
 }
 .dropdown .dropbtn.dropopen { /* dropbtn's state when dropdown is open */
   background-color: #f1f1f1;
@@ -249,12 +242,6 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   flex-grow:10;
   margin-right:4px;
 }
-@media(min-width: 600px) {
-#listSelectBox { /* hide dropdown arrow in two-panel mode */
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-}}
 #listToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
 #listToolbar { display: none; } /* hide in default design */
 #listContent,
@@ -330,7 +317,7 @@ Left panel
 #listPanel {
   display: flex;
   flex-direction: column;
-  padding: 0px 0.1em;
+  padding: 0;
   resize: horizontal; /* can be resized */
   overflow-x: hidden;
   overflow-y: auto; /* vertical scrollbar when needed */
@@ -343,10 +330,6 @@ Left panel
   width: 4px;
   background-color: LightGrey; /* same as borders in the main pane */
     /* alternative: #E3E9FF */
-}
-@media(max-width: 600px) {
-  #listPanel { display: none; }
-  #listPageSplitter { display: none; }
 }
 #listPanelToolbar { display: none; } /* hide in default design */
 #listPanelToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
@@ -368,12 +351,8 @@ Task list panel
   border: 1px solid white;
   font-size: 1.05em;
 }
-.tasklistPanel span,
-.tasklistPanel .dropdown {
+.tasklistPanel span {
   padding: 0.3em 0;
-}
-.tasklistPanel .dropdown {
-  padding-right: 0.3em;
 }
 .tasklistPanel .dragging { /* Dragging */
   opacity: 0.7;
@@ -402,17 +381,13 @@ Task list panel
   cursor: pointer;
 }
 .tasklistPanel li:hover:not(.disabled) {
-  /* Different highlight: */
+  border: 1px solid #6A95D6;
   background-color: #E3E9FF;
-  border: 1px solid DodgerBlue;
-  /* Same highlight as main menu button:
-  background-color: LightSkyBlue; == #87CEFA
-  border: 1px solid lightgray; */
 }
 .tasklistPanel .selected {
-  /* Same as the focused task in the main list */
-  border-top: 1px solid #F7E784;
-  border-bottom: 1px solid #F7E784;
+  background-color: #E3E9FF;
+  border-right-color: #E3E9FF;
+  border-left-color: #E3E9FF;
 }
 .tasklistPanel .grayed {
   color: gray;
@@ -468,13 +443,29 @@ Task list panel
   visibility: visible;
 }*/
 /* Account and tasklist actions */
+.tasklistPanel .dropdown {
+  /*padding: 0.3em 0.3em 0.3em 0;*/ /* padded button */
+  align-self: stretch; /* full-height button */
+}
 .tasklistPanel .dropbtn {
-  background: url(res/sprites.png) no-repeat -104px -27px; /* burger menu */
-  filter: saturate(0%);
-  min-width: 20px;
-  min-height: 14px; /* 20 for square button */
+  background: url(res/sprites.png) no-repeat -127px -24px;
+  min-width: 21px;
+  height: 100%;
+  min-height: 20px; /* 20 for square button */
   padding: 2px;
   box-sizing: content-box;
+  max-height: 100%; /* remove limits */
+  padding-top: 0; /* for 100% height */
+  padding-bottom: 0;
+  display: none;
+}
+.tasklistPanel li:hover .dropbtn,
+.tasklistPanel li.selected .dropbtn,
+.tasklistPanel .dropbtn.dropopen {
+  display: block;
+}
+.tasklistPanel .dropbtn:hover {
+  background-color: #6A95D6; /* same as hover-border */
 }
 .tasklistPanel .dropdown-content {
   font-weight: normal;
@@ -493,16 +484,18 @@ Task list panel
 Main menu
 */
 #mainmenu > .dropbtn {
+  background: url(res/settings-3592841.png) no-repeat center;
   background: url(res/sprites.png) no-repeat -104px -27px; /* burger menu */
   min-width: 20px;
-  min-height: 14px; /* 20 for square button */
+  /*min-height: 14px; /* 20 for square button */
+  min-height: 14px;
   display: block;
-  /*border: 1px solid lightgray;*/
+  height: unset;
   padding: 2px;
   box-sizing: content-box;
 }
 #mainmenu > .dropbtn:hover {
-  background-color: LightSkyBlue;
+  background-color: #6A95D6;
 }
 
 /*
@@ -522,15 +515,10 @@ Bottom toolbar panel.
 /*
 Task menu
 */
-#taskmenu {}
 #taskmenu .dropdown-content {
   right: 0;
   bottom: 24px;
 }
-#taskmenu .dropdown-content a {
-  padding: 6px 8px;
-}
-
 
 
 /*
@@ -625,7 +613,8 @@ Everything inside is packed unless overriden
 }
 
 /* Completed task decorations */
-.task.completed {
+.task.completed,
+.task.completed .taskTitle {
   text-decoration: line-through;
   color: gray; /* all text, even the title */
 }
@@ -848,6 +837,17 @@ Settings page
 }
 
 
+@media(min-width: 600px) {
+#listSelectBox { /* hide dropdown arrow in two-panel mode */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+}
+@media(max-width: 600px) {
+#listPanel { display: none; }
+#listPageSplitter { display: none; }
+}
 /* Remove any fixed width limitations on lower widths */
 @media handheld, (max-width: 600px) { 
 body { max-width: none; }
@@ -881,7 +881,6 @@ Override any theme colors uniformly
 */
 /* All borders have the same color: */
 #listPanel, #listHeader, #listFooter {
-  /*border-color: LightGrey;*/
   border-color: #E3E9FF; /*-- brighter version */
 }
 #listPageSplitter {

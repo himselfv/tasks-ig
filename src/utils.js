@@ -486,6 +486,7 @@ Editable.getCaret = function(node) {
 			console.log("Editable.getCaret: caret is to the right");
 			return container.childNodes[i-1].textContent.length; //caret is after the end of the text
 		}
+		i--;
 	}
 	console.log("Editable.getCaret: caret is to the left/empty text");
 	return 0; //caret is before the start of the text or there's no text
@@ -754,17 +755,26 @@ Dropdown.init = function(root) {
 		root = document.createElement("div");
 	root.classList.toggle("dropdown", true);
 	
+	//Do not initialize twice
+	let content = root.getElementsByClassName('dropdown-content');
+	if (content.length > 0)
+		return root;
+	
 	//Move all child elements under content - to simplify pre-designed HTML
-	let content = document.createElement("div");
+	content = document.createElement("div");
 	content.className = "dropdown-content";
 	while (root.firstChild)
 		content.appendChild(root.firstChild);
 	
 	let btn = document.createElement("span");
-	btn.className = "dropbtn";
+	btn.className = "dropbtn button";
 	btn.addEventListener("click", Dropdown.click);
 	root.appendChild(btn);
 	root.button = btn;
+	
+	//Move some properties to the button
+	btn.title = root.title;
+	root.removeAttribute('title');
 	
 	root.appendChild(content);
 	root.menu = content;
@@ -813,6 +823,11 @@ window.addEventListener("click", (event) => {
 		}
 	}
 });
+//Initializes all predefined dropdowns on the page
+window.addEventListener("load", () => {
+	for (let element of document.getElementsByClassName('dropdown'))
+		Dropdown.init(element);
+});
 
 
 /*
@@ -825,6 +840,11 @@ function Toolbar(element) {
 	return element;
 }
 utils.export(Toolbar);
+//Initializes all predefined toolbars on the page
+window.addEventListener("load", () => {
+	for (let element of document.getElementsByClassName('toolbar'))
+		element.obj = new Toolbar(element);
+});
 
 
 /*
@@ -844,8 +864,8 @@ function buttonNew(button, id, title) {
 utils.export(buttonNew);
 //Initializes all predefined buttons on the page
 window.addEventListener("load", () => {
-	for (let button of document.getElementsByClassName('button'))
-		buttonNew(button);
+	for (let element of document.getElementsByClassName('button'))
+		buttonNew(element);
 });
 
 /*

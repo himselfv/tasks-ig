@@ -16,8 +16,6 @@ Security considerations in some contexts require:
  * No inline onclick= handlers.
 */
 var listPage = document.getElementById('listPage');
-var panelToolbar = null;
-var listToolbar = null;
 
 function initUi() {
 	window.addEventListener("beforeunload", handleBeforeUnload);
@@ -41,13 +39,6 @@ function initUi() {
 	let listContent = document.getElementById('listContent');
 	listContent.addEventListener("click", tasklistClick);
 	listContent.addEventListener("dblclick", tasklistDblClick);
-
-	let mainmenu = Dropdown.init('mainmenu');
-	let taskmenu = Dropdown.init('taskmenu');
-	taskmenu.button.classList.toggle("button", true);
-	
-	panelToolbar = new Toolbar(document.getElementById('listPanelToolbar'));
-	listToolbar = new Toolbar(document.getElementById('listToolbar'));
 	
 	//Bind all actions
 	Actions.bind(document.body, 'accountsPageOpen', AccountsPage.new.bind(AccountsPage))
@@ -2248,6 +2239,9 @@ function taskEntryDragCommit(event) {
     //console.log("taskMerge");
     if (!backend || !backend.update || !backend.move || !backend.delete) return;
     if (!entry_to || !entry_what) return;
+    //Commit entry title so that ensuing focus changes don't trigger a delayed
+    //commit attempt after we've deleted the task
+    taskEntryTitleCommitNow();
     
     var mergePos = entry_to.getTitle().length;
     

@@ -21,12 +21,11 @@
 	<div id="listBody">
 		<div id="listHeader">
 			<select id="listSelectBox"></select>
-			<div id="mainmenu" class="dropdown" title="Task list action">
+			<div id="mainmenu" class="dropdown" title="Task list actions">
 				<a action='accountsReload'>Reload</a>
 				<a action='listAdd'>Add list...</a>
 				<a action='listRename'>Rename list...</a>
 				<a action='listDelete'>Delete list</a>
-				<a action='accountReset'>Reset account</a>
 				<hr />
 				<a action='accountsPageOpen'>Accounts...</a>
 				<a action='optionsPageOpen'>Options...</a>
@@ -62,6 +61,9 @@
 			<a class="button" action="taskAdd">Add task</a>
 			<a class="button" action="taskDelete">Delete task</a>
 			<div id="taskmenu" class="dropdown" title="Task actions">
+				<a action='accountsPageOpen'>Accounts...</a>
+				<a action='optionsPageOpen'>Options...</a>
+				<hr />
 				<a action='taskTab'>—&gt; Tab</a>
 				<a action='taskShiftTab'>&lt;— Shift-Tab</a>
 				<hr />
