@@ -5,7 +5,7 @@ Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a f
 
 This project reimplements those frontends from scratch. It supports both styles, multiple accounts with [different backends](#backends) (including [Google Tasks](#backend-gtasks) and [CalDAV tasks](#backend-caldav)!)
 
-<img width="320px" src="docs/screen-features.png" /> <img width="320px" src="docs/screen-canvas1.png" />
+<img width="320px" src="docs/screen-features.png" style="max-width:100%; border:1px solid lightgray;" /> <img width="500px" src="docs/screen-canvas1.png" style="max-width:100%; border:1px solid lightgray;" />
 
 **[Try it now on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
 
@@ -90,7 +90,7 @@ Both styles collapse into one column when the window is narrower than 600px.
 
 ### FAQ
 
-**Q:** Can/should I use this on mobile?
+**Q:** Can I use this on mobile?
 
 **A:** You can, but there are better clients both for Google Tasks and for DAV (for example, [Tasks.org](https://f-droid.org/ru/packages/org.tasks/)). Tasks IG is mostly meant for a browser/sidebar.
 
