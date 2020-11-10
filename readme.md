@@ -1,11 +1,14 @@
 Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a few lightweight JS frontends perfect for a browser sidebar which had been shut down:
 
 > **https://mail.google.com/tasks/ig**
+>
 > **https://mail.google.com/tasks/canvas**
 
 This project reimplements those frontends from scratch. It supports both styles, multiple accounts with [different backends](#backends) (including [Google Tasks](#backend-gtasks) and [CalDAV tasks](#backend-caldav)!)
 
-<img width="320px" src="docs/screen-features.png" /> <img width="320px" src="docs/screen-canvas1.png" />
+| <img width="320px" src="docs/screen-features.png" /> | <img width="460px" src="docs/screen-canvas1.png" /> |
+|-|-|
+
 
 **[Try it now on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
 
@@ -15,8 +18,7 @@ This project reimplements those frontends from scratch. It supports both styles,
 * Multi-account support, moving and copying tasks between accounts, exporting tasks
 * Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands, undelete.
 * Async requests, fast UI with activity indicator
-* Both Canvas (style-canvas.css) and Sidebar/IG (style.css) UIs, custom UIs
-
+* [Custom UI Styles](#styles): Both Canvas and Sidebar/IG are available
 
 ### Runs as a:
 * [Chrome/Firefox/Opera browser extension](#extensions)
@@ -80,9 +82,18 @@ Store data [locally in the browser](https://developer.mozilla.org/en-US/docs/Moz
 <a name="backend-local-storage"></a>"Less safe" versions use [Local Storage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) instead of [extension Storage](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/storage) and it's easy to reset by clearing cookies, so I wouldn't store anything important.
 
 
+### <a name="styles"></a> Custom UI styles
+Add your custom CSS by listing it in index.html or in Options ("Additional style files"). By default two styles are available:
+
+* No style: Minimalist sidebar-style UI (replicates tasks/ig in narrow mode)
+* style-canvas.css: Google Canvas replica (tasks/canvas)
+
+Both styles collapse into one column when the window is narrower than 600px.
+
+
 ### FAQ
 
-**Q:** Can/should I use this on mobile?
+**Q:** Can I use this on mobile?
 
 **A:** You can, but there are better clients both for Google Tasks and for DAV (for example, [Tasks.org](https://f-droid.org/ru/packages/org.tasks/)). Tasks IG is mostly meant for a browser/sidebar.
 
