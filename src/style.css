@@ -326,11 +326,7 @@ Left panel
   -ms-user-select: none;
   user-select: none; /* text unselectable (if the user accidentally double-clicks) */
 }
-#listPageSplitter {
-  width: 4px;
-  background-color: LightGrey; /* same as borders in the main pane */
-    /* alternative: #E3E9FF */
-}
+#listPageSplitter { background-color: LightGrey; } /* same as borders in the main pane */
 #listPanelToolbar { display: none; } /* hide in default design */
 #listPanelToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
 #listPanelTitle { display: none; } /* hide in default design */
@@ -427,7 +423,6 @@ Task list panel
   list-style-type: none;
   color: #4E6D9A;
   padding-left: 0.25em;
-  font-weight: bold;
 }
 .tasklistPanel .tasklistAdd {
   color: gray;
@@ -457,12 +452,12 @@ Task list panel
   max-height: 100%; /* remove limits */
   padding-top: 0; /* for 100% height */
   padding-bottom: 0;
-  display: none;
+  visibility: hidden;
 }
 .tasklistPanel li:hover .dropbtn,
 .tasklistPanel li.selected .dropbtn,
 .tasklistPanel .dropbtn.dropopen {
-  display: block;
+  visibility: visible;
 }
 .tasklistPanel .dropbtn:hover {
   background-color: #6A95D6; /* same as hover-border */
