@@ -3,12 +3,18 @@ html, body {
   font-family: Arial,sans-serif;
 }
 
+/* Common colors */
+#listPanel, #listHeader, #listFooter {
+  border-color: #E3E9FF;
+}
+#listHeader, #listSelectBox, #listPageSplitter {
+  background-color: #E3E9FF;
+}
+
+
 /* Headline */
 #listHeader {
   display: flex;
-}
-#listHeader, #listSelectBox {
-  background-color: #E3E9FF;
 }
 #listSelectBox {
   font-size: 1.5em;
@@ -47,6 +53,7 @@ html, body {
 .tasklistPanel .dropbtn {
   background: url(res/sprites.png) no-repeat -85px -29px;
   display: block;
+  visibility: visible;
   min-width: 13px;
   min-height: 13px;
   height: unset;
@@ -101,10 +108,11 @@ html, body {
 
 /* Left panel */
 #listPanelTitle {
-  /*display: block;*//* Do not display; use account titles instead */
+  font-size: 1em;
   font-weight: bold;
-  padding-left: 0.4em;
+  padding: 0 0 0 0.4em;
   margin: 0.5em 0 0; /* margin-bottom is 0.25em in Canvas but our .accounts have margin-top 0.25em instead */
+  display: none; /* but do not display: account names fill its role */
 }
 
 
@@ -117,7 +125,9 @@ html, body {
   padding: 0;
   border: 0;
 }
-#listPageSplitter { width: 4px; }
+#listPageSplitter {
+  width: 4px;
+}
 /* Title is the same color, same size as headline */
 #listPanelToolbar {
   display: flex;

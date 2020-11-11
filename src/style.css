@@ -52,7 +52,7 @@ Error message popup
 /* Splitters */
 .splitter {
   width: 3px;
-  background-color: LightGrey;
+  background-color: #CCC;
 }
 .splitterV { cursor: ew-resize; }
 .splitterH { cursor: ns-resize; }
@@ -216,7 +216,7 @@ Header sticks to top, footer sticks to bottom, the rest expands as content grows
   max-width: unset; /* full-width */
 }
 #listPanel {
-  width: 200px;
+  width: 180px;
   flex-shrink: 0;
 }
 #listBody {
@@ -326,10 +326,16 @@ Left panel
   -ms-user-select: none;
   user-select: none; /* text unselectable (if the user accidentally double-clicks) */
 }
-#listPageSplitter { background-color: LightGrey; } /* same as borders in the main pane */
-#listPanelToolbar { display: none; } /* hide in default design */
+#listPageSplitter { background-color: #ccc; } /* same as borders in the main pane */
 #listPanelToolbar .button { font-size: 1em; } /* default design doesn't assign any icons so show captions */
-#listPanelTitle { display: none; } /* hide in default design */
+#listPanelTitle {
+  margin: 0.4em 0 0.4em;
+  padding: 0;
+  padding-left: 7px; /* same as entries */
+  font-size: 1.2em;
+  font-weight: bold;
+}
+#listPanelToolbar { display: none; } /* hide in default design */
 
 
 /*
@@ -364,7 +370,7 @@ Task list panel
 .tasklistPanel .tasklist .dragGrip,
 .tasklistPanel .tasklistAdd .dragGrip {
   min-width: 0.75em; /* bigger grip for left-padded items */
-  visibility: hidden; /* currently undraggable */
+  visibility: hidden; /* undraggable */
 }
 .tasklistPanel li span {
   flex-grow: 10;
@@ -377,13 +383,11 @@ Task list panel
   cursor: pointer;
 }
 .tasklistPanel li:hover:not(.disabled) {
-  border: 1px solid #6A95D6;
-  background-color: #E3E9FF;
+  text-decoration: underline;
 }
 .tasklistPanel .selected {
-  background-color: #E3E9FF;
-  border-right-color: #E3E9FF;
-  border-left-color: #E3E9FF;
+  background-color: #eee; /* somewhat arbitrarily */
+  border-color: #eee;
 }
 .tasklistPanel .grayed {
   color: gray;
@@ -421,22 +425,12 @@ Task list panel
 .tasklistPanel .tasklist,
 .tasklistPanel .tasklistAdd {
   list-style-type: none;
-  color: #4E6D9A;
   padding-left: 0.25em;
 }
 .tasklistPanel .tasklistAdd {
   color: gray;
   font-weight: normal;
 }
-/* Replace "Add account"/"Add tasklist" text:
-.tasklistPanel .accountAdd {
-  visibility:hidden;
-}
-.tasklistPanel .accountAdd:after {
-  content: "＋"; -- to use a text
-  content: url(res/plus2.png); -- to use an image
-  visibility: visible;
-}*/
 /* Account and tasklist actions */
 .tasklistPanel .dropdown {
   /*padding: 0.3em 0.3em 0.3em 0;*/ /* padded button */
@@ -465,14 +459,6 @@ Task list panel
 .tasklistPanel .dropdown-content {
   font-weight: normal;
 }
-/* Display the actions on the same row instead of in submenu:
-.tasklistPanel .dropbtn {
-  display: none;
-}
-.tasklistPanel .dropdown-content {
-  display: flex;
-  font-size: 0;
-}*/
 
 
 /*
@@ -729,7 +715,7 @@ Account list page
   border: 1px solid black;
 }
 #accountList .accountAdd,
-#accountList .tasklist
+#accountList .tasklist,
 #accountList .tasklistAdd {
   display: none; /* hide unrelated things */
 }
@@ -869,17 +855,3 @@ Max-width on some elements that look bad when wide
 #editorPage > div {
   max-width: 500px;
 }
-
-
-/*
-Override any theme colors uniformly
-*/
-/* All borders have the same color: */
-#listPanel, #listHeader, #listFooter {
-  border-color: #E3E9FF; /*-- brighter version */
-}
-#listPageSplitter {
-  background-color: #E3E9FF;
-}
-
-

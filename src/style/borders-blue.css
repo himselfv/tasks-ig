@@ -1,0 +1,9 @@
+/* All borders have the same color as in Canvas */
+#listPanel, #listHeader, #listFooter,
+.tasklist .selected {
+  border-color: #E3E9FF; /*-- brighter version */
+}
+#listPageSplitter,
+.tasklist .selected {
+  background-color: #E3E9FF;
+}
