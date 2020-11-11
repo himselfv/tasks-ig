@@ -13,9 +13,6 @@ html, body {
 
 
 /* Headline */
-#listHeader {
-  display: flex;
-}
 #listSelectBox {
   font-size: 1.5em;
   font-weight: normal;

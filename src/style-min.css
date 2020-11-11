@@ -13,13 +13,12 @@ html, body {
   border: 0;
   width: 180px; /* starting width */
 }
-
 #listPanelToolbar { display: none; }
 #listPanelTitle { display: none; }
-
 #listPageSplitter {
   width: 3px;
 }
+
 
 .tasklistPanel li,
 .tasklistPanel .account,
@@ -27,6 +26,11 @@ html, body {
 .tasklistPanel .tasklist,
 .tasklistPanel .tasklistAdd {
   color: black;
+}
+
+
+#listHeader {
+  padding: 2px 2px 3px;
 }
 
 #listHeader, #listSelectBox {
@@ -43,9 +47,11 @@ html, body {
 #listToolbar { display: none; }
 
 #mainmenu .dropbtn {
-  background: url(res/sprites.png) no-repeat -104px -24px;
-  min-height: 20px;
-  border: 1px solid lightgray;
+  background: url(res/sprites.png) no-repeat -104px -27px;
+  min-width: 20px;
+  min-height: 14px;
+  padding: 2px;
+  border: unset;
 }
 
 

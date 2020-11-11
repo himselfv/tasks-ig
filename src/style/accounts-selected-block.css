@@ -1,0 +1,27 @@
+/*
+Tasklist panel: fat buttons, bold font, blue selection.
+*/
+.tasklistPanel li,
+.tasklistPanel .tasklist {
+  font-size: 1.05em;
+}
+.tasklistPanel span {
+  padding: 0.3em 0;
+  order: unset;				/* restore to the left of the button */
+}
+.tasklistPanel .account {
+  font-weight: bold;
+}
+.tasklistPanel .tasklist,
+.tasklistPanel .tasklistAdd {
+  font-weight: bold;
+  color: #4E6D9A;			/* accent color */
+}
+.tasklistPanel .selected {
+  background-color: #E3E9FF;
+  border-color: #E3E9FF;
+}
+.tasklistPanel li:hover:not(.disabled) {
+  background-color: #E3E9FF;
+  border-color: #E3E9FF;
+}
