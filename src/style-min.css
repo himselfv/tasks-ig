@@ -1,0 +1,62 @@
+html, body {
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  font: 10pt Arial,sans-serif;
+}
+
+
+#listPanel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: 180px; /* starting width */
+}
+
+#listPanelToolbar { display: none; }
+#listPanelTitle { display: none; }
+
+#listPageSplitter {
+  width: 3px;
+}
+
+.tasklistPanel li,
+.tasklistPanel .account,
+.tasklistPanel .accountAdd,
+.tasklistPanel .tasklist,
+.tasklistPanel .tasklistAdd {
+  color: black;
+}
+
+#listHeader, #listSelectBox {
+  background-color: inherit;
+}
+
+#listSelectBox {
+  flex-grow: 10;
+  margin-right: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  border: 0;
+}
+#listToolbar { display: none; }
+
+#mainmenu .dropbtn {
+  background: url(res/sprites.png) no-repeat -104px -24px;
+  min-height: 20px;
+  border: 1px solid lightgray;
+}
+
+
+#listContent {
+  max-width: unset;
+}
+
+/* Uniform colors */
+#listPanel, #listHeader, #listFooter {
+  border-color: #ccc;
+}
+#listPageSplitter {
+  background-color: #ccc;
+}
