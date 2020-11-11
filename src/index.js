@@ -118,10 +118,10 @@ var optionSet = {
 		hint: 'Limit the UI to this width. Set to 0 to expand to all available horizontal space', },
 };
 function optionsPageOpen() {
-	console.debug('options:', options);
 	let optionsPage = new SettingsPage('Options', optionSet, options);
 	optionsPage.addEventListener('ok', function(event) {
-		options = event.results;
+		console.debug('new options:', options);
+		Object.assign(options, event.results);
 		optionsSave();
 		optionsPage.resolve();
 	});
