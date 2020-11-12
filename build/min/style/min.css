@@ -1,0 +1,69 @@
+/*
+Minimalist style reminiscent of tasks/ig interface.
+Works fine with accounts-canvas (more googlish look) or accounts-flat (more modern).
+*/
+:root { --border-color: #eee; }
+html, body {
+  height: 100%;
+  width: 100%;
+  padding: 0;
+  margin: 0;
+  font: 10pt Arial,sans-serif;
+}
+
+
+#listPanel {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  width: 180px; /* starting width */
+}
+#listPageSplitter {
+  width: 3px;
+}
+
+/* Left panel */
+
+#listPanelToolbar { display: none; }
+
+#listPanelTitle {
+  display: none;
+  margin: 0.4em 0 0.4em;
+  padding: 0 0 0 7px;
+  font-size: 1.2em;
+  font-weight: bold;
+}
+
+
+/* Right panel */
+
+#listHeader {
+  padding: 2px 2px 3px;
+}
+
+#listHeader, #listSelectBox {
+  background-color: inherit;
+}
+
+#listSelectBox {
+  flex-grow: 10;
+  margin-right: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  border: 0;
+}
+#listToolbar { display: none; }
+
+#mainmenu .dropbtn {
+  background: url(../res/sprites.png) no-repeat -104px -27px;
+  min-width: 20px;
+  min-height: 14px;
+  padding: 2px;
+  border: unset;
+}
+
+
+#listContent {
+  max-width: unset;
+}
+

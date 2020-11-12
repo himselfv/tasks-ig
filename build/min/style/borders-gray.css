@@ -1,0 +1,4 @@
+/*
+Gray color for borders/account list selection.
+*/
+:root { --border-color: #eee; }
