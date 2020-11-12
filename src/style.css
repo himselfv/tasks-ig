@@ -416,7 +416,7 @@ Task list panel
 }
 /* Account and tasklist actions */
 .tasklistPanel .dropdown {
-  padding: 0 0.3em 0em 0; /* padded button */
+  padding: 0 0.1em 0em 0; /* padded button */
   /* align-self: stretch; /* full-height button */
 }
 .tasklistPanel .dropbtn {
