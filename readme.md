@@ -10,6 +10,9 @@ This project reimplements those frontends from scratch. It supports both styles,
 
 **[Try it now on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
 
+[More screenshots](docs/readme.md)
+
+
 ### Features
 * Runs in the browser, from local file or self-hosted
 * Works with [Google Tasks](#backend-gtasks), [CalDAV](#backend-caldav) and [browser-synced tasks](#backend-browser)
