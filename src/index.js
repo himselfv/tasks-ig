@@ -1726,10 +1726,7 @@ function accountPageReload(selected) {
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
 			p.appendChild(html.li(
-			linkNew(null, (event) => {
-					setSelectedTaskList(new TaskListHandle(account.id, tasklist.id));
-					event.preventDefault(); /* or href=# will override our URI permanence */
-				}, tasklist.title)
+			linkNew(null, setSelectedTaskList.bind(null, new TaskListHandle(account.id, tasklist.id)), tasklist.title)
 			));
 		}
 	}
