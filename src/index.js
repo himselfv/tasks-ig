@@ -115,7 +115,7 @@ var optionSet = {
 	uiExtraCss: {
 		type: 'text',
 		title: 'Extra CSS',
-		hint: 'Paths to additional CSS files to customize appearance (can be relative or URLs). Comma-separated.<br />Try: style-canvas.css', },
+		hint: 'Paths to additional CSS files to customize appearance (can be relative or URLs). Comma-separated.<br />Try: min, canvas, accounts-flat', },
 	uiMaxWidth: {
 		type: 'number', default: 0,
 		title: 'UI max width',
