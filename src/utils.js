@@ -299,7 +299,7 @@ JobQueue.prototype.push = function(prom) {
 		if (this.count <= 0) {
 			this.onChanged.notify();
 			while ((this.idlePromises.length > 0) && (this.count <= 0))
-				this.idlePromises.splice(0, 1)();
+				this.idlePromises.splice(0, 1)[0]();
 		}
 	})
 	;
