@@ -1,0 +1,76 @@
+/*
+Flat accounts panel style.
+*/
+
+/* List formatting */
+.tasklistPanel {
+  --selection-color: var(--border-color);
+}
+.tasklistPanel li,
+.tasklistPanel .account,
+.tasklistPanel .accountAdd,
+.tasklistPanel .tasklist,
+.tasklistPanel .tasklistAdd {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(background-color);
+  color: black;
+  font-size: 1.05em;
+  list-style-type: none;
+}
+.tasklistPanel .account,
+.tasklistPanel .accountAdd {
+}
+.tasklistPanel .tasklist,
+.tasklistPanel .tasklistAdd {
+  padding-left: 0.25em;
+}
+.tasklistPanel .selected,
+.tasklistPanel li:hover,
+.tasklistPanel li:hover:not(.disabled) {
+  background-color: var(--selection-color);
+  border-color: var(--selection-color);
+}
+
+/* Item contents */
+.tasklistPanel .dragGrip {
+  order: 1;
+  min-width: 0.5em;
+}
+.tasklistPanel .tasklist .dragGrip,
+.tasklistPanel .tasklistAdd .dragGrip {
+  min-width: 0.75em;
+}
+.tasklistPanel li span {
+  order: 2;
+  padding: 0.3em 0;
+}
+.tasklistPanel .dropdown {
+  order: 3;
+  padding: 0;
+  align-self: stretch;
+}
+.tasklistPanel .account .dropdown,
+.tasklistPanel .tasklist .dropdown {
+  display: inline-block;
+}
+.tasklistPanel .dropbtn {
+  background: url(../res/sprites.png) no-repeat -127px -24px;
+  box-sizing: content-box;
+  min-width: 21px;
+  height: 100%;
+  min-height: 20px;
+  max-height: 100%;
+  padding: 0 2px 0;
+  margin: 0;
+  visibility: hidden;
+}
+.tasklistPanel :hover .dropbtn,
+.tasklistPanel .selected .dropbtn,
+.tasklistPanel .dropbtn.dropopen {
+  visibility: visible;
+}
+.tasklistPanel .dropdown-content {
+  left: unset;
+  right: 0;
+}

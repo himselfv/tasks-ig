@@ -26,6 +26,10 @@ function initUi() {
 	
 	if (typeof options.uiExtraCss == 'string')
 	for (let cssUri of options.uiExtraCss.split(',')) {
+			cssUri = cssUri.trim();
+			let hasPath = (cssUri.indexOf('/')>=0) || (cssUri.indexOf('\\')>=0);
+			if (!hasPath && !cssUri.toLowerCase().endsWith('.css'))
+				cssUri='style/'+cssUri+'.css';
 			let link = document.createElement("link");
 			link.rel = "stylesheet";
 			link.type = "text/css";
@@ -111,7 +115,7 @@ var optionSet = {
 	uiExtraCss: {
 		type: 'text',
 		title: 'Extra CSS',
-		hint: 'Paths to additional CSS files to customize appearance (can be relative or URLs). Comma-separated.<br />Try: style-canvas.css', },
+		hint: 'Paths to additional CSS files to customize appearance (can be relative or URLs). Comma-separated.<br />Try: min, canvas, accounts-flat', },
 	uiMaxWidth: {
 		type: 'number', default: 0,
 		title: 'UI max width',
@@ -1722,10 +1726,7 @@ function accountPageReload(selected) {
 		for (let j in account.ui.tasklists) {
 			let tasklist = account.ui.tasklists[j];
 			p.appendChild(html.li(
-			linkNew(null, (event) => {
-					setSelectedTaskList(new TaskListHandle(account.id, tasklist.id));
-					event.preventDefault(); /* or href=# will override our URI permanence */
-				}, tasklist.title)
+			linkNew(null, setSelectedTaskList.bind(null, new TaskListHandle(account.id, tasklist.id)), tasklist.title)
 			));
 		}
 	}

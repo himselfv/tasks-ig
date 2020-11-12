@@ -1,0 +1,8 @@
+/* Tasklist Panel: Display account/list actions on the same row instead of in submenu */
+.tasklistPanel .dropbtn {
+  display: none;
+}
+.tasklistPanel .dropdown-content {
+  display: flex;
+  font-size: 0;
+}

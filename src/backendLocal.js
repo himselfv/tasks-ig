@@ -581,7 +581,7 @@ BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
 
 	//1. Changes to "tasklists" => List added/removed/edited.
 	if (key == "tasklists") {
-		let changes = diffDict(JSON.parse(oldValue), JSON.parse(newValue), (a, b) => (a.id==b.id)&&(a.title==b.title));
+		let changes = diffDict(JSON.parse(oldValue || '{}'), JSON.parse(newValue || '{}'), (a, b) => (a.id==b.id)&&(a.title==b.title));
 		Object.keys(changes).forEach(tasklistId => {
 			let change = changes[tasklistId];
 			if (!change.oldValue)
@@ -598,8 +598,8 @@ BackendLocal.prototype.storageChanged = function(key, oldValue, newValue) {
 	//3. Changes to "list_*" => item moved
 	if (key.startsWith("list_")) {
 		key = key.slice("list_".length);
-		let oldList = _tasklistToParentPrev(JSON.parse(oldValue)); //id->parentId,prevId
-		let newList = _tasklistToParentPrev(JSON.parse(newValue));
+		let oldList = _tasklistToParentPrev(JSON.parse(oldValue || '[]')); //id->parentId,prevId
+		let newList = _tasklistToParentPrev(JSON.parse(newValue || '[]'));
 		let changes = diffDict(oldList, newList, (a,b) => (a.parentId == b.parentId) && (a.prevId == b.prevId));
 		Object.keys(changes).forEach(taskId => {
 			//The only change we track here is same-list move

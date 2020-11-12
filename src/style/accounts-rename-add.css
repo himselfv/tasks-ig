@@ -1,0 +1,9 @@
+/* Tasklist Panel: Replace "Add account"/"Add tasklist" text */
+.tasklistPanel .accountAdd {
+  visibility: hidden;
+}
+.tasklistPanel .accountAdd:after {
+  content: "＋"; /* to use text */
+  content: url(res/plus2.png); /* to use image */
+  visibility: visible;
+}

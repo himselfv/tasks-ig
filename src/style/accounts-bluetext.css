@@ -1,0 +1,11 @@
+/*
+Accounts panel: tasklist names in blue and bold.
+*/
+.tasklistPanel .account {
+  font-weight: bold;
+}
+.tasklistPanel .tasklist,
+.tasklistPanel .tasklistAdd {
+  font-weight: bold;
+  color: #4E6D9A;			/* accent color */
+}

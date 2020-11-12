@@ -1,15 +1,21 @@
+:root {
+  --border-color: #E3E9FF;
+}
 /* All fonts are always Arial,sans-serif */
 html, body {
   font-family: Arial,sans-serif;
 }
 
+/* Common colors */
+#listPanel, #listHeader, #listFooter {
+  border-color: var(--border-color);
+}
+#listHeader, #listSelectBox, #listPageSplitter {
+  background-color: var(--border-color);
+}
+
+
 /* Headline */
-#listHeader {
-  display: flex;
-}
-#listHeader, #listSelectBox {
-  background-color: #E3E9FF;
-}
 #listSelectBox {
   font-size: 1.5em;
   font-weight: normal;
@@ -24,87 +30,18 @@ html, body {
   padding: 1px;
 }
 #mainmenu .dropbtn {
-  background: url(res/sprites.png) no-repeat -104px -24px;
+  background: url(../res/sprites.png) no-repeat -104px -24px;
   min-height: 20px;
   border: 1px solid lightgray;
 }
 
-/* Task list panel */
-
-/* Task list panel dropdowns: move to the left, change icon */
-.tasklistPanel .grip {
-  order: 1;
-}
-.tasklistPanel .dropdown {
-  order: 2;
-  align-self: start;
-  padding: 0.2em 0;
-}
-.tasklistPanel span {
-  order: 3;
-  padding-right: 0.3em;
-}
-.tasklistPanel .dropbtn {
-  background: url(res/sprites.png) no-repeat -85px -29px;
-  display: block;
-  min-width: 13px;
-  min-height: 13px;
-  height: unset;
-  margin-left: 0px;
-  margin-right: 5px;
-  border: 0;
-  padding: 0;
-}
-.tasklistPanel .dropdown-content {
-  font-weight: normal;
-  left: 0;
-  right: unset;
-}
-/* No borders or BG for hover/selection */
-.tasklistPanel .selected,
-.tasklistPanel li:hover,
-.tasklistPanel li:hover:not(.disabled) {
-  background: unset;
-  border: 1px solid white;
-}
-
-/* tasklistPanel formatting */
-.tasklistPanel .account,
-.tasklistPanel .accountAdd,
-.tasklistPanel .tasklist,
-.tasklistPanel .tasklistAdd {
-  font-weight: normal;
-  font-size: 1em;
-  color: #2a5bd0;
-}
-.tasklistPanel span {
-  padding: 0;
-}
-.tasklistPanel .account,
-.tasklistPanel .accountAdd {
-  color: black;
-  margin-top: 0.25em;
-}
-.tasklistPanel .account {
-  font-weight: bold;
-  margin-bottom: 0.2em;
-  margin-top: 0.4em;
-}
-.tasklistPanel .account .dropdown {
-  display: none;
-}
-.tasklistPanel .tasklist .dragGrip,
-.tasklistPanel .tasklistAdd .dragGrip {
-  min-width: 0.5em;
-}
-
-
 /* Left panel */
 #listPanelTitle {
-  /*display: block;*//* Do not display; use account titles instead */
+  font-size: 1em;
   font-weight: bold;
-  padding-left: 0.4em;
+  padding: 0 0 0 0.4em;
   margin: 0.5em 0 0; /* margin-bottom is 0.25em in Canvas but our .accounts have margin-top 0.25em instead */
+  display: none; /* but do not display: account names fill its role */
 }
 
 
@@ -117,11 +54,13 @@ html, body {
   padding: 0;
   border: 0;
 }
-#listPageSplitter { width: 4px; }
+#listPageSplitter {
+  width: 4px;
+}
 /* Title is the same color, same size as headline */
 #listPanelToolbar {
   display: flex;
-  background-color: #E3E9FF;
+  background-color: var(--border-color);
   min-height: 29px;
   margin: 0;
   padding: 0;
@@ -154,7 +93,7 @@ html, body {
   width: 13px;
   height: 13px;
   padding-right: 2px;
-  background: url(res/sprites.png) no-repeat -85px -5px;
+  background: url(../res/sprites.png) no-repeat -85px -5px;
 }
 #listPanelToolbar [action=listAdd] {
   display: none;
@@ -231,12 +170,12 @@ The <View> block lived basically anywhere at different points of time.
   content: "";
   filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
 }
-#listToolbar [action=taskAdd]:before { background: url(res/sprites.png) no-repeat -11px -3px; }
-#listToolbar [action=taskDelete]:before { background: url(res/sprites.png) no-repeat -11px -27px; }
-#listToolbar [action=taskTab]:before { background: url(res/sprites.png) no-repeat -34px -2px; }
-#listToolbar [action=taskShiftTab]:before { background: url(res/sprites.png) no-repeat -34px -26px; }
-#listToolbar [action=taskMoveUp]:before { background: url(res/sprites.png) no-repeat -58px -2px; }
-#listToolbar [action=taskMoveDown]:before { background: url(res/sprites.png) no-repeat -58px -26px; }
+#listToolbar [action=taskAdd]:before { background: url(../res/sprites.png) no-repeat -11px -3px; }
+#listToolbar [action=taskDelete]:before { background: url(../res/sprites.png) no-repeat -11px -27px; }
+#listToolbar [action=taskTab]:before { background: url(../res/sprites.png) no-repeat -34px -2px; }
+#listToolbar [action=taskShiftTab]:before { background: url(../res/sprites.png) no-repeat -34px -26px; }
+#listToolbar [action=taskMoveUp]:before { background: url(../res/sprites.png) no-repeat -58px -2px; }
+#listToolbar [action=taskMoveDown]:before { background: url(../res/sprites.png) no-repeat -58px -26px; }
 /* Hide captions for some of icon buttons */
 #listToolbar [action=taskTab],
 #listToolbar [action=taskShiftTab],

@@ -12,7 +12,7 @@ brome().browserAction.onClicked.addListener((activeTab) => {
 			brome().sidebarAction.open();
 		else
 		//Older way of showing the sidebar, doesn't work either
-		if (SidebarUI && SidebarUI.show)
+		if ((typeof(SidebarUI) !== 'undefined') && SidebarUI.show)
 			SidebarUI.show();
 		else
 			//At least do something

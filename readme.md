@@ -6,9 +6,7 @@ Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a f
 
 This project reimplements those frontends from scratch. It supports both styles, multiple accounts with [different backends](#backends) (including [Google Tasks](#backend-gtasks) and [CalDAV tasks](#backend-caldav)!)
 
-| <img width="320px" src="docs/screen-features.png" /> | <img width="460px" src="docs/screen-canvas1.png" /> |
-|-|-|
-
+<img src="docs/screen-features.png" /> <img src="docs/screen-canvas1.png" />
 
 **[Try it now on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
 
@@ -83,12 +81,18 @@ Store data [locally in the browser](https://developer.mozilla.org/en-US/docs/Moz
 
 
 ### <a name="styles"></a> Custom UI styles
-Add your custom CSS by listing it in index.html or in Options ("Additional style files"). By default two styles are available:
+By default the UI behaves as Tasks Canvas on wide screns and collapses to minimal Sidebar UI when narrowed.
 
-* No style: Minimalist sidebar-style UI (replicates tasks/ig in narrow mode)
-* style-canvas.css: Google Canvas replica (tasks/canvas)
+Add your custom CSS to index.html or in Options ("Additional style files"). Some styles are available in '/styles' subfolder:
 
-Both styles collapse into one column when the window is narrower than 600px.
+* `min.css` to force minimal UI at all times
+* `canvas.css` to force collapsed UI to be Canvas-styled
+* `accounts-flat.css` for a different approach to account list at the left
+* `borders-gray.css` to change border colors in either mode
+
+You can omit "style/" and ".css" and just write "min,accounts-flat".
+
+If you're running this from the web, to speed up loading you may want to compile everything into a single CSS.
 
 
 ### FAQ

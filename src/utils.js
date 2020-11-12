@@ -299,7 +299,7 @@ JobQueue.prototype.push = function(prom) {
 		if (this.count <= 0) {
 			this.onChanged.notify();
 			while ((this.idlePromises.length > 0) && (this.count <= 0))
-				this.idlePromises.splice(0, 1)();
+				this.idlePromises.splice(0, 1)[0]();
 		}
 	})
 	;
@@ -868,42 +868,16 @@ window.addEventListener("load", () => {
 		buttonNew(element);
 });
 
-/*
-function buttonNew(id, onclick, title, options) {
-	if (options && options['autocheck'])
-		button.addEventListener("click", buttonNew.autocheckClick.bind(button));
-	button.addEventListener("click", onclick);
-	button.isChecked = buttonNew.isChecked.bind(button);
-	button.isEnabled = buttonNew.isEnabled.bind(button);
-	button.setChecked = buttonNew.setChecked.bind(button);
-	button.setEnabled = buttonNew.setEnabled.bind(button);
-	if (options) {
-		if ('enabled' in options) button.setEnabled(options['enabled']);
-		if ('checked' in options) button.setChecked(options['checked']);
-	}
-}
-buttonNew.autocheckClick = function(event) {
-	this.classList.toggle('checked');
-}
-buttonNew.isChecked = function() {
-	return this.classList.contains('checked');
-}
-buttonNew.isEnabled = function() {
-	return !this.classList.contains('disabled');
-}
-buttonNew.setChecked = function(checked) {
-	this.classList.toggle('checked', checked);
-}
-buttonNew.setEnabled = function(enabled) {
-	this.classList.toggle('disabled', !enabled);
-}
-*/
 function linkNew(id, onclick, title) {
 	var link = document.createElement("a");
 	link.href = '#';
 	if (id) link.id = id;
 	if (title) link.textContent = title;
-	if (onclick) link.addEventListener("click", onclick);
+	if (onclick) link.addEventListener("click", (event) => {
+		onclick();
+		//Do not follow fake '#'s after executing JS links -- subtly breaks many things
+		event.preventDefault();
+	});
 	return link;
 }
 utils.export(linkNew);

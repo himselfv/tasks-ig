@@ -28,6 +28,7 @@ min: build
 	mkdir ./build/min/dav/
 	cp ./src/dav/*.js ./build/min/dav/
 	cp -R ./src/res ./build/min/res
+	cp -R ./src/style ./build/min/style
 	cp ./src/*.css ./build/min/
 
 
