@@ -1,3 +1,4 @@
+:root { --border-color: #eee; }
 html, body {
   height: 100%;
   width: 100%;
@@ -13,21 +14,25 @@ html, body {
   border: 0;
   width: 180px; /* starting width */
 }
-#listPanelToolbar { display: none; }
-#listPanelTitle { display: none; }
 #listPageSplitter {
   width: 3px;
 }
 
+/* Left panel */
 
-.tasklistPanel li,
-.tasklistPanel .account,
-.tasklistPanel .accountAdd,
-.tasklistPanel .tasklist,
-.tasklistPanel .tasklistAdd {
-  color: black;
+#listPanelToolbar { display: none; }
+
+#listPanelTitle {
+  /* display: none; */
+  display: block;
+  margin: 0.4em 0 0.4em;
+  padding: 0 0 0 7px;
+  font-size: 1.2em;
+  font-weight: bold;
 }
 
+
+/* Right panel */
 
 #listHeader {
   padding: 2px 2px 3px;
@@ -59,10 +64,3 @@ html, body {
   max-width: unset;
 }
 
-/* Uniform colors */
-#listPanel, #listHeader, #listFooter {
-  border-color: #ccc;
-}
-#listPageSplitter {
-  background-color: #ccc;
-}

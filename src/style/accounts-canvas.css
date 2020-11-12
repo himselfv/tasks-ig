@@ -1,0 +1,71 @@
+/*
+Canvas accounts panel style.
+*/
+
+
+/* No borders or BG for hover/selection */
+.tasklistPanel .selected,
+.tasklistPanel li:hover,
+.tasklistPanel li:hover:not(.disabled) {
+  background: unset;
+  border-color: white;
+}
+
+/* tasklistPanel formatting */
+.tasklistPanel .account,
+.tasklistPanel .accountAdd,
+.tasklistPanel .tasklist,
+.tasklistPanel .tasklistAdd {
+  font-weight: normal;
+  font-size: 1em;
+  color: var(--accent-color);
+}
+.tasklistPanel .account,
+.tasklistPanel .accountAdd {
+  color: black;
+  margin-top: 0.25em;
+}
+.tasklistPanel .account {
+  font-weight: bold;
+  margin-bottom: 0.2em;
+  margin-top: 0.4em;
+}
+.tasklistPanel .account .dropdown {
+  display: none;
+}
+.tasklistPanel .tasklist .dragGrip,
+.tasklistPanel .tasklistAdd .dragGrip {
+  min-width: 0.5em;
+}
+
+
+/* Item contents */
+/* Dropdowns: move to the left, change icon */
+.tasklistPanel .dragGrip {
+  order: 1;
+}
+.tasklistPanel .dropdown {
+  order: 2;
+  align-self: start;
+  padding: 0.2em 0;
+}
+.tasklistPanel li span {
+  order: 3;
+  padding: 0 0.3em 0 0;
+}
+.tasklistPanel .dropbtn {
+  background: url(../res/sprites.png) no-repeat -85px -29px;
+  display: block;
+  visibility: visible;
+  min-width: 13px;
+  min-height: 13px;
+  height: unset;
+  margin: 0 5px 0 0;
+  border: 0;
+  padding: 0;
+}
+.tasklistPanel .dropdown-content {
+  font-weight: normal;
+  left: 0;
+  right: unset;
+}

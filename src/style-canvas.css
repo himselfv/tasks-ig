@@ -1,3 +1,6 @@
+:root {
+  --border-color: #E3E9FF;
+}
 /* All fonts are always Arial,sans-serif */
 html, body {
   font-family: Arial,sans-serif;
@@ -5,10 +8,10 @@ html, body {
 
 /* Common colors */
 #listPanel, #listHeader, #listFooter {
-  border-color: #E3E9FF;
+  border-color: var(--border-color);
 }
 #listHeader, #listSelectBox, #listPageSplitter {
-  background-color: #E3E9FF;
+  background-color: var(--border-color);
 }
 
 
@@ -31,77 +34,6 @@ html, body {
   min-height: 20px;
   border: 1px solid lightgray;
 }
-
-/* Task list panel */
-
-/* Task list panel dropdowns: move to the left, change icon */
-.tasklistPanel .grip {
-  order: 1;
-}
-.tasklistPanel .dropdown {
-  order: 2;
-  align-self: start;
-  padding: 0.2em 0;
-}
-.tasklistPanel span {
-  order: 3;
-  padding-right: 0.3em;
-}
-.tasklistPanel .dropbtn {
-  background: url(res/sprites.png) no-repeat -85px -29px;
-  display: block;
-  visibility: visible;
-  min-width: 13px;
-  min-height: 13px;
-  height: unset;
-  margin-left: 0px;
-  margin-right: 5px;
-  border: 0;
-  padding: 0;
-}
-.tasklistPanel .dropdown-content {
-  font-weight: normal;
-  left: 0;
-  right: unset;
-}
-/* No borders or BG for hover/selection */
-.tasklistPanel .selected,
-.tasklistPanel li:hover,
-.tasklistPanel li:hover:not(.disabled) {
-  background: unset;
-  border: 1px solid white;
-}
-
-/* tasklistPanel formatting */
-.tasklistPanel .account,
-.tasklistPanel .accountAdd,
-.tasklistPanel .tasklist,
-.tasklistPanel .tasklistAdd {
-  font-weight: normal;
-  font-size: 1em;
-  color: #2a5bd0;
-}
-.tasklistPanel span {
-  padding: 0;
-}
-.tasklistPanel .account,
-.tasklistPanel .accountAdd {
-  color: black;
-  margin-top: 0.25em;
-}
-.tasklistPanel .account {
-  font-weight: bold;
-  margin-bottom: 0.2em;
-  margin-top: 0.4em;
-}
-.tasklistPanel .account .dropdown {
-  display: none;
-}
-.tasklistPanel .tasklist .dragGrip,
-.tasklistPanel .tasklistAdd .dragGrip {
-  min-width: 0.5em;
-}
-
 
 /* Left panel */
 #listPanelTitle {
@@ -128,7 +60,7 @@ html, body {
 /* Title is the same color, same size as headline */
 #listPanelToolbar {
   display: flex;
-  background-color: #E3E9FF;
+  background-color: var(--border-color);
   min-height: 29px;
   margin: 0;
   padding: 0;

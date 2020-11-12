@@ -1,7 +1,0 @@
-/* Tasklist Panel: Use gray color for selected accounts/lists */
-.tasklistPanel .selected {
-	background-color: #EEEEEE;
-	border-color: lightgray;
-	border-left-color: #EEEEEE;
-	border-right-color: #EEEEEE;
-}

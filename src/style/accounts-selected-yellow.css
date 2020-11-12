@@ -1,7 +1,0 @@
-/* Tasklist Panel: Use standard yellow highlight color for selected accounts/lists */
-.tasklistPanel .selected {
-	background-color: #FFFFDB;
-	border-color: #F7E084;
-	border-left-color: #FFFFDB;
-	border-right-color: #FFFFDB;
-}

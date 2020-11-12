@@ -1,0 +1,7 @@
+/*
+Flat accounts panel: Standard yellow highlight color for selected accounts/lists
+*/
+.tasklistPanel .selected {
+	background-color: var(--task-select-color);
+	border-color: var(--task-select-border) var(--task-select-color);
+}
