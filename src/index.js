@@ -26,6 +26,7 @@ function initUi() {
 	
 	if (typeof options.uiExtraCss == 'string')
 	for (let cssUri of options.uiExtraCss.split(',')) {
+			cssUri = cssUri.trim();
 			let hasPath = (cssUri.indexOf('/')>=0) || (cssUri.indexOf('\\')>=0);
 			if (!hasPath && !cssUri.toLowerCase().endsWith('.css'))
 				cssUri='style/'+cssUri+'.css';
