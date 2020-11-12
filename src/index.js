@@ -26,6 +26,9 @@ function initUi() {
 	
 	if (typeof options.uiExtraCss == 'string')
 	for (let cssUri of options.uiExtraCss.split(',')) {
+			let hasPath = (cssUri.indexOf('/')>=0) || (cssUri.indexOf('\\')>=0);
+			if (!hasPath && !cssUri.toLowerCase().endsWith('.css'))
+				cssUri='style/'+cssUri+'.css';
 			let link = document.createElement("link");
 			link.rel = "stylesheet";
 			link.type = "text/css";
