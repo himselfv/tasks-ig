@@ -30,7 +30,7 @@ html, body {
   padding: 1px;
 }
 #mainmenu .dropbtn {
-  background: url(res/sprites.png) no-repeat -104px -24px;
+  background: url(../res/sprites.png) no-repeat -104px -24px;
   min-height: 20px;
   border: 1px solid lightgray;
 }
@@ -93,7 +93,7 @@ html, body {
   width: 13px;
   height: 13px;
   padding-right: 2px;
-  background: url(res/sprites.png) no-repeat -85px -5px;
+  background: url(../res/sprites.png) no-repeat -85px -5px;
 }
 #listPanelToolbar [action=listAdd] {
   display: none;
@@ -170,12 +170,12 @@ The <View> block lived basically anywhere at different points of time.
   content: "";
   filter: invert(45%) sepia(18%) saturate(966%) hue-rotate(179deg) brightness(86%) contrast(97%); /* color all icons -> #516B97 */
 }
-#listToolbar [action=taskAdd]:before { background: url(res/sprites.png) no-repeat -11px -3px; }
-#listToolbar [action=taskDelete]:before { background: url(res/sprites.png) no-repeat -11px -27px; }
-#listToolbar [action=taskTab]:before { background: url(res/sprites.png) no-repeat -34px -2px; }
-#listToolbar [action=taskShiftTab]:before { background: url(res/sprites.png) no-repeat -34px -26px; }
-#listToolbar [action=taskMoveUp]:before { background: url(res/sprites.png) no-repeat -58px -2px; }
-#listToolbar [action=taskMoveDown]:before { background: url(res/sprites.png) no-repeat -58px -26px; }
+#listToolbar [action=taskAdd]:before { background: url(../res/sprites.png) no-repeat -11px -3px; }
+#listToolbar [action=taskDelete]:before { background: url(../res/sprites.png) no-repeat -11px -27px; }
+#listToolbar [action=taskTab]:before { background: url(../res/sprites.png) no-repeat -34px -2px; }
+#listToolbar [action=taskShiftTab]:before { background: url(../res/sprites.png) no-repeat -34px -26px; }
+#listToolbar [action=taskMoveUp]:before { background: url(../res/sprites.png) no-repeat -58px -2px; }
+#listToolbar [action=taskMoveDown]:before { background: url(../res/sprites.png) no-repeat -58px -26px; }
 /* Hide captions for some of icon buttons */
 #listToolbar [action=taskTab],
 #listToolbar [action=taskShiftTab],

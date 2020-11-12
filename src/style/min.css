@@ -1,3 +1,7 @@
+/*
+Minimalist style reminiscent of tasks/ig interface.
+Works fine with accounts-canvas (more googlish look) or accounts-flat (more modern).
+*/
 :root { --border-color: #eee; }
 html, body {
   height: 100%;
@@ -23,8 +27,7 @@ html, body {
 #listPanelToolbar { display: none; }
 
 #listPanelTitle {
-  /* display: none; */
-  display: block;
+  display: none;
   margin: 0.4em 0 0.4em;
   padding: 0 0 0 7px;
   font-size: 1.2em;
@@ -52,7 +55,7 @@ html, body {
 #listToolbar { display: none; }
 
 #mainmenu .dropbtn {
-  background: url(res/sprites.png) no-repeat -104px -27px;
+  background: url(../res/sprites.png) no-repeat -104px -27px;
   min-width: 20px;
   min-height: 14px;
   padding: 2px;
