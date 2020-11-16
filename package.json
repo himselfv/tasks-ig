@@ -1,6 +1,6 @@
 {
   "name": "tasks-ig",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Serverless JS client for CalDAV Tasks and Google Tasks",
   "main": "src/index.js",
   "directories": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "jest",
-    "build": "babel ./src --out-dir ./build/base --source-maps --copy-files --ignore src/dav/node_modules",
+    "build": "babel ./src --out-dir ./build/base --source-maps --copy-files --ignore src/dav",
     "lint": "eslint src/*.js"
   },
   "repository": {

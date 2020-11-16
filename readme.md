@@ -1,17 +1,19 @@
 Google Tasks is a TODO/Task service by Google integrated in Calendar. It had a few lightweight JS frontends perfect for a browser sidebar which had been shut down:
 
-> **https://mail.google.com/tasks/ig**
->
-> **https://mail.google.com/tasks/canvas**
+> * **https://mail.google.com/tasks/ig**
+> * **https://mail.google.com/tasks/canvas**
 
 This project reimplements those frontends from scratch. It supports both styles, multiple accounts with [different backends](#backends) (including [Google Tasks](#backend-gtasks) and [CalDAV tasks](#backend-caldav)!)
 
-<img src="docs/screen-features.png" /> <img src="docs/screen-canvas1.png" />
+<img src="docs/screen640-01-canvas.png" />
 
 **[Try it now on GitHub](https://himselfv.github.io/tasks-ig/)** (CalDAV/local storage only)
 
+[More screenshots](docs/readme.md)
+
+
 ### Features
-* Runs in the browser, from local file or self-hosted
+* Runs in browser, from local file or self-hosted
 * Works with [Google Tasks](#backend-gtasks), [CalDAV](#backend-caldav) and [browser-synced tasks](#backend-browser)
 * Multi-account support, moving and copying tasks between accounts, exporting tasks
 * Implements most Google Tasks IG interface features: inline editing, enter-splits, backspace-deletions, tab/shift-tab, keyboard navigation, move to list, task list commands, undelete.
@@ -43,7 +45,7 @@ This project reimplements those frontends from scratch. It supports both styles,
 
 <a name="webpanel"></a>**Firefox/Opera Sidebar for Standalone version**: [Addon page](https://addons.mozilla.org/ru/firefox/addon/tasks-ig-webpanel/)
 
-> To load from sources:
+> Loading from sources:
 >
 > Chrome: Go to Extensions page and enable "Developer mode". Press "Load unpacked extension" and point it to the folder with Tasks IG.
 >
@@ -80,7 +82,7 @@ Store data [locally in the browser](https://developer.mozilla.org/en-US/docs/Moz
 <a name="backend-local-storage"></a>"Less safe" versions use [Local Storage](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage) instead of [extension Storage](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/storage) and it's easy to reset by clearing cookies, so I wouldn't store anything important.
 
 
-### <a name="styles"></a> Custom UI styles
+### <a name="styles"></a> UI styles
 By default the UI behaves as Tasks Canvas on wide screns and collapses to minimal Sidebar UI when narrowed.
 
 Add your custom CSS to index.html or in Options ("Additional style files"). Some styles are available in '/styles' subfolder:
@@ -90,7 +92,7 @@ Add your custom CSS to index.html or in Options ("Additional style files"). Some
 * `accounts-flat.css` for a different approach to account list at the left
 * `borders-gray.css` to change border colors in either mode
 
-You can omit "style/" and ".css" and just write "min,accounts-flat".
+You can omit "style/*.css" in Options and just write "min,accounts-flat".
 
 If you're running this from the web, to speed up loading you may want to compile everything into a single CSS.
 
@@ -103,7 +105,7 @@ If you're running this from the web, to speed up loading you may want to compile
 
 **Q:** Can I undelete a task?
 
-**A:** Only in Google Tasks backend. Check "Show deleted tasks" in Options. To restore a deleted task, simply edit it and save. Remember to disable "Show deleted tasks" later; this is a last ditch effort, not a workable mode.
+**A:** Only in Google Tasks backend at the moment. Check "Show deleted tasks" in Options. To restore a deleted task, simply edit it and save. Remember to disable "Show deleted tasks" later; this is a last ditch effort, not a workable mode.
 
 
 ### License and attribution

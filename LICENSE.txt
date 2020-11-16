@@ -1,4 +1,25 @@
+MIT License
 
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+This license does not apply to some of the resources in this project. These may have their own licenses.
 The following resources in this repository are used under the following licenses:
 
 check2.png:
@@ -6,35 +27,47 @@ An icon by FatCow Web Hosting, http://www.fatcow.com/
 Licensed under Creative Commons (Attribution 3.0 United States), http://creativecommons.org/licenses/by/3.0/us/
 https://www.iconfinder.com/icons/64880/tick_icon
 
-plus2.png:
+loading5_*.gif:
+Generated with https://icons8.com/preloaders/, free.
+
+Plus sign ("Add task"):
 An icon by Timothy Miller, https://www.iconfinder.com/tmthymllr
 Licensed under Creative Commons (Attribution-Share Alike 3.0-Unported), http://creativecommons.org/licenses/by-sa/3.0/
 https://www.iconfinder.com/icons/126583/add_plus_icon
 
-trash2.png:
+Trash can ("Delete task"):
 An icon by Andrian Valeanu, https://www.iconfinder.com/designmodo
 Licensed under Creative Commons (Attribution 3.0 Unported), http://creativecommons.org/licenses/by/3.0/
 https://www.iconfinder.com/icons/115789/trash_icon
 
-items3.png:
+"Increase indent", "Decrease indent":
+Icons by Caesar Kurniawan, https://www.iconfinder.com/inkubators
+Licensed under Creative Commons (Attribution 3.0 Unported), http://creativecommons.org/licenses/by/3.0/
+https://www.iconfinder.com/icons/4871557/
+https://www.iconfinder.com/icons/4871564/
+
+Up arrow, Down arrow:
+Icons by "Visualination Icon", https://www.iconfinder.com/anggavisual93
+Licensed as: Free for commercial use (Include link to authors website).
+https://www.iconfinder.com/icons/5539635/
+https://www.iconfinder.com/icons/5539636/
+
+Plus sign in a square frame,
+Triangle down arrow in a square frame:
+Own work, distributed under this project's license.
+
+List icon (used for menu button):
 An icon by jxnblk, http://jxnblk.github.io/
 Licensed under MIT License, https://opensource.org/licenses/MIT
 https://www.iconfinder.com/icons/293685/list_icon
 
-loading5_*.gif:
-Generated with https://icons8.com/preloaders/, free.
+Burger menu icon:
+Own work, distributed under this project's license.
 
-https://www.iconfinder.com/icons/352386/4871557
-https://www.iconfinder.com/icons/352386/4871564
-https://www.iconfinder.com/icons/5539635
-https://www.iconfinder.com/icons/5539636
-
-error-183267r-16.png:
-A icon by Yannick Lung.
-Licensed as: Free icon.
+Red exclamation mark:
+An icon by Yannick Lung.
+Licensed as: Free for commercial use.
 https://www.iconfinder.com/icons/183525/error_exclamation_mark_warning_icon
 
-error-381599-16.png
-An icon by Tahsin Tahil
-Licensed under: Creative Commons (Attribution 3.0 Unported)
-https://www.iconfinder.com/icons/381599/error_icon
+Triangle down arrow without a frame:
+Own work, distributed under this project's license.
