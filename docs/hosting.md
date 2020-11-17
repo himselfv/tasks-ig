@@ -9,16 +9,18 @@
 
 ### <a name="caldav"></a>Setting up your own CalDAV
 
-If your Tasks IG instance is hosted on a different server than your CalDAV, requests to CalDAV are [cross-origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). You need to configure CORS on CalDAV side:
+If your Tasks IG instance is hosted on a different server than your CalDAV, requests to CalDAV are [cross-origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). CORS is a dubious security measure where a server must explicitly say "yes, yes, I'm okay with other domains" before the browsers will even let JS code call it.
 
-* Return 200 on OPTIONS, even if unauthenticated
+It's a mess that browsers created and only the server side (DAV server) can fix. You need to configure CORS on CalDAV side:
+
+* Return 200 on OPTIONS even when unauthenticated
 * All requests are made with NO `withCredentials`. We'll try to stick to that as allowing `withCredentials` is a security hole.
-* `Access-Control-Allow-Origin: *`
-* `Access-Control-Allow-Methods: OPTIONS, GET, HEAD, POST, PUT, DELETE, CONNECT, TRACE, PATCH, PROPFIND, COPY, MOVE`
-* `Access-Control-Expose-Headers: WWW-Authenticate, etag`
-* `Access-Control-Allow-Headers: *`
-* You also need to respond dynamically to `Access-Control-Request-Headers` and return `Access-Control-Allow-Headers:` with requested headers specifically; the browsers won't be satisfied with '*' for some headers even in non-`withCredentials` mode.
-* `Access-Control-Max-Age: 600` to enable at least some caching of OPTION requests.
+* Set `Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers` to `*`.
+* `Access-Control-Expose-Headers` needs at least `WWW-Authenticate, etag`
+* Respond to `Access-Control-Request-Headers` dynamically and return `Access-Control-Allow-Headers:` with requested headers specifically; the browsers won't be satisfied with '*' for some headers even in non-`withCredentials` mode.
+* `Access-Control-Max-Age: 600` to cache at least some OPTION requests.
+
+Here's a **[sample CORS .htaccess config](hosting-cors-htaccess-example.txt)** that works. [Here's another discussion with examples](https://github.com/perry-mitchell/webdav-client/issues/116).
 
 #### Speed up DAV
 1. Disable Service Discovery and provide a direct URL in account settings => -1 request.
