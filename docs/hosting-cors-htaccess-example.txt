@@ -1,0 +1,41 @@
+# CORS:
+# Browsers these days preface AJAX requests with OPTIONS to see what's allowed.
+# For the request to even run:
+#  - OPTIONS must return 200, not 401 AUTHORIZE
+#  - Access-Control-Allow-* must explicitly allow it
+
+# CORS will send garbage OPTIONS for any new URL/method, but at least each
+# can be cached for up to 600 seconds:
+Header always set Access-Control-Max-Age "600"
+
+# Wildcards * only work for basic requests, to use cookies/credentials
+# values must be listed explicitly.
+# Default to '*' then personalize with conditions.
+
+# Methods we handle
+Header always set Access-Control-Allow-Methods "OPTIONS, GET, HEAD, POST, PUT, DELETE, CONNECT, TRACE, PATCH, PROPFIND, COPY,
+
+# Who can send requests
+Header always set Access-Control-Allow-Origin "*"
+
+# Which headers can be sent in requests
+Header always set Access-Control-Allow-Headers "*"
+
+# Which response headers can be shared with CO caller
+Header always set Access-Control-Expose-Headers "WWW-Authenticate, etag"
+
+# Explicit Allow-Headers/Methods if asked
+SetEnvIfNoCase Access-Control-Request-Headers (.+) AccessControlRequestHeaders=$1
+Header always append Access-Control-Allow-Headers %{AccessControlRequestHeaders}e env=AccessControlRequestHeaders
+SetEnvIfNoCase Access-Control-Request-Method (.+) AccessControlRequestMethod=$1
+Header always append Access-Control-Allow-Methods %{AccessControlRequestMethod}e env=AccessControlRequestMethod
+
+# DO NOT Access-Control-Allow-Credentials "true" -- this is a security hole!
+
+# Force return 200 on OPTION requests
+<If "%{REQUEST_METHOD} == 'OPTIONS'">
+	<IfModule mod_rewrite.c>
+		RewriteEngine On
+		RewriteRule ^ - [R=200]
+	</IfModule>
+</If>

@@ -7,11 +7,10 @@
 * Merge all CSS files into one (and adjust index.html)
 
 
-### <a name="caldav"></a>Setting up your own CalDAV
+#### <a name="cors"></a>CalDAV and CORS
+If your Tasks IG instance is hosted on a different server than your CalDAV, requests to CalDAV are [cross-origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) is a dubious browser security measure where a server must explicitly agree to receive the request before the browsers will even let the page send it.
 
-If your Tasks IG instance is hosted on a different server than your CalDAV, requests to CalDAV are [cross-origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). CORS is a dubious security measure where a server must explicitly say "yes, yes, I'm okay with other domains" before the browsers will even let JS code call it.
-
-It's a mess that browsers created and only the server side (DAV server) can fix. You need to configure CORS on CalDAV side:
+It's a mess that browsers created and only the server side can fix. You have to configure CORS on CalDAV side:
 
 * Return 200 on OPTIONS even when unauthenticated
 * All requests are made with NO `withCredentials`. We'll try to stick to that as allowing `withCredentials` is a security hole.
@@ -22,7 +21,8 @@ It's a mess that browsers created and only the server side (DAV server) can fix.
 
 Here's a **[sample CORS .htaccess config](hosting-cors-htaccess-example.txt)** that works. [Here's another discussion with examples](https://github.com/perry-mitchell/webdav-client/issues/116).
 
-#### Speed up DAV
+
+#### Speed up CalDAV
 1. Disable Service Discovery and provide a direct URL in account settings => -1 request.
 2. If you're using HTTPS DAV Link, switch your server from Digest to Basic auth => -1 request. Digest auth unavoidably starts with a 403. Warning: For non-encrypted HTTP DAV, Basic auth is unsafe.
 3. Place Tasks on the same server as your CalDAV instance - this removes CORS entirely (up to 2x the number of requests). _Protocol_, _host_ and _port_ all need to match. If you're using HTTPS for CalDAV (as you should), use HTTPS for Tasks too.
