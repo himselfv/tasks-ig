@@ -495,13 +495,16 @@ BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
 		} else {
 			//Set all ways of expressing "due" together
 			let due = ICAL.Time.fromJSDate(Task.parseDate(task.due));
+			//We ONLY save in VALUE=DATE format; justifications later.
+			let dtstart = due; //Before date-izing it
+			due.isDate = true;
 			entry.updatePropertyWithValue('due', due);
 			let duration = entry.getFirstPropertyValue('duration');
 			if (duration) {
 				duration.isNegative = true;
-				due.addDuration(duration);
+				dtstart.addDuration(duration);
 			}
-			entry.updatePropertyWithValue('dtstart', due);
+			entry.updatePropertyWithValue('dtstart', dtstart);
 		}
 	}
 	//Parse task.completed as a date if it's not null
