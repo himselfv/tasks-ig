@@ -2626,7 +2626,8 @@ Editor.prototype.open = function(taskId) {
 		document.getElementById("editorTaskTitle").innerText = task.title;
 		document.getElementById("editorTaskTitleBox").checked = (task.status == 'completed');
 		document.getElementById("editorTaskTitleP").classList.toggle("completed", task.status == 'completed');
-		document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(task.due)) : null;
+		//valueAsDate extracts the date as seen from UTC. Adjust our date so that it looks from UTC as it looked to us from local TZ
+		document.getElementById("editorTaskDate").valueAsDate = (task.due) ? (new Date(+task.due-task.due.getTimezoneOffset()*60000)) : null;
 		document.getElementById("editorTaskNotes").value = (task.notes) ? task.notes : "";
 		this.taskListBox.setSelected(selectedTaskList());
 
@@ -2713,6 +2714,8 @@ Editor.prototype.getPatch = function() {
 	var patch = { "id": this.taskId };
 	taskResSetCompleted(patch, document.getElementById("editorTaskTitleBox").checked);
 	patch.due = document.getElementById("editorTaskDate").valueAsDate; //null is fine!
+	//valueAsDate returns the chosen date as if looking from UTC. Adjust the datetime so that it looks like that from the local TZ.
+	if (patch.due) patch.due = (+patch.due+patch.due.getTimezoneOffset()*60000);
 	patch.notes = document.getElementById("editorTaskNotes").value;
 	//Any sort of editing undeletes task (removes "deleted" flag)
 	patch.deleted = false;
