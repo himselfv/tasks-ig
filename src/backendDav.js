@@ -499,12 +499,16 @@ BackendDav.prototype.updateTodoObject = function(entry, task, patch) {
 			let dtstart = due; //Before date-izing it
 			due.isDate = true;
 			entry.updatePropertyWithValue('due', due);
+			//ical.js retains existing TZID even/if passed a date with a floating one!
+			//Even for isDate==true values!
+			entry.getFirstProperty('due').removeParameter('tzid');
 			let duration = entry.getFirstPropertyValue('duration');
 			if (duration) {
 				duration.isNegative = true;
 				dtstart.addDuration(duration);
 			}
 			entry.updatePropertyWithValue('dtstart', dtstart);
+			entry.getFirstProperty('dtstart').removeParameter('tzid');
 		}
 	}
 	//Parse task.completed as a date if it's not null
