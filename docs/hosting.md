@@ -7,20 +7,22 @@
 * Merge all CSS files into one (and adjust index.html)
 
 
-### <a name="caldav"></a>Setting up your own CalDAV
+#### <a name="cors"></a>CalDAV and CORS
+If your Tasks IG instance is hosted on a different server than your CalDAV, requests to CalDAV are [cross-origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) is a dubious browser security measure where a server must explicitly agree to receive the request before the browsers will even let the page send it.
 
-If your Tasks IG instance is hosted on a different server than your CalDAV, requests to CalDAV are [cross-origin](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS). You need to configure CORS on CalDAV side:
+It's a mess that browsers created and only the server side can fix. You have to configure CORS on CalDAV side:
 
-* Return 200 on OPTIONS, even if unauthenticated
+* Return 200 on OPTIONS even when unauthenticated
 * All requests are made with NO `withCredentials`. We'll try to stick to that as allowing `withCredentials` is a security hole.
-* `Access-Control-Allow-Origin: *`
-* `Access-Control-Allow-Methods: OPTIONS, GET, HEAD, POST, PUT, DELETE, CONNECT, TRACE, PATCH, PROPFIND, COPY, MOVE`
-* `Access-Control-Expose-Headers: WWW-Authenticate, etag`
-* `Access-Control-Allow-Headers: *`
-* You also need to respond dynamically to `Access-Control-Request-Headers` and return `Access-Control-Allow-Headers:` with requested headers specifically; the browsers won't be satisfied with '*' for some headers even in non-`withCredentials` mode.
-* `Access-Control-Max-Age: 600` to enable at least some caching of OPTION requests.
+* Set `Access-Control-Allow-Origin`, `Access-Control-Allow-Methods`, `Access-Control-Allow-Headers` to `*`.
+* `Access-Control-Expose-Headers` needs at least `WWW-Authenticate, etag`
+* Respond to `Access-Control-Request-Headers` dynamically and return `Access-Control-Allow-Headers:` with requested headers specifically; the browsers won't be satisfied with '*' for some headers even in non-`withCredentials` mode.
+* `Access-Control-Max-Age: 600` to cache at least some OPTION requests.
 
-#### Speed up DAV
+Here's a **[sample CORS .htaccess config](hosting-cors-htaccess-example.txt)** that works. [Here's another discussion with examples](https://github.com/perry-mitchell/webdav-client/issues/116).
+
+
+#### Speed up CalDAV
 1. Disable Service Discovery and provide a direct URL in account settings => -1 request.
 2. If you're using HTTPS DAV Link, switch your server from Digest to Basic auth => -1 request. Digest auth unavoidably starts with a 403. Warning: For non-encrypted HTTP DAV, Basic auth is unsafe.
 3. Place Tasks on the same server as your CalDAV instance - this removes CORS entirely (up to 2x the number of requests). _Protocol_, _host_ and _port_ all need to match. If you're using HTTPS for CalDAV (as you should), use HTTPS for Tasks too.

@@ -107,6 +107,10 @@ If you're running this from the web, to speed up loading you may want to compile
 
 **A:** Only in Google Tasks backend at the moment. Check "Show deleted tasks" in Options. To restore a deleted task, simply edit it and save. Remember to disable "Show deleted tasks" later; this is a last ditch effort, not a workable mode.
 
+**Q:** CalDAV account doesn't connect (says something about "error 0" or CORS)
+
+**A:** Your DAV server [has to support CORS](docs/hosting.md#cors). [CORS](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) is a dubious browser security measure where a server must explicitly allow requests from outside. Either configure the server ([here's an example](docs/hosting-cors-htaccess-example.txt)) or put tasks-ig on the same domain and http/https scheme.
+
 
 ### License and attribution
 This project uses icons and other resources which might have their separate licenses. Please see [LICENSE.txt](LICENSE.txt) for licenses and attribution.
